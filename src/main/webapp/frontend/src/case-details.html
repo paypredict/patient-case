@@ -1,0 +1,30 @@
+<!-- Dependency resources -->
+<!--suppress HtmlUnknownTarget -->
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/vaadin-text-field/vaadin-text-field.html">
+<link rel="import" href="../bower_components/vaadin-icons/vaadin-icons.html">
+<link rel="import" href="../bower_components/vaadin-date-picker/vaadin-date-picker.html">
+
+<dom-module id="case-details">
+    <template>
+        <vaadin-text-field label="Patient"
+                           style="width: 100%; max-width: 32em"
+                           value="{{case.ptnLast}} {{case.ptnFirst}} {{case.ptnMI}}"
+                           readonly>
+            <iron-icon slot="prefix" icon="vaadin:{{case.ptnG}}"></iron-icon>
+        </vaadin-text-field>
+        <vaadin-date-picker label="DBD" value="{{case.ptnBd.str}}" readonly></vaadin-date-picker>
+        <vaadin-text-field label="SSN" value="{{case.ptnSSN}}" readonly></vaadin-text-field>
+    </template>
+
+    <!-- Polymer boilerplate to register the example-template element -->
+    <script>
+        class CaseDetails extends Polymer.Element {
+            static get is() {
+                return 'case-details'
+            }
+        }
+
+        customElements.define(CaseDetails.is, CaseDetails);
+    </script>
+</dom-module>

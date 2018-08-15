@@ -10,20 +10,20 @@ import net.paypredict.patient.cases.data.Case
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
-@Tag("case-form")
-@HtmlImport("src/case-form.html")
-class CaseForm : PolymerTemplate<CaseForm.CaseModel>() {
+@Tag("case-details")
+@HtmlImport("src/case-details.html")
+class CaseDetails : PolymerTemplate<CaseDetails.CaseModel>() {
     interface CaseModel : TemplateModel {
-        var value: Case?
+        var case: Case?
     }
 
     init {
-        model.value = null
+        model.case = null
     }
 
-    var value: Case?
-        get() = model.value
+    var case: Case?
+        get() = model.case
         set(value) {
-            model.value = value
+            model.case = value
         }
 }

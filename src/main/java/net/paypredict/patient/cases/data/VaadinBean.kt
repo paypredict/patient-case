@@ -17,6 +17,7 @@ class DateBean : Serializable {
     var day: String? = null
     var month: String? = null
     var year: String? = null
+    val str: String get() = "$year-$month-$day"
 }
 
 class DateToDateBeanEncoder : ModelEncoder<Date, DateBean> {
@@ -39,7 +40,7 @@ class DateToDateBeanEncoder : ModelEncoder<Date, DateBean> {
         }
         val year = presentationValue.year?.toInt() ?: 0
         val day = presentationValue.day?.toInt() ?: 0
-        val month = presentationValue.month?.toInt() ?: 0 - 1
+        val month = presentationValue.month?.toInt() ?: 0-1
         val calendar = GregorianCalendar.getInstance()
         calendar.set(year, month, day)
         return calendar.time

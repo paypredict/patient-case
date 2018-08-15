@@ -52,8 +52,8 @@ class CaseGrid(
 
         content.isDetailsVisibleOnClick = true
         content.setItemDetailsRenderer(ComponentRenderer(SerializableFunction { case: Case ->
-            CaseForm().apply {
-                value = case
+            CaseDetails().apply {
+                this.case = case
             }
         }))
 
