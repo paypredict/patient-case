@@ -1,19 +1,19 @@
 <!-- Dependency resources -->
+<!--suppress HtmlUnknownTarget -->
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
 
-<!-- Defines the example-template element -->
-<dom-module id="example-template">
+<dom-module id="case-form">
     <template>
-        <span>[[value]]</span>
+        <span>[[value.ptnLast]]</span>
     </template>
 
     <!-- Polymer boilerplate to register the example-template element -->
     <script>
-        class ExampleTemplate extends Polymer.Element {
+        class CaseForm extends Polymer.Element {
             static get is() {
-                return 'example-template'
+                return 'case-form'
             }
         }
-        customElements.define(ExampleTemplate.is, ExampleTemplate);
+        customElements.define(CaseForm.is, CaseForm);
     </script>
 </dom-module>

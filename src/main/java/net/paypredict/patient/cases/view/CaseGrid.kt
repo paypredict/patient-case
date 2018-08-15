@@ -7,6 +7,8 @@ import com.vaadin.flow.data.provider.DataProvider
 import com.vaadin.flow.data.provider.Query
 import com.vaadin.flow.data.provider.QuerySortOrder
 import com.vaadin.flow.data.provider.SortDirection
+import com.vaadin.flow.data.renderer.ComponentRenderer
+import com.vaadin.flow.function.SerializableFunction
 import net.paypredict.patient.cases.data.Case
 import net.paypredict.patient.cases.data.CasesCollection
 import net.paypredict.patient.cases.data.caseDataViewMap
@@ -38,6 +40,7 @@ class CaseGrid(
         val visibleColumns = visibleProperties.map { it.name }.toSet()
         val sortableColumns = sortableProperties.map { it.name }.toSet()
 
+        content.isMultiSort = true
         for (column in content.columns) {
             column.isVisible = column.key in visibleColumns
             column.isSortable = column.key in sortableColumns
@@ -47,6 +50,12 @@ class CaseGrid(
             })
         }
 
+        content.isDetailsVisibleOnClick = true
+        content.setItemDetailsRenderer(ComponentRenderer(SerializableFunction { case: Case ->
+            CaseForm().apply {
+                value = case
+            }
+        }))
 
         content.dataProvider = DataProvider.fromFilteringCallbacks(
             { query: Query<Case, Unit> ->

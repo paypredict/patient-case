@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.data
 
+import com.vaadin.flow.templatemodel.Encode
 import net.paypredict.patient.cases.DataView
 import net.paypredict.patient.cases.dataViewMap
 import java.util.*
@@ -10,6 +11,7 @@ import java.util.*
  *
  * [based on requisition form](http://host.simagis.com/live/layers/view.jsp?name=Users%2Fvk%2F166614c4-52ab-4d14-9d09-26f83b0ee7c0)
  */
+@VaadinBean
 data class Case(
     @DataView("Last Name", "Patient's last name")
     var ptnLast: String? = null,
@@ -23,6 +25,7 @@ data class Case(
     @DataView("Gender", "Patient's gender")
     var ptnG: String? = null,
 
+    @set:Encode(DateToDateBeanEncoder::class)
     @DataView("DBD", "Patient's date of birth")
     var ptnBd: Date? = null,
 
@@ -56,6 +59,7 @@ data class Case(
     @DataView("Requisition", "Accession Unique ID")
     var req: String? = null,
 
+    @set:Encode(DateToDateBeanEncoder::class)
     @DataView("Date", "Collection Date/Time")
     var srvDate: Date? = null,
 
