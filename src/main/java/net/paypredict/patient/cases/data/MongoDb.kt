@@ -39,6 +39,8 @@ object DBS {
     object Collections {
         fun cases(): MongoCollection<Document> =
             ptn().getCollection("cases")
+        fun casesRaw(): MongoCollection<Document> =
+            ptn().getCollection("casesRaw")
     }
 
     private val mongoConf : Document by lazy {
