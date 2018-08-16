@@ -14,16 +14,16 @@ import net.paypredict.patient.cases.data.Case
 @HtmlImport("src/case-details.html")
 class CaseDetails : PolymerTemplate<CaseDetails.CaseModel>() {
     interface CaseModel : TemplateModel {
-        var case: Case?
+        var cs: Case?
     }
 
     init {
-        model.case = null
+        model.cs = null
     }
 
-    var case: Case?
-        get() = model.case
+    var cs: Case?
+        get() = model.cs
         set(value) {
-            model.case = value
+            model.cs = value
         }
 }

@@ -9,12 +9,12 @@
     <template>
         <vaadin-text-field label="Patient"
                            style="width: 100%; max-width: 32em"
-                           value="{{case.ptnLast}} {{case.ptnFirst}} {{case.ptnMI}}"
+                           value="{{cs.ptnLast}} {{cs.ptnFirst}} {{cs.ptnMI}}"
                            readonly>
-            <iron-icon slot="prefix" icon="vaadin:{{case.ptnG}}"></iron-icon>
+            <iron-icon slot="prefix" icon="vaadin:{{cs.ptnG}}"></iron-icon>
         </vaadin-text-field>
-        <vaadin-date-picker label="DBD" value="{{case.ptnBd.str}}" readonly></vaadin-date-picker>
-        <vaadin-text-field label="SSN" value="{{case.ptnSSN}}" readonly></vaadin-text-field>
+        <vaadin-date-picker label="DBD" value="{{cs.ptnBd.str}}" readonly></vaadin-date-picker>
+        <vaadin-text-field label="SSN" value="{{cs.ptnSSN}}" readonly></vaadin-text-field>
     </template>
 
     <!-- Polymer boilerplate to register the example-template element -->
