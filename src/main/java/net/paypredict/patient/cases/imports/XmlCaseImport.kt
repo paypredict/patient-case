@@ -91,7 +91,13 @@ object XmlCaseImport {
         "Case.OrderDetails.ObservationDetails",
         "Case.ResultDetails",
         "Case.ResultDetails.Result",
-        "Case.SuperBillDetails"
+        "Case.ReportingProvider",
+        "Case.ServiceProvider",
+        "Case.SuperBillDetails",
+        "Case.SuperBillDetails.SuperBill",
+        "Case.SuperBillDetails.ServiceProvider.Location",
+        "Case.SuperBillDetails.RenderingProvider.Provider",
+        "Case.SuperBillDetails.RenderingProvider.Location"
     )
 
     private val Collection<String>.isPathFoldable: Boolean
