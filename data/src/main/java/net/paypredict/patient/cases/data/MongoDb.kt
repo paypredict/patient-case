@@ -19,20 +19,6 @@ import kotlin.concurrent.withLock
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/12/2018.
  */
-object CasesCollection {
-    fun collection(): MongoCollection<Document> =
-        DBS.Collections.cases()
-
-    private val executor: ExecutorService by lazy {
-        Executors.newFixedThreadPool(1).also {
-            DBS.addShutdownListener {
-                executor.shutdown()
-                executor.awaitTermination(10, TimeUnit.SECONDS)
-            }
-        }
-    }
-}
-
 object DBS {
     fun ptn(): MongoDatabase = mongoClient.getDatabase(databaseName)
 
@@ -41,6 +27,8 @@ object DBS {
             ptn().getCollection("cases")
         fun casesRaw(): MongoCollection<Document> =
             ptn().getCollection("casesRaw")
+        fun casesIssues(): MongoCollection<Document> =
+            ptn().getCollection("casesIssues")
     }
 
     private val mongoConf : Document by lazy {

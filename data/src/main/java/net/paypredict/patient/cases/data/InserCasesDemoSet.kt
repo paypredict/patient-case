@@ -6,7 +6,7 @@ import java.util.*
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
 fun main(args: Array<String>) {
-    val cases = CasesCollection.collection()
+    val cases = DBS.Collections.cases()
     cases.drop()
     for (i in 1..1000) {
         val uuid = UUID.randomUUID().toString()

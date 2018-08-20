@@ -3,14 +3,17 @@ package net.paypredict.patient.cases.imports
 import com.mongodb.client.model.UpdateOptions
 import net.paypredict.patient.cases.bson.*
 import net.paypredict.patient.cases.data.DBS
+import net.paypredict.patient.cases.data.opt
 import org.bson.Document
 import org.bson.json.JsonMode
 import org.bson.json.JsonWriterSettings
 import org.xml.sax.Attributes
 import org.xml.sax.helpers.DefaultHandler
 import java.io.File
+import java.io.FileFilter
 import java.io.InputStream
 import java.security.MessageDigest
+import java.util.*
 import javax.xml.parsers.SAXParserFactory
 
 /**
@@ -19,9 +22,12 @@ import javax.xml.parsers.SAXParserFactory
  */
 object XmlCaseImport {
 
-    fun importFile(xmlFile: File): Document {
+    data class Options(val removePrsData: Boolean = false)
+
+
+    fun importFile(xmlFile: File, options: Options = Options()): String {
         val digest = xmlFile.digest()
-        val case = xmlFile.inputStream().use { it.toDocument() }
+        val case = xmlFile.inputStream().use { it.toDocument(options) }
         val casesRaw = DBS.Collections.casesRaw()
         val update = Document(
             `$set`, Document(
@@ -41,26 +47,37 @@ object XmlCaseImport {
             Document("_id", digest), update,
             UpdateOptions().upsert(true)
         )
-        return case
+        return digest
     }
 
     private class Box(
         val doc: Document
     )
 
-    private fun InputStream.toDocument(): Document {
+    private fun InputStream.toDocument(options: Options = Options()): Document {
         val result = Document()
         SAXParserFactory.newInstance().newSAXParser().parse(this, object : DefaultHandler() {
             val path: MutableList<Box> = mutableListOf(
-                Box(
-                    result
-                )
+                Box(result)
             )
 
             override fun startElement(uri: String, localName: String, qName: String, attributes: Attributes) {
                 val doc = Document()
                 for (i in 0 until attributes.length) {
-                    doc[attributes.getQName(i).aName] = attributes.getValue(i)
+                    val aName = attributes.getQName(i).aName
+                    val aValue = attributes.getValue(i)
+                    val value = if (options.removePrsData)
+                        when (aName) {
+                            "subscriberPolicyNumber" -> "123123123123"
+                            "address1" -> "Any Address"
+                            "payerId" -> "12345"
+                            "name" -> "AnyName"
+                            "firstName" -> "AnyFirstName"
+                            "lastName" -> "AnyLastName"
+                            "organizationNameOrLastName" -> "AnyLastName"
+                            else -> aValue
+                        } else aValue
+                    doc[aName] = value
                 }
                 val box = Box(doc)
                 val parent = path.last()
@@ -152,19 +169,86 @@ object XmlCaseImport {
         }
     }
 
-    private fun Array<String>.jsonOutOption(document: Document) {
-        val option = "-json-out:"
+    private fun Array<String>.optionValue(option: String) =
         this.mapNotNull { if (it.startsWith(option)) it.removePrefix(option) else null }
             .lastOrNull()
-            ?.let { File(it).writeText(document.toJson(JsonWriterSettings(JsonMode.STRICT, true))) }
+
+
+    private fun Array<String>.jsonOutOption(_id: String) {
+        optionValue("--json-out:")
+            ?.let { fileName ->
+                val document = DBS.Collections.casesRaw().find(Document("_id", _id)).first()
+                File(fileName).writeText(document.toJson(JsonWriterSettings(JsonMode.STRICT, true)))
+            }
     }
+
+    private fun Array<String>.testIssuesOption(_id: String) {
+        if (contains("--test-issues")) {
+            val case = DBS.Collections.casesRaw().find(Document("_id", _id)).first()
+            val update = Document(
+                `$set`, Document(
+                    mapOf(
+                        "time" to Date(),
+                        "issue" to Document(
+                            mapOf(
+                                "npi" to listOf(Document("status", "PASS").apply {
+                                    val provider = case.opt<Document>("case", "Case", "OrderingProvider", "Provider")
+                                    this["npi"] = provider?.opt<String>("nPI")
+                                    this["firstName"] = provider?.opt<String>("firstName")
+                                    this["lastName"] = provider?.opt<String>("lastName")
+
+                                }),
+                                "eligibility" to listOf(Document("status", "PASS").apply {
+
+                                }),
+                                "address" to listOf(Document("status", "PASS").apply {
+                                    val patient = case.opt<Document>("case", "Case", "Patient")
+                                    this["line1"] = patient?.opt<String>("address1")
+                                    this["line2"] = patient?.opt<String>("address2")
+                                    this["zip"] = patient?.opt<String>("zip")
+                                    this["city"] = patient?.opt<String>("city")
+                                    this["state"] = patient?.opt<String>("state")
+
+                                })
+                            )
+                        )
+                    )
+                )
+            )
+            DBS.Collections.casesIssues().updateOne(
+                Document("_id", _id), update,
+                UpdateOptions().upsert(true)
+            )
+        }
+    }
+
+    private fun Array<String>.toOptions(): Options =
+        Options(removePrsData = contains("--remove-prs"))
+
 
     @JvmStatic
     fun main(args: Array<String>) {
-        val xmlFile = args.lastOrNull() ?: throw Error("Usage: XmlCaseImport [options] <xmlFile>")
-        val document = importFile(File(xmlFile))
-        args.jsonOutOption(document)
+        val path = args.lastOrNull() ?: throw Error(
+            """
+            Usage: XmlCaseImport [--json-out:jsonFile] [--test-issues] [--dir] [--suffix:.xml] [--remove-prs] <path>
+            """
+        )
+
+        val files: List<File> = File(path).let { file ->
+            if (args.contains("--dir")) {
+                val suffix = args.optionValue("--suffix:") ?: ".xml"
+                file.listFiles(FileFilter {
+                    it.isFile && it.name.endsWith(suffix, ignoreCase = true)
+                })?.toList() ?: emptyList()
+            } else
+                listOf(file)
+        }
+        files.forEach { xmlFile ->
+            val _id = importFile(xmlFile, args.toOptions())
+            println("${xmlFile.name}: $_id")
+            args.jsonOutOption(_id)
+            args.testIssuesOption(_id)
+        }
     }
 }
-
 

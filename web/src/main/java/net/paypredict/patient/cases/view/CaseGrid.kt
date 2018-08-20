@@ -9,10 +9,7 @@ import com.vaadin.flow.data.provider.QuerySortOrder
 import com.vaadin.flow.data.provider.SortDirection
 import com.vaadin.flow.data.renderer.ComponentRenderer
 import com.vaadin.flow.function.SerializableFunction
-import net.paypredict.patient.cases.data.Case
-import net.paypredict.patient.cases.data.CasesCollection
-import net.paypredict.patient.cases.data.caseDataViewMap
-import net.paypredict.patient.cases.data.toCase
+import net.paypredict.patient.cases.data.*
 import org.bson.Document
 import org.bson.conversions.Bson
 import kotlin.reflect.KProperty1
@@ -59,7 +56,7 @@ class CaseGrid(
 
         content.dataProvider = DataProvider.fromFilteringCallbacks(
             { query: Query<Case, Unit> ->
-                CasesCollection.collection()
+                DBS.Collections.cases()
                     .find()
                     .sort(query.toMongoSort())
                     .skip(query.offset)
@@ -68,7 +65,7 @@ class CaseGrid(
                     .toList()
                     .stream()
             },
-            { CasesCollection.collection().count().toInt() }
+            { DBS.Collections.cases().count().toInt() }
         )
     }
 }

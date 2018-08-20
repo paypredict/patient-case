@@ -8,5 +8,8 @@ package net.paypredict.patient.cases
 annotation class DataView(
     val caption: String,
     val description: String = "",
-    val section: String = ""
-)
+    val section: String = "",
+    val isVisible: Boolean = true,
+    val order: Int = -1
+) {
+}

@@ -37,3 +37,12 @@ fun Case.toDocument(): Document =
 private fun Document.putNN(name: String, value: Any?) {
     if (value != null) this[name] = value
 }
+
+
+inline fun <reified T> Document.opt(vararg path: String): T? {
+    var result: Any? = this
+    for (key in path) {
+        result = (result as? Document)?.get(key)
+    }
+    return result as? T
+}
