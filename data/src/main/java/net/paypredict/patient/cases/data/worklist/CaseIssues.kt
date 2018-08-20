@@ -85,11 +85,11 @@ data class IssueAddress(
     @DataView("Status", order = 10)
     override var status: String?,
 
-    @DataView("Line 1", order = 20)
-    var line1: String?,
+    @DataView("Address 1", order = 20)
+    var address1: String?,
 
-    @DataView("Line 2", order = 30)
-    var line2: String?,
+    @DataView("Address 2", order = 30)
+    var address2: String?,
 
     @DataView("ZIP", order = 40)
     var zip: String?,
@@ -143,8 +143,8 @@ private fun Document.toIssueEligibility(): IssueEligibility =
 private fun Document.toIssueAddress(): IssueAddress =
     IssueAddress(
         status = opt<String>("status"),
-        line1 = opt<String>("line1"),
-        line2 = opt<String>("line2"),
+        address1 = opt<String>("address1"),
+        address2 = opt<String>("address2"),
         zip = opt<String>("zip"),
         city = opt<String>("city"),
         state = opt<String>("state")

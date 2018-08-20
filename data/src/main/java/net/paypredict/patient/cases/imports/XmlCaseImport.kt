@@ -146,7 +146,10 @@ object XmlCaseImport {
     }
 
     private val String.aName: String
-        get() = decapitalize()
+        get() = when {
+            all { it.isUpperCase() } -> toLowerCase()
+            else -> decapitalize()
+        }
 
     private val String.eName: String
         get() = capitalize()
@@ -193,7 +196,7 @@ object XmlCaseImport {
                             mapOf(
                                 "npi" to listOf(Document("status", "PASS").apply {
                                     val provider = case.opt<Document>("case", "Case", "OrderingProvider", "Provider")
-                                    this["npi"] = provider?.opt<String>("nPI")
+                                    this["npi"] = provider?.opt<String>("npi")
                                     this["firstName"] = provider?.opt<String>("firstName")
                                     this["lastName"] = provider?.opt<String>("lastName")
 
@@ -203,8 +206,8 @@ object XmlCaseImport {
                                 }),
                                 "address" to listOf(Document("status", "PASS").apply {
                                     val patient = case.opt<Document>("case", "Case", "Patient")
-                                    this["line1"] = patient?.opt<String>("address1")
-                                    this["line2"] = patient?.opt<String>("address2")
+                                    this["address1"] = patient?.opt<String>("address1")
+                                    this["address2"] = patient?.opt<String>("address2")
                                     this["zip"] = patient?.opt<String>("zip")
                                     this["city"] = patient?.opt<String>("city")
                                     this["state"] = patient?.opt<String>("state")
