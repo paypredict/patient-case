@@ -10,6 +10,6 @@ annotation class DataView(
     val description: String = "",
     val section: String = "",
     val isVisible: Boolean = true,
-    val order: Int = -1
-) {
-}
+    val order: Int = -1,
+    val flexGrow: Int = 1
+)

@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases
 
+import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 
@@ -24,9 +25,11 @@ data class MetaData<T>(
 )
 
 inline fun <reified T : Any> metaDataMap(): Map<String, MetaData<T>> =
-    T::class
-        .memberProperties
-        .mapNotNull { property: KProperty1<T, *> ->
+    T::class.metaDataMap()
+
+fun <T : Any> KClass<T>.metaDataMap(): Map<String, MetaData<T>> =
+    memberProperties
+        .mapNotNull { property ->
             property.annotations
                 .filterIsInstance<DataView>()
                 .firstOrNull()

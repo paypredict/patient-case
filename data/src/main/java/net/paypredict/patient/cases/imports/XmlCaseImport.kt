@@ -1,9 +1,13 @@
 package net.paypredict.patient.cases.imports
 
 import com.mongodb.client.model.UpdateOptions
-import net.paypredict.patient.cases.bson.*
+import net.paypredict.patient.cases.bson.`$set`
 import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.data.invoke
+import net.paypredict.patient.cases.data.worklist.Insurance
+import net.paypredict.patient.cases.data.worklist.IssueEligibility
+import net.paypredict.patient.cases.data.worklist.Subscriber
+import net.paypredict.patient.cases.data.worklist.toDocument
 import org.bson.Document
 import org.bson.json.JsonMode
 import org.bson.json.JsonWriterSettings
@@ -188,6 +192,31 @@ object XmlCaseImport {
     private fun Array<String>.testIssuesOption(_id: String) {
         if (contains("--test-issues")) {
             val case = DBS.Collections.casesRaw().find(Document("_id", _id)).first()
+            fun eligibility(): List<Document> = mutableListOf<Document>().also { list ->
+                case<List<*>>("case", "Case", "SubscriberDetails", "Subscriber")
+                    ?.filterIsInstance<Document>()
+                    ?.firstOrNull { it<String>("responsibilityCode") == "Primary" }
+                    ?.let { primarySubscriber ->
+                        list += IssueEligibility(
+                            status = "Failed",
+                            insurance = Insurance(
+                                typeCode = primarySubscriber("insuranceTypeCode"),
+                                payerId = primarySubscriber("payerId"),
+                                planCode = primarySubscriber("planCode"),
+                                payerName = primarySubscriber("payerName")
+                            ),
+                            subscriber = Subscriber(
+                                firstName = primarySubscriber("firstName"),
+                                lastName = primarySubscriber("organizationNameOrLastName"),
+                                mi = primarySubscriber("middleInitial"),
+                                groupName = primarySubscriber("groupOrPlanName"),
+                                groupId = primarySubscriber("groupOrPlanNumber"),
+                                policyNumber = primarySubscriber("subscriberPolicyNumber")
+                            )
+                        ).toDocument()
+                    }
+            }
+
             val update = Document(
                 `$set`, Document(
                     mapOf(
@@ -195,22 +224,20 @@ object XmlCaseImport {
                         "issue" to Document(
                             mapOf(
                                 "npi" to listOf(Document("status", "PASS").apply {
-                                    val provider = case.opt<Document>("case", "Case", "OrderingProvider", "Provider")
-                                    this["npi"] = provider?.opt<String>("npi")
-                                    this["firstName"] = provider?.opt<String>("firstName")
-                                    this["lastName"] = provider?.opt<String>("lastName")
+                                    val provider = case<Document>("case", "Case", "OrderingProvider", "Provider")
+                                    this["npi"] = provider<String>("npi")
+                                    this["firstName"] = provider<String>("firstName")
+                                    this["lastName"] = provider<String>("lastName")
 
                                 }),
-                                "eligibility" to listOf(Document("status", "PASS").apply {
-
-                                }),
+                                "eligibility" to eligibility(),
                                 "address" to listOf(Document("status", "PASS").apply {
-                                    val patient = case.opt<Document>("case", "Case", "Patient")
-                                    this["address1"] = patient?.opt<String>("address1")
-                                    this["address2"] = patient?.opt<String>("address2")
-                                    this["zip"] = patient?.opt<String>("zip")
-                                    this["city"] = patient?.opt<String>("city")
-                                    this["state"] = patient?.opt<String>("state")
+                                    val patient = case<Document>("case", "Case", "Patient")
+                                    this["address1"] = patient<String>("address1")
+                                    this["address2"] = patient<String>("address2")
+                                    this["zip"] = patient<String>("zip")
+                                    this["city"] = patient<String>("city")
+                                    this["state"] = patient<String>("state")
 
                                 })
                             )
@@ -254,4 +281,3 @@ object XmlCaseImport {
         }
     }
 }
-
