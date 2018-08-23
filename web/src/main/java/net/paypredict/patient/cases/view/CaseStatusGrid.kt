@@ -42,7 +42,7 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                     IconRenderer(
                         {
                             when ((meta.prop.get(it) as? Status)?.value) {
-                                "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "yellow" }
+                                "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                 "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
                                 else -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
                             }

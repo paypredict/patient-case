@@ -16,7 +16,7 @@ import org.intellij.lang.annotations.Language
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
-class IssuesForm<T : IssuesStatus>(private val issuesClass: IssuesClass<T>) : Composite<VerticalLayout>() {
+class IssuesFormGrid<T : IssuesStatus>(private val issuesClass: IssuesClass<T>) : Composite<VerticalLayout>() {
 
     private class IssuesLayout<T : IssuesStatus>(
         issuesClass: IssuesClass<T>,

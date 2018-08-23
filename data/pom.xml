@@ -48,6 +48,14 @@
             <version>${mongodb.version}</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/de.sven-jacobs/loremipsum -->
+        <dependency>
+            <groupId>de.sven-jacobs</groupId>
+            <artifactId>loremipsum</artifactId>
+            <version>1.0</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.vaadin</groupId>
             <artifactId>vaadin-core</artifactId>

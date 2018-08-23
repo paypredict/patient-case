@@ -49,6 +49,7 @@
     <orderEntry type="library" name="Maven: org.mongodb:mongodb-driver:3.4.2" level="project" />
     <orderEntry type="library" name="Maven: org.mongodb:bson:3.4.2" level="project" />
     <orderEntry type="library" name="Maven: org.mongodb:mongodb-driver-core:3.4.2" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: de.sven-jacobs:loremipsum:1.0" level="project" />
     <orderEntry type="library" name="Maven: com.vaadin:vaadin-core:10.0.2" level="project" />
     <orderEntry type="library" name="Maven: com.vaadin:flow-server:1.0.2" level="project" />
     <orderEntry type="library" name="Maven: com.google.gwt:gwt-elemental:2.8.2" level="project" />

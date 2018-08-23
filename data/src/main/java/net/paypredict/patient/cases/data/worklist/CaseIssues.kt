@@ -29,7 +29,10 @@ data class CaseIssues(
     var eligibility: List<IssueEligibility> = emptyList(),
 
     @DataView("Address", order = 40)
-    var address: List<IssueAddress> = emptyList()
+    var address: List<IssueAddress> = emptyList(),
+
+    @DataView("Expert", order = 50)
+    var expert: List<IssueExpert> = emptyList()
 )
 
 interface IssuesStatus {
@@ -163,6 +166,25 @@ data class IssueAddress(
     }
 }
 
+@VaadinBean
+data class IssueExpert(
+    @DataView("Status", order = 10)
+    override var status: String? = null,
+
+    @DataView("Subject", order = 20)
+    var subject: String? = null,
+
+    @DataView("Text", order = 30)
+    var text: String? = null
+
+) : IssuesStatus {
+    companion object : IssuesClass<IssueExpert> {
+        override val caption = "Expert Advice"
+        override val beanType = IssueExpert::class.java
+        override val metaData = metaDataMap<IssueExpert>()
+    }
+}
+
 fun Document.toCaseIssues(): CaseIssues =
     CaseIssues(
         _id = get("_id").toString(),
@@ -178,6 +200,10 @@ fun Document.toCaseIssues(): CaseIssues =
         address = opt<List<*>>("issue", "address")
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueAddress() }
+            ?: emptyList(),
+        expert = opt<List<*>>("issue", "expert")
+            ?.filterIsInstance<Document>()
+            ?.map { it.toIssueExpert() }
             ?: emptyList()
     )
 
@@ -187,6 +213,7 @@ fun CaseIssues.toDocument(): Document = doc {
     doc["npi"] = npi.map { it.toDocument() }
     doc["eligibility"] = eligibility.map { it.toDocument() }
     doc["address"] = address.map { it.toDocument() }
+    doc["expert"] = expert.map { it.toDocument() }
 }
 
 private fun Document.toIssueNPI(): IssueNPI =
@@ -269,5 +296,18 @@ private fun IssueAddress.toDocument(): Document = doc {
     doc["zip"] = zip
     doc["city"] = city
     doc["state"] = state
+}
+
+internal fun Document.toIssueExpert(): IssueExpert =
+    IssueExpert(
+        status = opt("status"),
+        subject = opt("subject"),
+        text = opt("text")
+    )
+
+internal fun IssueExpert.toDocument(): Document = doc {
+    doc["status"] = status
+    doc["subject"] = subject
+    doc["text"] = text
 }
 

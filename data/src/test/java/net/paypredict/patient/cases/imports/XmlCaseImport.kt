@@ -1,13 +1,12 @@
 package net.paypredict.patient.cases.imports
 
 import com.mongodb.client.model.UpdateOptions
+import de.svenjacobs.loremipsum.LoremIpsum
 import net.paypredict.patient.cases.bson.`$set`
 import net.paypredict.patient.cases.data.DBS
+import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.invoke
-import net.paypredict.patient.cases.data.worklist.Insurance
-import net.paypredict.patient.cases.data.worklist.IssueEligibility
-import net.paypredict.patient.cases.data.worklist.Subscriber
-import net.paypredict.patient.cases.data.worklist.toDocument
+import net.paypredict.patient.cases.data.worklist.*
 import org.bson.Document
 import org.bson.json.JsonMode
 import org.bson.json.JsonWriterSettings
@@ -26,7 +25,10 @@ import javax.xml.parsers.SAXParserFactory
  */
 object XmlCaseImport {
 
-    data class Options(val removePrsData: Boolean = false)
+    data class Options(
+        val removePrsData: Boolean = false,
+        val addRndStatus: Boolean = false
+    )
 
 
     fun importFile(xmlFile: File, options: Options = Options()): String {
@@ -34,17 +36,23 @@ object XmlCaseImport {
         val case = xmlFile.inputStream().use { it.toDocument(options) }
         val casesRaw = DBS.Collections.casesRaw()
         val update = Document(
-            `$set`, Document(
-                mapOf(
-                    "case" to case,
-                    "file" to Document(
-                        mapOf(
-                            "name" to xmlFile.name,
-                            "size" to xmlFile.length().toInt()
-                        )
-                    )
-                )
-            )
+            `$set`, doc {
+                doc["case"] = case
+                doc["file"] = doc {
+                    doc["name"] = xmlFile.name
+                    doc["size"] = xmlFile.length().toInt()
+                }
+                if (options.addRndStatus) {
+                    doc["status"] = doc {
+                        doc["values"] = doc {
+                            doc["npi"] = rndStatus()?.toDocument()
+                            doc["eligibility"] = rndStatus()?.toDocument()
+                            doc["address"] = rndStatus()?.toDocument()
+                            doc["expert"] = rndStatus()?.toDocument()
+                        }
+                    }
+                }
+            }
         )
 
         casesRaw.updateOne(
@@ -53,6 +61,16 @@ object XmlCaseImport {
         )
         return digest
     }
+
+    private val rnd: Random by lazy { Random() }
+
+    private fun rndStatus() =
+        when (rnd.nextInt(3)) {
+            0 -> Status("AUTO_FIXED")
+            1 -> Status("ERROR")
+            else -> null
+        }
+
 
     private class Box(
         val doc: Document
@@ -217,6 +235,9 @@ object XmlCaseImport {
                     }
             }
 
+            fun expert(): List<Document> =
+                    listOf(IssueExpert(text = LoremIpsum().words).toDocument())
+
             val update = Document(
                 `$set`, Document(
                     mapOf(
@@ -239,7 +260,8 @@ object XmlCaseImport {
                                     this["city"] = patient<String>("city")
                                     this["state"] = patient<String>("state")
 
-                                })
+                                }),
+                                "expert" to expert()
                             )
                         )
                     )
@@ -253,7 +275,10 @@ object XmlCaseImport {
     }
 
     private fun Array<String>.toOptions(): Options =
-        Options(removePrsData = contains("--remove-prs"))
+        Options(
+            removePrsData = contains("--remove-prs"),
+            addRndStatus = contains("--add-rdd-status")
+        )
 
 
     @JvmStatic

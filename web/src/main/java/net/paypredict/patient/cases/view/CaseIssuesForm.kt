@@ -27,6 +27,7 @@ class CaseIssuesForm : Composite<Div>() {
         issuesNPI.value = caseIssues?.npi
         issuesEligibility.value = caseIssues?.eligibility
         issuesAddress.value = caseIssues?.address
+        issuesExpert.value = caseIssues?.expert
     }
 
     private val accession = TextField("Accession").apply {
@@ -36,9 +37,10 @@ class CaseIssuesForm : Composite<Div>() {
         isReadOnly = true
     }
 
-    private val issuesNPI = IssuesForm(IssueNPI)
-    private val issuesEligibility = IssuesForm(IssueEligibility)
-    private val issuesAddress = IssuesForm(IssueAddress)
+    private val issuesNPI = IssuesFormGrid(IssueNPI)
+    private val issuesEligibility = IssuesFormGrid(IssueEligibility)
+    private val issuesAddress = IssuesFormGrid(IssueAddress)
+    private val issuesExpert = IssuesFormNote(IssueExpert)
 
     init {
         content.setSizeFull()
@@ -51,7 +53,7 @@ class CaseIssuesForm : Composite<Div>() {
                 this += accession
                 this += claim
             }
-            this  += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress).apply {
+            this  += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
                 isPadding = false
                 height = null
             }

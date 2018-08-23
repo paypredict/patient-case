@@ -1,9 +1,13 @@
 package net.paypredict.patient.cases.data.worklist
 
 import com.vaadin.flow.templatemodel.Encode
-import net.paypredict.patient.cases.*
+import net.paypredict.patient.cases.DataView
+import net.paypredict.patient.cases.MetaData
+import net.paypredict.patient.cases.VaadinBean
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
+import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.metaDataMap
 import org.bson.Document
 import java.util.*
 
@@ -33,7 +37,10 @@ data class CaseStatus(
     var eligibility: Status?,
 
     @DataView("Address", order = 60)
-    var address: Status?
+    var address: Status?,
+
+    @DataView("Expert", order = 70)
+    var expert: Status?
 )
 
 val CASE_STATUS_META_DATA_MAP: Map<String, MetaData<CaseStatus>> by lazy { metaDataMap<CaseStatus>() }
@@ -41,7 +48,7 @@ val CASE_STATUS_META_DATA_MAP: Map<String, MetaData<CaseStatus>> by lazy { metaD
 @VaadinBean
 data class Status(
     var value: String?,
-    var description: String?
+    var description: String? = null
 )
 
 fun Document.toCaseStatus(): CaseStatus =
@@ -50,13 +57,19 @@ fun Document.toCaseStatus(): CaseStatus =
         date = opt("status", "checked"),
         accession = opt("case", "Case", "accessionNumber"),
         claim = opt("case", "Case", "SuperBillDetails", "claimNumber"),
-        npi = opt<Document>("status", "values", "npi").toStatus(),
-        eligibility = opt<Document>("status", "values", "eligibility").toStatus(),
-        address = opt<Document>("status", "values", "address").toStatus()
+        npi = opt<Document>("status", "values", "npi")?.toStatus(),
+        eligibility = opt<Document>("status", "values", "eligibility")?.toStatus(),
+        address = opt<Document>("status", "values", "address")?.toStatus(),
+        expert = opt<Document>("status", "values", "expert")?.toStatus()
     )
 
-private fun Document?.toStatus(): Status? = if (this == null) null else
+fun Document.toStatus(): Status =
     Status(
-        value = opt<String>("value"),
-        description = opt<String>("description")
+        value = opt("value"),
+        description = opt("description")
     )
+
+fun Status.toDocument(): Document = doc {
+    doc["value"] = value
+    doc["description"] = description
+}
