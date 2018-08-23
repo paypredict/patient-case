@@ -16,6 +16,8 @@ import java.io.File
 import java.io.FileFilter
 import java.io.InputStream
 import java.security.MessageDigest
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.*
 import javax.xml.parsers.SAXParserFactory
 
@@ -44,6 +46,7 @@ object XmlCaseImport {
                 }
                 if (options.addRndStatus) {
                     doc["status"] = doc {
+                        doc["checked"] = Date.from(LocalDateTime.now(ZoneOffset.UTC).toInstant(ZoneOffset.UTC))
                         doc["values"] = doc {
                             doc["npi"] = rndStatus()?.toDocument()
                             doc["eligibility"] = rndStatus()?.toDocument()

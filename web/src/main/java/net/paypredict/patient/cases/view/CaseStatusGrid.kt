@@ -9,18 +9,19 @@ import com.vaadin.flow.data.provider.Query
 import com.vaadin.flow.data.provider.QuerySortOrder
 import com.vaadin.flow.data.provider.SortDirection
 import com.vaadin.flow.data.renderer.IconRenderer
+import com.vaadin.flow.data.renderer.LocalDateTimeRenderer
 import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.shared.Registration
 import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.worklist.*
+import net.paypredict.patient.cases.data.worklist.CASE_STATUS_META_DATA_MAP
+import net.paypredict.patient.cases.data.worklist.CaseStatus
+import net.paypredict.patient.cases.data.worklist.Status
+import net.paypredict.patient.cases.data.worklist.toCaseStatus
 import org.bson.Document
 import org.bson.conversions.Bson
-import kotlin.collections.forEach
-import kotlin.collections.map
+import java.time.ZoneOffset
+import java.util.*
 import kotlin.collections.set
-import kotlin.collections.sortedBy
-import kotlin.collections.toList
-import kotlin.collections.toTypedArray
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -36,20 +37,34 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
         for (column in content.columns) {
             val meta = CASE_STATUS_META_DATA_MAP[column.key] ?: continue
             column.isVisible = meta.view.isVisible
-            if (Status::class.javaObjectType == meta.prop.returnType.javaType) {
-                column.isVisible = false
-                content.addColumn(
-                    IconRenderer(
-                        {
-                            when ((meta.prop.get(it) as? Status)?.value) {
-                                "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
-                                "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
-                                else -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
-                            }
-                        },
-                        { "" })
-                ).apply {
-                    setHeader(meta.view.caption)
+            when (meta.prop.returnType.javaType) {
+                Date::class.java -> {
+                    column.isVisible = false
+                    content.addColumn(
+                        LocalDateTimeRenderer { status ->
+                            status.date?.toInstant()?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
+                        }
+                    ).apply {
+                        setHeader(meta.view.caption)
+                    }
+                }
+                Status::class.javaObjectType -> {
+                    column.isVisible = false
+                    content.addColumn(
+                        IconRenderer(
+                            {
+                                when ((meta.prop.get(it) as? Status)?.value) {
+                                    "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
+                                    "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
+                                    else -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
+                                }
+                            },
+                            { "" })
+                    ).apply {
+                        setHeader(meta.view.caption)
+                        flexGrow = 0
+                        width = "75px"
+                    }
                 }
             }
         }
