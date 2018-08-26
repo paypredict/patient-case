@@ -7,12 +7,12 @@
           <element id="module-output" name="web" />
         </element>
         <element id="directory" name="lib">
-          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib:1.2.60" />
-          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.2.60" />
+          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib:1.2.61" />
+          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-common:1.2.61" />
           <element id="library" level="project" name="Maven: org.jetbrains:annotations:13.0" />
-          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.60" />
-          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.2.60" />
-          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-reflect:1.2.60" />
+          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.61" />
+          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.2.61" />
+          <element id="library" level="project" name="Maven: org.jetbrains.kotlin:kotlin-reflect:1.2.61" />
           <element id="archive" name="data-1.0-SNAPSHOT.jar">
             <element id="module-output" name="data" />
           </element>
