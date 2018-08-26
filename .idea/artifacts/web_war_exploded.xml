@@ -19,6 +19,11 @@
           <element id="archive" name="plugins-1.0-SNAPSHOT.jar">
             <element id="module-output" name="plugins" />
           </element>
+          <element id="archive" name="pokitdok-1.0-SNAPSHOT.jar">
+            <element id="module-output" name="pokitdok" />
+          </element>
+          <element id="library" level="project" name="Maven: javax.json:javax.json-api:1.0" />
+          <element id="library" level="project" name="Maven: org.glassfish:javax.json:1.0.4" />
           <element id="library" level="project" name="Maven: org.mongodb:mongodb-driver:3.4.2" />
           <element id="library" level="project" name="Maven: org.mongodb:bson:3.4.2" />
           <element id="library" level="project" name="Maven: org.mongodb:mongodb-driver-core:3.4.2" />

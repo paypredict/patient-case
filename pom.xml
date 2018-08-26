@@ -13,6 +13,7 @@
     <modules>
         <module>web</module>
         <module>data</module>
+        <module>pokitdok</module>
         <module>plugins</module>
     </modules>
 
@@ -30,6 +31,7 @@
         <mongodb.version>3.4.2</mongodb.version>
         <vaadin.version>10.0.2</vaadin.version>
         <jetty.version>9.4.11.v20180605</jetty.version>
+        <junit.version>4.12</junit.version>
     </properties>
 
     <repositories>
@@ -62,4 +64,12 @@
         </dependencies>
     </dependencyManagement>
 
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

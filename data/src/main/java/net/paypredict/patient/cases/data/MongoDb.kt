@@ -21,14 +21,21 @@ import kotlin.concurrent.withLock
  */
 object DBS {
     fun ptn(): MongoDatabase = mongoClient.getDatabase(databaseName)
+    fun pokitDok(): MongoDatabase = mongoClient.getDatabase("pokitDok")
 
     object Collections {
         fun cases(): MongoCollection<Document> =
             ptn().getCollection("cases")
+
         fun casesRaw(): MongoCollection<Document> =
             ptn().getCollection("casesRaw")
         fun casesIssues(): MongoCollection<Document> =
             ptn().getCollection("casesIssues")
+
+        fun tradingPartners(): MongoCollection<Document> =
+            pokitDok().getCollection("tradingPartners")
+        fun eligibility(): MongoCollection<Document> =
+            pokitDok().getCollection("eligibility")
     }
 
     private val mongoConf : Document by lazy {

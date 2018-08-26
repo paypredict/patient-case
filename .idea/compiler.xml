@@ -8,6 +8,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="data" />
         <module name="plugins" />
+        <module name="pokitdok" />
         <module name="web" />
       </profile>
     </annotationProcessing>
@@ -15,6 +16,7 @@
       <module name="data" target="1.8" />
       <module name="patient-case" target="1.8" />
       <module name="plugins" target="1.8" />
+      <module name="pokitdok" target="1.8" />
       <module name="web" target="1.8" />
     </bytecodeTargetLevel>
   </component>
