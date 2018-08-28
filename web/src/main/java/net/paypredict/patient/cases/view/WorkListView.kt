@@ -3,7 +3,6 @@ package net.paypredict.patient.cases.view
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
-import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
@@ -11,11 +10,6 @@ import com.vaadin.flow.component.splitlayout.SplitLayout
 
 class WorkListView : Composite<VerticalLayout>() {
     init {
-        val topHeader = HorizontalLayout().apply {
-            width = "100%"
-            isPadding = true
-            this += Span("Worklist").apply { style["font-size"] = "20pt" }
-        }
         val caseStatusGrid = CaseStatusGrid().apply {
             height = "100%"
         }
@@ -39,7 +33,6 @@ class WorkListView : Composite<VerticalLayout>() {
         }
         content.setSizeFull()
         content.isPadding = false
-        content += topHeader
         content += SplitLayout().apply {
             setSizeFull()
             orientation = SplitLayout.Orientation.HORIZONTAL

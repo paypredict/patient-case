@@ -5,10 +5,11 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
+import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
-import javax.json.Json
-import javax.json.JsonObject
+import javax.json.*
 import kotlin.concurrent.withLock
 
 /**
@@ -22,11 +23,15 @@ data class EligibilityQuery(
     val trading_partner_id: String
 ) {
     data class Member(
-        val birth_date: String,
         val first_name: String,
         val last_name: String,
+        val birth_date: String,
         val id: String
-    )
+    ) {
+        companion object {
+            val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        }
+    }
 
     data class Provider(
         val organization_name: String,
@@ -40,6 +45,58 @@ fun <T> EligibilityQuery.query(result: (InputStreamReader) -> T): T =
         setup = { outputStream.write(toJson().toString().toByteArray()) },
         result = result
     )
+
+fun EligibilityQuery.digest(): String =
+    toJson().toDigest().toHexString()
+
+private fun MessageDigest.toHexString(): String =
+    digest().joinToString(separator = "") {
+        (it.toInt() and 0xff).toString(16).padStart(2, '0')
+    }
+
+fun JsonObject.toDigest(): MessageDigest =
+    MessageDigest.getInstance("SHA").also { updateDigest(it) }
+
+fun JsonValue?.updateDigest(digest: MessageDigest) {
+    when (this) {
+        null -> {
+            digest.update(0)
+        }
+        is JsonObject -> {
+            digest.update('j'.toByte())
+            keys.sorted().forEach { key ->
+                digest.update('k'.toByte())
+                digest.update(key.toByteArray())
+                this[key].updateDigest(digest)
+            }
+        }
+        is JsonArray -> {
+            digest.update('a'.toByte())
+            this.forEach { item ->
+                digest.update('i'.toByte())
+                item.updateDigest(digest)
+            }
+        }
+        is JsonNumber -> {
+            digest.update('n'.toByte())
+            digest.update(this.valueType.name.toByteArray())
+            digest.update(this.toString().toByteArray())
+        }
+        is JsonString -> {
+            digest.update('s'.toByte())
+            digest.update(this.string.toByteArray())
+        }
+        JsonValue.NULL -> {
+            digest.update('N'.toByte())
+        }
+        JsonValue.TRUE -> {
+            digest.update('T'.toByte())
+        }
+        JsonValue.FALSE -> {
+            digest.update('F'.toByte())
+        }
+    }
+}
 
 fun <T> queryTradingPartners(result: (InputStreamReader) -> T): T =
     authQuery(
@@ -71,7 +128,23 @@ private fun EligibilityQuery.Provider.toJson(): JsonObject =
         .build()
 
 private val defaultCheckResponse: HttpURLConnection.() -> Unit =
-    { if (responseCode != 200) throw IOException("Invalid response: $responseCode - $responseMessage") }
+    {
+        if (responseCode != 200) {
+            try {
+                errorStream?.reader()?.readText()?.let { json ->
+                    System.err.println(json)
+                    throw ApiException(
+                        responseCode = responseCode,
+                        responseMessage = responseMessage,
+                        responseJson = Json.createReader(json.reader()).readObject()
+                    )
+                }
+            } catch (x: Throwable) {
+                if (x is ApiException) throw x
+            }
+            throw ApiException(responseCode, responseMessage, Json.createObjectBuilder().build())
+        }
+    }
 
 private fun <T> http(
     method: String = "GET",
@@ -129,6 +202,12 @@ private fun <T> authQuery(
 }
 
 private class UnauthorizedException : IOException()
+
+class ApiException(
+    val responseCode: Int,
+    val responseMessage: String?,
+    val responseJson: JsonObject
+) : IOException("API error: $responseCode - $responseMessage")
 
 internal object Authorization {
     private val lock = ReentrantLock()

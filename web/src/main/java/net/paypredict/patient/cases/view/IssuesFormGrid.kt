@@ -2,10 +2,8 @@ package net.paypredict.patient.cases.view
 
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.Text
-import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.html.Div
-import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.data.provider.DataProvider
 import com.vaadin.flow.data.renderer.TemplateRenderer
@@ -16,11 +14,15 @@ import org.intellij.lang.annotations.Language
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
-class IssuesFormGrid<T : IssuesStatus>(private val issuesClass: IssuesClass<T>) : Composite<VerticalLayout>() {
+class IssuesFormGrid<T : IssuesStatus>(
+    private val issuesClass: IssuesClass<T>,
+    private val onClickViewForm: ((T) -> Unit)? = null
+) : Composite<VerticalLayout>() {
 
     private class IssuesLayout<T : IssuesStatus>(
         issuesClass: IssuesClass<T>,
-        items: List<T>
+        items: List<T>,
+        onClickViewForm: ((T) -> Unit)? = null
     ) : VerticalLayout() {
         val grid: Grid<T> = Grid<T>().apply {
             height = null
@@ -69,11 +71,26 @@ class IssuesFormGrid<T : IssuesStatus>(private val issuesClass: IssuesClass<T>) 
                         flexGrow = metaData.view.flexGrow
                     }
                 }
+            if (onClickViewForm != null) {
+                @Language("HTML")
+                val template = """
+                    <vaadin-button  on-click="showForm" theme="icon small tertiary">
+                        <iron-icon icon="lumo:edit"></iron-icon>
+                    </vaadin-button>
+                """
+                val renderer = TemplateRenderer
+                    .of<T>(template)
+                    .withEventHandler("showForm") {
+                        select(it)
+                        onClickViewForm(it)
+                    }
+                addColumn(renderer).apply {
+                    flexGrow = 0
+                    width = "55px"
+                }
+            }
+
             dataProvider = DataProvider.fromStream(items.stream())
-        }
-
-        val editButton = Button("Edit").apply {
-
         }
 
         init {
@@ -85,8 +102,6 @@ class IssuesFormGrid<T : IssuesStatus>(private val issuesClass: IssuesClass<T>) 
                 this += Text(issuesClass.caption)
             }
             this += grid
-            this += editButton
-            setHorizontalComponentAlignment(FlexComponent.Alignment.END, editButton)
         }
     }
 
@@ -101,7 +116,7 @@ class IssuesFormGrid<T : IssuesStatus>(private val issuesClass: IssuesClass<T>) 
             content.removeAll()
             val list = value ?: emptyList()
             if (list.isNotEmpty()) {
-                content.add(IssuesLayout(issuesClass, list))
+                content.add(IssuesLayout(issuesClass, list, onClickViewForm))
             }
         }
 }

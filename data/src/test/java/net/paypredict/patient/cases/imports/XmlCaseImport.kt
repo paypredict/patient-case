@@ -230,6 +230,7 @@ object XmlCaseImport {
                                 firstName = primarySubscriber("firstName"),
                                 lastName = primarySubscriber("organizationNameOrLastName"),
                                 mi = primarySubscriber("middleInitial"),
+                                dob = primarySubscriber("dob"),
                                 groupName = primarySubscriber("groupOrPlanName"),
                                 groupId = primarySubscriber("groupOrPlanNumber"),
                                 policyNumber = primarySubscriber("subscriberPolicyNumber")

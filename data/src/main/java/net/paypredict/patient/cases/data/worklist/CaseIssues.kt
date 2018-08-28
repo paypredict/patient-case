@@ -6,6 +6,8 @@ import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
 import org.bson.Document
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 /**
@@ -69,13 +71,13 @@ data class IssueNPI(
 @VaadinBean
 data class IssueEligibility(
     @DataView("Status", order = 10, flexGrow = 1)
-    override var status: String?,
+    override var status: String? = null,
 
     @DataView("Insurance", order = 20, flexGrow = 5)
-    var insurance: Insurance?,
+    var insurance: Insurance? = null,
 
     @DataView("Subscriber", order = 30, flexGrow = 2)
-    var subscriber: Subscriber?
+    var subscriber: Subscriber? = null
 
 ) : IssuesStatus {
     companion object : IssuesClass<IssueEligibility> {
@@ -93,19 +95,19 @@ data class IssueEligibility(
 data class Insurance(
     /** `Case.SubscriberDetails.Subscriber.insuranceTypeCode` */
     @DataView("Type")
-    var typeCode: String?,
+    var typeCode: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.payerId` */
     @DataView("Payer ID")
-    var payerId: String?,
+    var payerId: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.planCode` */
     @DataView("Plan Code")
-    var planCode: String?,
+    var planCode: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.payerName` */
     @DataView("Payer Name")
-    var payerName: String?
+    var payerName: String? = null
 )
 
 /**
@@ -116,28 +118,43 @@ data class Insurance(
 data class Subscriber(
     /** `Case.SubscriberDetails.Subscriber.firstName` */
     @DataView("First Name")
-    var firstName: String?,
+    val firstName: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.organizationNameOrLastName` */
     @DataView("Last Name")
-    var lastName: String?,
+    val lastName: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.middleInitial` */
     @DataView("MI")
-    var mi: String?,
+    val mi: String? = null,
+
+    /** `Case.SubscriberDetails.Subscriber.dob` */
+    @DataView("DOB")
+    val dob: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.groupOrPlanName` */
     @DataView("Group Name")
-    var groupName: String?,
+    val groupName: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.groupOrPlanNumber` */
     @DataView("Group ID")
-    var groupId: String?,
+    val groupId: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.subscriberPolicyNumber` */
     @DataView("Policy Number")
-    var policyNumber: String?
-)
+    val policyNumber: String? = null
+) {
+    companion object {
+        val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+    }
+
+    val dobAsLocalDate: LocalDate?
+        get() = dob?.let { LocalDate.parse(it, dateFormat) }
+}
+
+infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
+    dateFormat.format(this)
+
 
 @VaadinBean
 data class IssueAddress(
@@ -265,6 +282,7 @@ private fun Document.toSubscriber(): Subscriber =
         firstName = opt("firstName"),
         lastName = opt("lastName"),
         mi = opt("mi"),
+        dob = opt("dob"),
         groupName = opt("groupName"),
         groupId = opt("groupId"),
         policyNumber = opt("policyNumber")
@@ -274,6 +292,7 @@ private fun Subscriber.toDocument(): Document = doc {
     doc["firstName"] = firstName
     doc["lastName"] = lastName
     doc["mi"] = mi
+    doc["dob"] = dob
     doc["groupName"] = groupName
     doc["groupId"] = groupId
     doc["policyNumber"] = policyNumber

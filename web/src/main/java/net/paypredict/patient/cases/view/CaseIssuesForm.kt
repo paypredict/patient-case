@@ -1,15 +1,25 @@
 package net.paypredict.patient.cases.view
 
 import com.vaadin.flow.component.Composite
+import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
+import com.vaadin.flow.component.html.H2
+import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import net.paypredict.patient.cases.data.DBS
+import net.paypredict.patient.cases.data.doc
+import net.paypredict.patient.cases.data.opt
 import net.paypredict.patient.cases.data.worklist.*
+import net.paypredict.patient.cases.pokitdok.client.ApiException
+import net.paypredict.patient.cases.pokitdok.client.EligibilityQuery
+import net.paypredict.patient.cases.pokitdok.client.digest
+import net.paypredict.patient.cases.pokitdok.client.query
 import org.bson.Document
+import java.io.IOException
 import kotlin.properties.Delegates
 
 /**
@@ -38,7 +48,7 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
     private val issuesNPI = IssuesFormGrid(IssueNPI)
-    private val issuesEligibility = IssuesFormGrid(IssueEligibility)
+    private val issuesEligibility = IssuesFormGrid(IssueEligibility) { openEligibilityDialog(it) }
     private val issuesAddress = IssuesFormGrid(IssueAddress)
     private val issuesExpert = IssuesFormNote(IssueExpert)
 
@@ -53,10 +63,89 @@ class CaseIssuesForm : Composite<Div>() {
                 this += accession
                 this += claim
             }
-            this  += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
+            this += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
                 isPadding = false
                 height = null
             }
         }
+    }
+
+    private fun openEligibilityDialog(eligibility: IssueEligibility) {
+        Dialog().apply {
+            width = "70vw"
+            this += PatientEligibilityForm().apply {
+                setSizeFull()
+                isPadding = false
+                value = eligibility
+                checkPatientEligibility = { issue: IssueEligibility ->
+                    try {
+                        checkEligibility(issue)
+                        close()
+                    } catch (e: Throwable) {
+                        val error = when (e) {
+                            is ApiException ->
+                                Document
+                                    .parse(e.responseJson.toString())
+                                    .opt<String>("data", "errors", "query")
+                                    ?: e.message
+                            else ->
+                                e.message
+                        }
+                        Dialog().apply {
+                            this += VerticalLayout().apply {
+                                this += H2("API Call Error")
+                                this += H3(error)
+                            }
+                            open()
+                        }
+                    }
+                }
+            }
+            open()
+        }
+    }
+
+    private fun checkEligibility(issue: IssueEligibility) {
+        val insurancePayerId = issue.insurance?.payerId ?: throw AssertionError("insurance payerId is required")
+        val tradingPartners = DBS.Collections.tradingPartners()
+        val tradingPartnerId: String =
+            tradingPartners
+                .find(doc { doc["data.payer_id"] = insurancePayerId })
+                .firstOrNull()
+                ?.opt<String>("_id")
+                ?: tradingPartners
+                    .find(doc { doc["custom.payer_id"] = insurancePayerId })
+                    .firstOrNull()
+                    ?.opt<String>("_id")
+                ?: throw IOException("insurance payerId $insurancePayerId not found in tradingPartners")
+
+        val query = EligibilityQuery(
+            member = EligibilityQuery.Member(
+                first_name = issue.subscriber!!.firstName!!,
+                last_name = issue.subscriber!!.lastName!!,
+                birth_date = issue.subscriber!!.dobAsLocalDate!! formatAs EligibilityQuery.Member.dateFormat,
+                id = issue.subscriber!!.policyNumber!!
+            ),
+            provider = EligibilityQuery.Provider(
+                organization_name = "SAGIS, PLLC",
+                npi = "1548549066"
+            ),
+            trading_partner_id = tradingPartnerId
+        )
+
+        val digest = query.digest()
+        val collection = DBS.Collections.eligibility()
+        collection
+            .find(doc { doc["_id"] = digest }).firstOrNull()
+            ?: query.query { Document.parse(it.readText()) }.let { response ->
+                doc {
+                    doc["_id"] = digest
+                    doc["data"] = response["data"]
+                    doc["meta"] = response["meta"]
+                }.also {
+                    collection.insertOne(it)
+                }
+
+            }
     }
 }

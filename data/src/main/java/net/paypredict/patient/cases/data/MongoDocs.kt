@@ -48,7 +48,7 @@ inline fun <reified T> Document.opt(vararg path: String): T? {
 }
 
 inline operator fun <reified T> Document?.invoke(vararg path: String): T? =
-        this?.opt(*path)
+    this?.opt(*path)
 
 class DocBuilder(val doc: Document)
 
