@@ -2,13 +2,12 @@ package net.paypredict.patient.cases.view
 
 import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
+import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
+import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.html.H3
-import com.vaadin.flow.component.html.Span
-import com.vaadin.flow.component.orderedlayout.FlexComponent
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import net.paypredict.patient.cases.data.DBS
@@ -35,18 +34,25 @@ class CaseIssuesForm : Composite<Div>() {
         val caseIssues = new?.let {
             DBS.Collections.casesIssues().find(Document("_id", it._id)).firstOrNull()?.toCaseIssues()
         }
+        val patient = caseIssues?.patient
+        patientFirstName.value = patient?.firstName ?: ""
+        patientLastName.value = patient?.lastName ?: ""
+        patientMI.value = patient?.mi ?: ""
+        patientDOB.value = patient?.dobAsLocalDate
+
         issuesNPI.value = caseIssues?.npi
         issuesEligibility.value = caseIssues?.eligibility
         issuesAddress.value = caseIssues?.address
         issuesExpert.value = caseIssues?.expert
     }
 
-    private val accession = TextField("Accession").apply {
-        isReadOnly = true
-    }
-    private val claim = TextField("Claim ID").apply {
-        isReadOnly = true
-    }
+    private val accession = TextField("Accession").apply { isReadOnly = true }
+    private val claim = TextField("Claim ID").apply { isReadOnly = true }
+
+    private val patientFirstName = TextField("Patient First Name").apply { isReadOnly = true }
+    private val patientLastName = TextField("Patient Last Name").apply { isReadOnly = true }
+    private val patientMI = TextField("Patient MI").apply { isReadOnly = true }
+    private val patientDOB = DatePicker("Patient DOB").apply { isReadOnly = true }
 
     private val issuesNPI = IssuesFormGrid(IssueNPI)
     private val issuesEligibility = IssuesFormGrid(IssueEligibility) { openEligibilityDialog(it) }
@@ -58,11 +64,23 @@ class CaseIssuesForm : Composite<Div>() {
         content.style["overflow"] = "auto"
         content += VerticalLayout().apply {
             setSizeUndefined()
-            this += HorizontalLayout().apply {
-                defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
-                this += Span("Issues:").apply { style["font-weight"] = "bold" }
+            this += FormLayout().apply {
+                setResponsiveSteps(
+                    FormLayout.ResponsiveStep("0", 1),
+                    FormLayout.ResponsiveStep("32em", 2),
+                    FormLayout.ResponsiveStep("32em", 3),
+                    FormLayout.ResponsiveStep("32em", 4)
+                )
+
+                this += H2("Case Issues").apply { element.setAttribute("colspan", "2") }
                 this += accession
                 this += claim
+
+                this += patientLastName
+                this += patientFirstName
+                this += patientMI
+                this += patientDOB
+
             }
             this += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
                 isPadding = false

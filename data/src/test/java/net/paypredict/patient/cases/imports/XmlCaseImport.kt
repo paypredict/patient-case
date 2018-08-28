@@ -240,12 +240,21 @@ object XmlCaseImport {
             }
 
             fun expert(): List<Document> =
-                    listOf(IssueExpert(text = LoremIpsum().words).toDocument())
+                listOf(IssueExpert(text = LoremIpsum().words).toDocument())
 
             val update = Document(
                 `$set`, Document(
                     mapOf(
                         "time" to Date(),
+                        "patient" to case<Document>("case", "Case", "Patient")
+                            ?.let { doc ->
+                                Patient(
+                                    firstName = doc("firstName"),
+                                    lastName = doc("lastName"),
+                                    mi = doc("middleInitials"),
+                                    dob = doc("dateOfBirth")
+                                ).toDocument()
+                            },
                         "issue" to Document(
                             mapOf(
                                 "npi" to listOf(Document("status", "PASS").apply {

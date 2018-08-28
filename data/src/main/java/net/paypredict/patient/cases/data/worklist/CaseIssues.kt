@@ -24,16 +24,19 @@ data class CaseIssues(
     @DataView("Date.Time", order = 10)
     var time: Date? = null,
 
-    @DataView("NPI", order = 20)
+    @DataView("Patient", order = 20, isVisible = false)
+    var patient: Patient? = null,
+
+    @DataView("NPI", order = 30)
     var npi: List<IssueNPI> = emptyList(),
 
-    @DataView("Eligibility", order = 30)
+    @DataView("Eligibility", order = 40)
     var eligibility: List<IssueEligibility> = emptyList(),
 
-    @DataView("Address", order = 40)
+    @DataView("Address", order = 50)
     var address: List<IssueAddress> = emptyList(),
 
-    @DataView("Expert", order = 50)
+    @DataView("Expert", order = 60)
     var expert: List<IssueExpert> = emptyList()
 )
 
@@ -152,6 +155,35 @@ data class Subscriber(
         get() = dob?.let { LocalDate.parse(it, dateFormat) }
 }
 
+/**
+ * `Case.SubscriberDetails.Patient`
+ */
+@VaadinBean
+data class Patient(
+    /** `Case.SubscriberDetails.Patient.firstName` */
+    @DataView("First Name")
+    val firstName: String? = null,
+
+    /** `Case.SubscriberDetails.Patient.organizationNameOrLastName` */
+    @DataView("Last Name")
+    val lastName: String? = null,
+
+    /** `Case.SubscriberDetails.Patient.middleInitials` */
+    @DataView("MI")
+    val mi: String? = null,
+
+    /** `Case.SubscriberDetails.Patient.dateOfBirth` */
+    @DataView("DOB")
+    val dob: String? = null
+) {
+    companion object {
+        val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
+    }
+
+    val dobAsLocalDate: LocalDate?
+        get() = dob?.let { LocalDate.parse(it, dateFormat) }
+}
+
 infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
     dateFormat.format(this)
 
@@ -206,6 +238,7 @@ fun Document.toCaseIssues(): CaseIssues =
     CaseIssues(
         _id = get("_id").toString(),
         time = opt<Date>("time"),
+        patient = opt<Document>("patient")?.toPatient(),
         npi = opt<List<*>>("issue", "npi")
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueNPI() }
@@ -227,6 +260,7 @@ fun Document.toCaseIssues(): CaseIssues =
 fun CaseIssues.toDocument(): Document = doc {
     doc["_id"] = _id
     doc["time"] = time
+    doc["patient"] = patient?.toDocument()
     doc["npi"] = npi.map { it.toDocument() }
     doc["eligibility"] = eligibility.map { it.toDocument() }
     doc["address"] = address.map { it.toDocument() }
@@ -296,6 +330,21 @@ private fun Subscriber.toDocument(): Document = doc {
     doc["groupName"] = groupName
     doc["groupId"] = groupId
     doc["policyNumber"] = policyNumber
+}
+
+fun Document.toPatient(): Patient =
+    Patient(
+        firstName = opt("firstName"),
+        lastName = opt("lastName"),
+        mi = opt("mi"),
+        dob = opt("dob")
+    )
+
+fun Patient.toDocument(): Document = doc {
+    doc["firstName"] = firstName
+    doc["lastName"] = lastName
+    doc["mi"] = mi
+    doc["dob"] = dob
 }
 
 private fun Document.toIssueAddress(): IssueAddress =
