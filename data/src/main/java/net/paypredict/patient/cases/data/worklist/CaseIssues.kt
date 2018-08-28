@@ -159,22 +159,22 @@ infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
 @VaadinBean
 data class IssueAddress(
     @DataView("Status", order = 10)
-    override var status: String?,
+    override var status: String? = null,
 
     @DataView("Address 1", order = 20)
-    var address1: String?,
+    var address1: String? = null,
 
     @DataView("Address 2", order = 30)
-    var address2: String?,
+    var address2: String? = null,
 
     @DataView("ZIP", order = 40)
-    var zip: String?,
+    var zip: String? = null,
 
     @DataView("City", order = 50)
-    var city: String?,
+    var city: String? = null,
 
     @DataView("State", order = 60)
-    var state: String?
+    var state: String? = null
 ) : IssuesStatus {
     companion object : IssuesClass<IssueAddress> {
         override val caption = "Patient Address"

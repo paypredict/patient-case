@@ -46,6 +46,12 @@
             <artifactId>pokitdok</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.pipl.api/piplapis -->
+        <dependency>
+            <groupId>com.pipl.api</groupId>
+            <artifactId>piplapis</artifactId>
+            <version>5.0.11</version>
+        </dependency>
 
 
         <dependency>

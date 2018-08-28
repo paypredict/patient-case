@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.view
 
+import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
@@ -49,7 +50,7 @@ class CaseIssuesForm : Composite<Div>() {
 
     private val issuesNPI = IssuesFormGrid(IssueNPI)
     private val issuesEligibility = IssuesFormGrid(IssueEligibility) { openEligibilityDialog(it) }
-    private val issuesAddress = IssuesFormGrid(IssueAddress)
+    private val issuesAddress = IssuesFormGrid(IssueAddress) { openAddressDialog(it) }
     private val issuesExpert = IssuesFormNote(IssueExpert)
 
     init {
@@ -147,5 +148,56 @@ class CaseIssuesForm : Composite<Div>() {
                 }
 
             }
+    }
+
+    private fun openAddressDialog(address: IssueAddress) {
+        Dialog().apply {
+            width = "70vw"
+            this += AddressForm().apply {
+                setSizeFull()
+                isPadding = false
+                value = address
+                checkPatientAddress = { issue: IssueAddress ->
+                    try {
+                        checkAddress(issue)
+                        close()
+                    } catch (e: Throwable) {
+                        val error = e.message
+                        Dialog().apply {
+                            this += VerticalLayout().apply {
+                                this += H2("API Call Error")
+                                this += H3(error)
+                            }
+                            open()
+                        }
+                    }
+                }
+            }
+            open()
+        }
+    }
+
+    private fun checkAddress(issue: IssueAddress) {
+        val configuration = SearchAPIRequest.getDefaultConfiguration()
+        configuration.apiKey = null
+
+        val apiRequest = SearchAPIRequest
+            .Builder()
+            .rawAddress(
+                listOfNotNull(
+                    issue.address1,
+                    issue.address2,
+                    issue.city,
+                    issue.state
+                ).joinToString()
+            )
+            .city(issue.city)
+            .state(issue.state)
+            .country("US")
+            .configuration(configuration)
+            .build()
+
+        val response = apiRequest.send()
+        println(response.json)
     }
 }
