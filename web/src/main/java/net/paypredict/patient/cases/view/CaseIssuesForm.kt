@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.view
 
+import com.pipl.api.search.SearchAPIError
 import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.datepicker.DatePicker
@@ -10,6 +11,7 @@ import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
+import net.paypredict.patient.cases.apis.pipl.piplApiSearchConfiguration
 import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
@@ -20,6 +22,8 @@ import net.paypredict.patient.cases.pokitdok.client.digest
 import net.paypredict.patient.cases.pokitdok.client.query
 import org.bson.Document
 import java.io.IOException
+import java.time.LocalDate
+import java.time.Period
 import kotlin.properties.Delegates
 
 /**
@@ -101,22 +105,17 @@ class CaseIssuesForm : Composite<Div>() {
                         checkEligibility(issue)
                         close()
                     } catch (e: Throwable) {
-                        val error = when (e) {
-                            is ApiException ->
-                                Document
-                                    .parse(e.responseJson.toString())
-                                    .opt<String>("data", "errors", "query")
-                                    ?: e.message
-                            else ->
-                                e.message
-                        }
-                        Dialog().apply {
-                            this += VerticalLayout().apply {
-                                this += H2("API Call Error")
-                                this += H3(error)
+                        showError(
+                            when (e) {
+                                is ApiException ->
+                                    Document
+                                        .parse(e.responseJson.toString())
+                                        .opt<String>("data", "errors", "query")
+                                        ?: e.message
+                                else ->
+                                    e.message
                             }
-                            open()
-                        }
+                        )
                     }
                 }
             }
@@ -180,14 +179,15 @@ class CaseIssuesForm : Composite<Div>() {
                         checkAddress(issue)
                         close()
                     } catch (e: Throwable) {
-                        val error = e.message
-                        Dialog().apply {
-                            this += VerticalLayout().apply {
-                                this += H2("API Call Error")
-                                this += H3(error)
+                        showError(
+                            when (e) {
+                                is SearchAPIError -> {
+                                    System.err.println(e.json)
+                                    e.error
+                                }
+                                else -> e.message
                             }
-                            open()
-                        }
+                        )
                     }
                 }
             }
@@ -196,9 +196,6 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
     private fun checkAddress(issue: IssueAddress) {
-        val configuration = SearchAPIRequest.getDefaultConfiguration()
-        configuration.apiKey = null
-
         val apiRequest = SearchAPIRequest
             .Builder()
             .rawAddress(
@@ -207,15 +204,35 @@ class CaseIssuesForm : Composite<Div>() {
                     issue.address2,
                     issue.city,
                     issue.state
-                ).joinToString()
+                ).filter { it.isNotBlank() }.joinToString()
             )
             .city(issue.city)
             .state(issue.state)
             .country("US")
-            .configuration(configuration)
+            .configuration(piplApiSearchConfiguration)
+            .apply {
+                issue.person?.firstName?.also { firstName(it) }
+                issue.person?.lastName?.also { lastName(it) }
+                issue.person?.mi?.also { middleName(it) }
+                issue.person?.dobAsLocalDate?.also { dob ->
+                    val age = Period.between(dob, LocalDate.now()).years
+//                    fromAge(age - 1)
+//                    toAge(age + 1)
+                }
+            }
             .build()
 
         val response = apiRequest.send()
         println(response.json)
+    }
+
+    private fun showError(error: String?) {
+        Dialog().apply {
+            this += VerticalLayout().apply {
+                this += H2("API Call Error")
+                this += H3(error)
+            }
+            open()
+        }
     }
 }

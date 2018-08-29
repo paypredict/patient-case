@@ -25,7 +25,7 @@ data class CaseIssues(
     var time: Date? = null,
 
     @DataView("Patient", order = 20, isVisible = false)
-    var patient: Patient? = null,
+    var patient: Person? = null,
 
     @DataView("NPI", order = 30)
     var npi: List<IssueNPI> = emptyList(),
@@ -159,20 +159,16 @@ data class Subscriber(
  * `Case.SubscriberDetails.Patient`
  */
 @VaadinBean
-data class Patient(
-    /** `Case.SubscriberDetails.Patient.firstName` */
+data class Person(
     @DataView("First Name")
     val firstName: String? = null,
 
-    /** `Case.SubscriberDetails.Patient.organizationNameOrLastName` */
     @DataView("Last Name")
     val lastName: String? = null,
 
-    /** `Case.SubscriberDetails.Patient.middleInitials` */
     @DataView("MI")
     val mi: String? = null,
 
-    /** `Case.SubscriberDetails.Patient.dateOfBirth` */
     @DataView("DOB")
     val dob: String? = null
 ) {
@@ -206,7 +202,11 @@ data class IssueAddress(
     var city: String? = null,
 
     @DataView("State", order = 60)
-    var state: String? = null
+    var state: String? = null,
+
+    @DataView("Person", order = 70, isVisible = false)
+    var person: Person? = null
+
 ) : IssuesStatus {
     companion object : IssuesClass<IssueAddress> {
         override val caption = "Patient Address"
@@ -238,7 +238,7 @@ fun Document.toCaseIssues(): CaseIssues =
     CaseIssues(
         _id = get("_id").toString(),
         time = opt<Date>("time"),
-        patient = opt<Document>("patient")?.toPatient(),
+        patient = opt<Document>("patient")?.toPerson(),
         npi = opt<List<*>>("issue", "npi")
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueNPI() }
@@ -332,15 +332,15 @@ private fun Subscriber.toDocument(): Document = doc {
     doc["policyNumber"] = policyNumber
 }
 
-fun Document.toPatient(): Patient =
-    Patient(
+fun Document.toPerson(): Person =
+    Person(
         firstName = opt("firstName"),
         lastName = opt("lastName"),
         mi = opt("mi"),
         dob = opt("dob")
     )
 
-fun Patient.toDocument(): Document = doc {
+fun Person.toDocument(): Document = doc {
     doc["firstName"] = firstName
     doc["lastName"] = lastName
     doc["mi"] = mi
@@ -354,7 +354,8 @@ private fun Document.toIssueAddress(): IssueAddress =
         address2 = opt("address2"),
         zip = opt("zip"),
         city = opt("city"),
-        state = opt("state")
+        state = opt("state"),
+        person = opt<Document>("person")?.toPerson()
     )
 
 private fun IssueAddress.toDocument(): Document = doc {
@@ -364,6 +365,7 @@ private fun IssueAddress.toDocument(): Document = doc {
     doc["zip"] = zip
     doc["city"] = city
     doc["state"] = state
+    doc["person"] = person?.toDocument()
 }
 
 internal fun Document.toIssueExpert(): IssueExpert =

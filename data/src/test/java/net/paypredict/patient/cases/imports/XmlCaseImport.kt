@@ -247,12 +247,12 @@ object XmlCaseImport {
                     mapOf(
                         "time" to Date(),
                         "patient" to case<Document>("case", "Case", "Patient")
-                            ?.let { doc ->
-                                Patient(
-                                    firstName = doc("firstName"),
-                                    lastName = doc("lastName"),
-                                    mi = doc("middleInitials"),
-                                    dob = doc("dateOfBirth")
+                            ?.let { patient ->
+                                Person(
+                                    firstName = patient("firstName"),
+                                    lastName = patient("lastName"),
+                                    mi = patient("middleInitials"),
+                                    dob = patient("dateOfBirth")
                                 ).toDocument()
                             },
                         "issue" to Document(
@@ -272,6 +272,12 @@ object XmlCaseImport {
                                     this["zip"] = patient<String>("zip")
                                     this["city"] = patient<String>("city")
                                     this["state"] = patient<String>("state")
+                                    this["person"] = Person(
+                                        firstName = patient("firstName"),
+                                        lastName = patient("lastName"),
+                                        mi = patient("middleInitials"),
+                                        dob = patient("dateOfBirth")
+                                    ).toDocument()
 
                                 }),
                                 "expert" to expert()

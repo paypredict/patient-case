@@ -69,6 +69,7 @@ class IssuesFormGrid<T : IssuesStatus>(
                     addColumn(renderer).apply {
                         setHeader(metaData.view.caption)
                         flexGrow = metaData.view.flexGrow
+                        isVisible = metaData.view.isVisible
                     }
                 }
             if (onClickViewForm != null) {
