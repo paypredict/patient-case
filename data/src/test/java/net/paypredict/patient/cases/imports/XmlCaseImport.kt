@@ -11,10 +11,11 @@ import org.bson.Document
 import org.bson.json.JsonMode
 import org.bson.json.JsonWriterSettings
 import org.xml.sax.Attributes
+import org.xml.sax.InputSource
 import org.xml.sax.helpers.DefaultHandler
 import java.io.File
 import java.io.FileFilter
-import java.io.InputStream
+import java.io.Reader
 import java.security.MessageDigest
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -35,7 +36,7 @@ object XmlCaseImport {
 
     fun importFile(xmlFile: File, options: Options = Options()): String {
         val digest = xmlFile.digest()
-        val case = xmlFile.inputStream().use { it.toDocument(options) }
+        val case = xmlFile.inputStream().reader().use { it.toDocument(options) }
         val casesRaw = DBS.Collections.casesRaw()
         val update = Document(
             `$set`, doc {
@@ -79,9 +80,19 @@ object XmlCaseImport {
         val doc: Document
     )
 
-    private fun InputStream.toDocument(options: Options = Options()): Document {
+    private fun Reader.toDocument(options: Options = Options()): Document {
         val result = Document()
-        SAXParserFactory.newInstance().newSAXParser().parse(this, object : DefaultHandler() {
+        val inputSource = InputSource(readText()
+            .let { text ->
+                val err = """<?xml version="1.0" encoding="utf-16" standalone="no"?>"""
+                when {
+                    text.startsWith(err) -> text.removePrefix(err)
+                    else -> text
+                }
+            }
+            .reader()
+        )
+        SAXParserFactory.newInstance().newSAXParser().parse(inputSource, object : DefaultHandler() {
             val path: MutableList<Box> = mutableListOf(
                 Box(result)
             )
