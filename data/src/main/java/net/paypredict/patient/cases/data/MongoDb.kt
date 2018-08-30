@@ -21,7 +21,9 @@ import kotlin.concurrent.withLock
  */
 object DBS {
     fun ptn(): MongoDatabase = mongoClient.getDatabase(databaseName)
+    fun orders(): MongoDatabase = mongoClient.getDatabase("orders")
     fun pokitDok(): MongoDatabase = mongoClient.getDatabase("pokitDok")
+    fun smartyStreets(): MongoDatabase = mongoClient.getDatabase("smartyStreets")
 
     object Collections {
         fun cases(): MongoCollection<Document> =

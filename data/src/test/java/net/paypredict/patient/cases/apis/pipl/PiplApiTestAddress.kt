@@ -17,7 +17,7 @@ import java.util.*
  *
  * Created by alexei.vylegzhanin@gmail.com on 8/30/2018.
  */
-object TestAddress {
+object PiplApiTestAddress {
     @JvmStatic
     fun main(args: Array<String>) {
         val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
