@@ -1,5 +1,7 @@
 package net.paypredict.patient.cases.view
 
+import com.pipl.api.data.containers.Person
+import com.pipl.api.data.fields.*
 import com.pipl.api.search.SearchAPIError
 import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
@@ -22,9 +24,10 @@ import net.paypredict.patient.cases.pokitdok.client.digest
 import net.paypredict.patient.cases.pokitdok.client.query
 import org.bson.Document
 import java.io.IOException
-import java.time.LocalDate
-import java.time.Period
+import java.time.ZoneOffset
+import java.util.*
 import kotlin.properties.Delegates
+
 
 /**
  * <p>
@@ -196,32 +199,46 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
     private fun checkAddress(issue: IssueAddress) {
-        val apiRequest = SearchAPIRequest
-            .Builder()
-            .rawAddress(
-                listOfNotNull(
-                    issue.address1,
-                    issue.address2,
-                    issue.city,
-                    issue.state
-                ).filter { it.isNotBlank() }.joinToString()
-            )
-            .city(issue.city)
-            .state(issue.state)
-            .country("US")
-            .configuration(piplApiSearchConfiguration)
-            .apply {
-                issue.person?.firstName?.also { firstName(it) }
-                issue.person?.lastName?.also { lastName(it) }
-                issue.person?.mi?.also { middleName(it) }
-                issue.person?.dobAsLocalDate?.also { dob ->
-                    val age = Period.between(dob, LocalDate.now()).years
-//                    fromAge(age - 1)
-//                    toAge(age + 1)
+        val apiRequest = SearchAPIRequest(Person(
+            mutableListOf<Field>().also { fields ->
+                fields += Address.Builder()
+                    .country("US")
+                    .state(issue.state)
+                    .city(issue.city)
+                    .zipCode(issue.zip)
+                    .street(issue.address1)
+                    .build()
+                issue.person?.also { person ->
+                    fields += Name.Builder()
+                        .apply {
+                            person.firstName?.also { first(it) }
+                            person.lastName?.also { last(it) }
+                            person.mi?.also { middle(it) }
+                        }
+                        .build()
+                    person.dobAsLocalDate?.also { dob ->
+                        fields += DOB(DateRange().apply {
+                            start = Date.from(
+                                dob
+                                    .withMonth(1)
+                                    .withDayOfMonth(1)
+                                    .atStartOfDay(ZoneOffset.UTC)
+                                    .toInstant()
+                            )
+                            end = Date.from(
+                                dob
+                                    .withMonth(12)
+                                    .withDayOfMonth(31)
+                                    .atStartOfDay(ZoneOffset.UTC)
+                                    .toInstant()
+                            )
+                        })
+                    }
                 }
             }
-            .build()
-
+        ),
+            piplApiSearchConfiguration
+        )
         val response = apiRequest.send()
         println(response.json)
     }
