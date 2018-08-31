@@ -3,6 +3,7 @@ package net.paypredict.patient.cases.apis.smartystreets
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.smartystreets.api.ClientBuilder
 import com.smartystreets.api.us_street.Lookup
+import com.smartystreets.api.us_street.MatchType
 import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.doc
 import org.bson.Document
@@ -88,21 +89,35 @@ object SmartyStreetsApiTestAddress {
 
 
                 val lookup = Lookup()
+                lookup.match = MatchType.RANGE
+                lookup.maxCandidates = 5
+
                 lookup.street = address1 ?: continue
                 lookup.street2 = address2
                 lookup.city = city ?: continue
                 lookup.state = state
                 lookup.zipCode = zip
 
+
                 print(line)
                 val t0 = System.currentTimeMillis()
                 client.send(lookup)
-                val t1 = System.currentTimeMillis()
-                println()
 
-                val resultDocs = lookup.result.map {
+                var resultMode = lookup.match.name
+                var resultDocs = lookup.result.map {
                     Document.parse(jacksonFactory.toString(it))
                 }
+
+                if (resultDocs.isEmpty()) {
+                    lookup.match = MatchType.INVALID
+                    client.send(lookup)
+                    resultMode = lookup.match.name
+                    resultDocs = lookup.result.map {
+                        Document.parse(jacksonFactory.toString(it))
+                    }
+                }
+                val t1 = System.currentTimeMillis()
+                println()
 
                 collection.insertOne(doc {
                     doc["line"] = line
@@ -111,6 +126,7 @@ object SmartyStreetsApiTestAddress {
                     doc["warnings"] = warnings
                     doc["lookup"] = Document.parse(jacksonFactory.toString(lookup))
                     doc["result"] = resultDocs
+                    doc["resultMode"] = resultMode
                 })
 
                 if (limitCondition.exceeded()) break
