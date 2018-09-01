@@ -127,18 +127,8 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
     private fun checkEligibility(issue: IssueEligibility) {
-        val insurancePayerId = issue.insurance?.payerId ?: throw AssertionError("insurance payerId is required")
-        val tradingPartners = DBS.Collections.tradingPartners()
         val tradingPartnerId: String =
-            tradingPartners
-                .find(doc { doc["data.payer_id"] = insurancePayerId })
-                .firstOrNull()
-                ?.opt<String>("_id")
-                ?: tradingPartners
-                    .find(doc { doc["custom.payer_id"] = insurancePayerId })
-                    .firstOrNull()
-                    ?.opt<String>("_id")
-                ?: throw IOException("insurance payerId $insurancePayerId not found in tradingPartners")
+            issue.toTradingPartnerId()
 
         val query = EligibilityQuery(
             member = EligibilityQuery.Member(
@@ -168,6 +158,20 @@ class CaseIssuesForm : Composite<Div>() {
                 }
 
             }
+    }
+
+    fun IssueEligibility.toTradingPartnerId(): String {
+        val insurancePayerId = insurance?.payerId ?: throw AssertionError("insurance payerId is required")
+        val tradingPartners = DBS.Collections.tradingPartners()
+        return tradingPartners
+            .find(doc { doc["data.payer_id"] = insurancePayerId })
+            .firstOrNull()
+            ?.opt<String>("_id")
+            ?: tradingPartners
+                .find(doc { doc["custom.payer_id"] = insurancePayerId })
+                .firstOrNull()
+                ?.opt<String>("_id")
+            ?: throw IOException("insurance payerId $insurancePayerId not found in tradingPartners")
     }
 
     private fun openAddressDialog(address: IssueAddress) {

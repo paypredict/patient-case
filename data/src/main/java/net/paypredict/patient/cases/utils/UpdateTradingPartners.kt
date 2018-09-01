@@ -15,7 +15,8 @@ import org.bson.Document
 object UpdateTradingPartners {
     @JvmStatic
     fun main(args: Array<String>) {
-        val tradingPartnersAll: Document = queryTradingPartners { Document.parse(it.readText()) }
+        val tradingPartnersAll: Document =
+            queryTradingPartners { Document.parse(it.readText()) }
         val tradingPartners = DBS.Collections.tradingPartners()
         val meta = tradingPartnersAll.opt<Document>("meta")
         tradingPartnersAll.opt<List<*>>("data")

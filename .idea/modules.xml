@@ -5,7 +5,6 @@
       <module fileurl="file://$PROJECT_DIR$/data/data.iml" filepath="$PROJECT_DIR$/data/data.iml" />
       <module fileurl="file://$PROJECT_DIR$/patient-case.iml" filepath="$PROJECT_DIR$/patient-case.iml" />
       <module fileurl="file://$PROJECT_DIR$/plugins/plugins.iml" filepath="$PROJECT_DIR$/plugins/plugins.iml" />
-      <module fileurl="file://$PROJECT_DIR$/pokitdok/pokitdok.iml" filepath="$PROJECT_DIR$/pokitdok/pokitdok.iml" />
       <module fileurl="file://$PROJECT_DIR$/web/web.iml" filepath="$PROJECT_DIR$/web/web.iml" />
     </modules>
   </component>

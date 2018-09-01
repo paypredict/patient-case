@@ -41,11 +41,7 @@
             <artifactId>plugins</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>net.paypredict.patient.cases</groupId>
-            <artifactId>pokitdok</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
+
         <!-- https://mvnrepository.com/artifact/com.pipl.api/piplapis -->
         <dependency>
             <groupId>com.pipl.api</groupId>
@@ -63,6 +59,17 @@
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver</artifactId>
             <version>${mongodb.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.json</groupId>
+            <artifactId>javax.json-api</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
+            <version>1.0.4</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/de.sven-jacobs/loremipsum -->

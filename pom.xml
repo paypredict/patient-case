@@ -13,7 +13,6 @@
     <modules>
         <module>web</module>
         <module>data</module>
-        <module>pokitdok</module>
         <module>plugins</module>
     </modules>
 

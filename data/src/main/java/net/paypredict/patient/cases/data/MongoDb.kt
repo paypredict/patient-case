@@ -23,6 +23,7 @@ object DBS {
     fun ptn(): MongoDatabase = mongoClient.getDatabase(databaseName)
     fun orders(): MongoDatabase = mongoClient.getDatabase("orders")
     fun pokitDok(): MongoDatabase = mongoClient.getDatabase("pokitDok")
+    fun ppPayers(): MongoDatabase = mongoClient.getDatabase("ppPayers")
     fun smartyStreets(): MongoDatabase = mongoClient.getDatabase("smartyStreets")
 
     object Collections {
@@ -38,6 +39,15 @@ object DBS {
             pokitDok().getCollection("tradingPartners")
         fun eligibility(): MongoCollection<Document> =
             pokitDok().getCollection("eligibility")
+
+        object PPPayers {
+            fun lookupPkd(): MongoCollection<Document> =
+                ppPayers().getCollection("lookupPkd")
+            fun zirmedPayers(): MongoCollection<Document> =
+                ppPayers().getCollection("zirmedPayers")
+            fun matchPayers(): MongoCollection<Document> =
+                ppPayers().getCollection("matchPayers")
+        }
     }
 
     private val mongoConf : Document by lazy {

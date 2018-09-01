@@ -49,15 +49,29 @@ fun <T> EligibilityQuery.query(result: (InputStreamReader) -> T): T =
 fun EligibilityQuery.digest(): String =
     toJson().toDigest().toHexString()
 
+fun <T> queryTradingPartners(result: (InputStreamReader) -> T): T =
+    authQuery(
+        method = "GET",
+        path = "api/v4/tradingpartners/",
+        contentType = null,
+        result = result
+    )
+
+class ApiException(
+    val responseCode: Int,
+    val responseMessage: String?,
+    val responseJson: JsonObject
+) : IOException("API error: $responseCode - $responseMessage")
+
 private fun MessageDigest.toHexString(): String =
     digest().joinToString(separator = "") {
         (it.toInt() and 0xff).toString(16).padStart(2, '0')
     }
 
-fun JsonObject.toDigest(): MessageDigest =
+private fun JsonObject.toDigest(): MessageDigest =
     MessageDigest.getInstance("SHA").also { updateDigest(it) }
 
-fun JsonValue?.updateDigest(digest: MessageDigest) {
+private fun JsonValue?.updateDigest(digest: MessageDigest) {
     when (this) {
         null -> {
             digest.update(0)
@@ -98,14 +112,6 @@ fun JsonValue?.updateDigest(digest: MessageDigest) {
     }
 }
 
-fun <T> queryTradingPartners(result: (InputStreamReader) -> T): T =
-    authQuery(
-        method = "GET",
-        path = "api/v4/tradingpartners/",
-        contentType = null,
-        result = result
-    )
-
 private fun EligibilityQuery.toJson(): JsonObject =
     Json.createObjectBuilder()
         .add("member", member.toJson())
@@ -142,7 +148,11 @@ private val defaultCheckResponse: HttpURLConnection.() -> Unit =
             } catch (x: Throwable) {
                 if (x is ApiException) throw x
             }
-            throw ApiException(responseCode, responseMessage, Json.createObjectBuilder().build())
+            throw ApiException(
+                responseCode,
+                responseMessage,
+                Json.createObjectBuilder().build()
+            )
         }
     }
 
@@ -203,20 +213,14 @@ private fun <T> authQuery(
 
 private class UnauthorizedException : IOException()
 
-class ApiException(
-    val responseCode: Int,
-    val responseMessage: String?,
-    val responseJson: JsonObject
-) : IOException("API error: $responseCode - $responseMessage")
-
-internal object Authorization {
+private object Authorization {
     private val lock = ReentrantLock()
     private var accessTokenF: String? = null
 
     val accessToken: String
         get() = lock.withLock {
             if (accessTokenF == null) {
-                accessTokenF = oauth2_token()
+                accessTokenF = oauth2token()
             }
             accessTokenF!!
         }
@@ -225,12 +229,15 @@ internal object Authorization {
         accessTokenF = null
     }
 
-    private fun oauth2_token(): String =
+    private fun oauth2token(): String =
         http(
             method = "POST",
             path = "oauth2/token",
             setup = {
-                setRequestProperty("Authorization", "Basic $basic")
+                setRequestProperty(
+                    "Authorization",
+                    "Basic $basic"
+                )
                 doOutput = true
                 outputStream.write("grant_type=client_credentials".toByteArray())
             },
