@@ -11,19 +11,15 @@ import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.html.H3
+import com.vaadin.flow.component.html.H4
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import net.paypredict.patient.cases.apis.pipl.piplApiSearchConfiguration
 import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
 import net.paypredict.patient.cases.data.worklist.*
-import net.paypredict.patient.cases.pokitdok.client.ApiException
-import net.paypredict.patient.cases.pokitdok.client.EligibilityQuery
-import net.paypredict.patient.cases.pokitdok.client.digest
-import net.paypredict.patient.cases.pokitdok.client.query
+import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
+import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import org.bson.Document
-import java.io.IOException
 import java.time.ZoneOffset
 import java.util.*
 import kotlin.properties.Delegates
@@ -103,22 +99,9 @@ class CaseIssuesForm : Composite<Div>() {
                 setSizeFull()
                 isPadding = false
                 value = eligibility
-                checkPatientEligibility = { issue: IssueEligibility ->
-                    try {
-                        checkEligibility(issue)
+                checkPatientEligibility = { issue ->
+                    issue.checkEligibility {
                         close()
-                    } catch (e: Throwable) {
-                        showError(
-                            when (e) {
-                                is ApiException ->
-                                    Document
-                                        .parse(e.responseJson.toString())
-                                        .opt<String>("data", "errors", "query")
-                                        ?: e.message
-                                else ->
-                                    e.message
-                            }
-                        )
                     }
                 }
             }
@@ -126,52 +109,20 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private fun checkEligibility(issue: IssueEligibility) {
-        val tradingPartnerId: String =
-            issue.toTradingPartnerId()
-
-        val query = EligibilityQuery(
-            member = EligibilityQuery.Member(
-                first_name = issue.subscriber!!.firstName!!,
-                last_name = issue.subscriber!!.lastName!!,
-                birth_date = issue.subscriber!!.dobAsLocalDate!! formatAs EligibilityQuery.Member.dateFormat,
-                id = issue.subscriber!!.policyNumber!!
-            ),
-            provider = EligibilityQuery.Provider(
-                organization_name = "SAGIS, PLLC",
-                npi = "1548549066"
-            ),
-            trading_partner_id = tradingPartnerId
-        )
-
-        val digest = query.digest()
-        val collection = DBS.Collections.eligibility()
-        collection
-            .find(doc { doc["_id"] = digest }).firstOrNull()
-            ?: query.query { Document.parse(it.readText()) }.let { response ->
-                doc {
-                    doc["_id"] = digest
-                    doc["data"] = response["data"]
-                    doc["meta"] = response["meta"]
-                }.also {
-                    collection.insertOne(it)
-                }
-
+    private fun IssueEligibility.checkEligibility(checked: (EligibilityCheckRes.HasResult) -> Unit) {
+        val res = EligibilityChecker(this).check()
+        when (res) {
+            is EligibilityCheckRes.Pass -> {
+                checked(res)
             }
-    }
-
-    fun IssueEligibility.toTradingPartnerId(): String {
-        val insurancePayerId = insurance?.payerId ?: throw AssertionError("insurance payerId is required")
-        val tradingPartners = DBS.Collections.tradingPartners()
-        return tradingPartners
-            .find(doc { doc["data.payer_id"] = insurancePayerId })
-            .firstOrNull()
-            ?.opt<String>("_id")
-            ?: tradingPartners
-                .find(doc { doc["custom.payer_id"] = insurancePayerId })
-                .firstOrNull()
-                ?.opt<String>("_id")
-            ?: throw IOException("insurance payerId $insurancePayerId not found in tradingPartners")
+            is EligibilityCheckRes.Warn -> {
+                checked(res)
+                showWarnings(res.warnings)
+            }
+            is EligibilityCheckRes.Error -> {
+                showError(res.message)
+            }
+        }
     }
 
     private fun openAddressDialog(address: IssueAddress) {
@@ -252,6 +203,18 @@ class CaseIssuesForm : Composite<Div>() {
             this += VerticalLayout().apply {
                 this += H2("API Call Error")
                 this += H3(error)
+            }
+            open()
+        }
+    }
+
+    private fun showWarnings(warnings: List<EligibilityCheckRes.Warning>) {
+        Dialog().apply {
+            this += VerticalLayout().apply {
+                this += H2("WARNING")
+                warnings.forEach {
+                    this += H4(it.message)
+                }
             }
             open()
         }

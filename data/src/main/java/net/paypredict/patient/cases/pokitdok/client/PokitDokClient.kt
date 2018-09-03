@@ -19,7 +19,7 @@ import kotlin.concurrent.withLock
 
 data class EligibilityQuery(
     val member: Member,
-    val provider: Provider,
+    val provider: Provider = Conf.defaultProvider,
     val trading_partner_id: String
 ) {
     data class Member(
@@ -57,7 +57,7 @@ fun <T> queryTradingPartners(result: (InputStreamReader) -> T): T =
         result = result
     )
 
-class ApiException(
+class PokitDokApiException(
     val responseCode: Int,
     val responseMessage: String?,
     val responseJson: JsonObject
@@ -139,16 +139,16 @@ private val defaultCheckResponse: HttpURLConnection.() -> Unit =
             try {
                 errorStream?.reader()?.readText()?.let { json ->
                     System.err.println(json)
-                    throw ApiException(
+                    throw PokitDokApiException(
                         responseCode = responseCode,
                         responseMessage = responseMessage,
                         responseJson = Json.createReader(json.reader()).readObject()
                     )
                 }
             } catch (x: Throwable) {
-                if (x is ApiException) throw x
+                if (x is PokitDokApiException) throw x
             }
-            throw ApiException(
+            throw PokitDokApiException(
                 responseCode,
                 responseMessage,
                 Json.createObjectBuilder().build()
@@ -256,6 +256,12 @@ private object Conf {
     val host: String
     val clientId: String
     val clientSecret: String
+    val defaultProvider: EligibilityQuery.Provider by lazy {
+        val provider: JsonObject = conf.getJsonObject("provider")
+        EligibilityQuery.Provider(
+            provider.getString("organization_name"),
+            provider.getString("npi"))
+    }
 
     private val conf: JsonObject =
         File("/PayPredict/conf/PokitDok.json")
