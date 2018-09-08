@@ -5,6 +5,7 @@ import com.pipl.api.data.fields.*
 import com.pipl.api.search.SearchAPIError
 import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
+import com.vaadin.flow.component.HasValue
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
@@ -15,7 +16,9 @@ import com.vaadin.flow.component.html.H4
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import net.paypredict.patient.cases.apis.pipl.piplApiSearchConfiguration
+import net.paypredict.patient.cases.bson.`$set`
 import net.paypredict.patient.cases.data.DBS
+import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
@@ -30,7 +33,13 @@ import kotlin.properties.Delegates
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
 class CaseIssuesForm : Composite<Div>() {
-    var value: CaseStatus? by Delegates.observable(null) { _, _: CaseStatus?, new: CaseStatus? ->
+    var value: CaseStatus?
+            by Delegates.observable(null) { _, _: CaseStatus?, new: CaseStatus? ->
+                update(new)
+            }
+    var onValueChange: (() -> Unit)? = null
+
+    private fun update(new: CaseStatus?) {
         accession.value = new?.accession ?: ""
         claim.value = new?.claim ?: ""
 
@@ -93,19 +102,21 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
     private fun openEligibilityDialog(eligibility: IssueEligibility) {
-        Dialog().apply {
-            width = "70vw"
-            this += PatientEligibilityForm().apply {
-                setSizeFull()
+        Dialog().also { dialog ->
+            dialog += PatientEligibilityForm().apply {
                 isPadding = false
                 value = eligibility
                 checkPatientEligibility = { issue ->
                     issue.checkEligibility {
-                        close()
+                        dialog.close()
                     }
                 }
+                savePatientEligibility = { issue ->
+                    this@CaseIssuesForm.value?.addEligibilityIssue(issue)
+                    dialog.close()
+                }
             }
-            open()
+            dialog.open()
         }
     }
 
@@ -124,6 +135,21 @@ class CaseIssuesForm : Composite<Div>() {
             }
         }
     }
+
+    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility) {
+        val casesIssuesCollection = DBS.Collections.casesIssues()
+        val byId = Document("_id", _id)
+        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssues()
+        caseIssues.eligibility += issue.copy(status = "Saved")
+        casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
+        DBS.Collections.casesRaw().updateOne(byId, doc {
+            doc[`$set`] = doc {
+                doc["status.values.eligibility"] = Status(value = "Saved").toDocument()
+            }
+        })
+        issuesEligibility.value = caseIssues.eligibility
+    }
+
 
     private fun openAddressDialog(address: IssueAddress) {
         Dialog().apply {

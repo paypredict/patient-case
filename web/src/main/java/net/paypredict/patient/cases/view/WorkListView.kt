@@ -8,14 +8,17 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.splitlayout.SplitLayout
 
-class WorkListView : Composite<VerticalLayout>() {
+class WorkListView : Composite<SplitLayout>() {
     init {
         val caseStatusGrid = CaseStatusGrid().apply {
             height = "100%"
         }
         val caseStatusForm = CaseIssuesForm().apply {
             caseStatusGrid.addSelectionListener {
-                this.value = if (it.allSelectedItems.size == 1) it.allSelectedItems.firstOrNull() else null
+                value = if (it.allSelectedItems.size == 1) it.allSelectedItems.firstOrNull() else null
+            }
+            onValueChange = {
+                value?.let { caseStatusGrid.refreshItem(it) }
             }
         }
         val caseStatusListPanel = VerticalLayout().apply {
@@ -31,9 +34,8 @@ class WorkListView : Composite<VerticalLayout>() {
             }
             this += caseStatusGrid
         }
-        content.setSizeFull()
-        content.isPadding = false
-        content += SplitLayout().apply {
+
+        with(content) {
             setSizeFull()
             orientation = SplitLayout.Orientation.HORIZONTAL
             addToPrimary(caseStatusListPanel)

@@ -110,7 +110,13 @@ data class Insurance(
 
     /** `Case.SubscriberDetails.Subscriber.payerName` */
     @DataView("Payer Name")
-    var payerName: String? = null
+    var payerName: String? = null,
+
+    @DataView("ZirMed Payer ID")
+    var zmPayerId: String? = null,
+
+    @DataView("ZirMed Payer Name")
+    var zmPayerName: String? = null
 )
 
 /**
@@ -121,31 +127,39 @@ data class Insurance(
 data class Subscriber(
     /** `Case.SubscriberDetails.Subscriber.firstName` */
     @DataView("First Name")
-    val firstName: String? = null,
+    var firstName: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.organizationNameOrLastName` */
     @DataView("Last Name")
-    val lastName: String? = null,
+    var lastName: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.middleInitial` */
     @DataView("MI")
-    val mi: String? = null,
+    var mi: String? = null,
+
+    /** `Case.SubscriberDetails.Subscriber.gender` */
+    @DataView("Gender")
+    var gender: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.dob` */
     @DataView("DOB")
-    val dob: String? = null,
+    var dob: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.groupOrPlanName` */
     @DataView("Group Name")
-    val groupName: String? = null,
+    var groupName: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.groupOrPlanNumber` */
     @DataView("Group ID")
-    val groupId: String? = null,
+    var groupId: String? = null,
+
+    /** `Case.SubscriberDetails.Subscriber.relationshipCode` */
+    @DataView("Relationship Code")
+    var relationshipCode: String? = null,
 
     /** `Case.SubscriberDetails.Subscriber.subscriberPolicyNumber` */
     @DataView("Policy Number")
-    val policyNumber: String? = null
+    var policyNumber: String? = null
 ) {
     companion object {
         val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
@@ -261,10 +275,12 @@ fun CaseIssues.toDocument(): Document = doc {
     doc["_id"] = _id
     doc["time"] = time
     doc["patient"] = patient?.toDocument()
-    doc["npi"] = npi.map { it.toDocument() }
-    doc["eligibility"] = eligibility.map { it.toDocument() }
-    doc["address"] = address.map { it.toDocument() }
-    doc["expert"] = expert.map { it.toDocument() }
+    doc["issue"] = doc {
+        doc["npi"] = npi.map { it.toDocument() }
+        doc["eligibility"] = eligibility.map { it.toDocument() }
+        doc["address"] = address.map { it.toDocument() }
+        doc["expert"] = expert.map { it.toDocument() }
+    }
 }
 
 private fun Document.toIssueNPI(): IssueNPI =
@@ -301,6 +317,8 @@ private fun Insurance.toDocument(): Document = doc {
     doc["payerId"] = payerId
     doc["planCode"] = planCode
     doc["payerName"] = payerName
+    doc["zmPayerId"] = zmPayerId
+    doc["zmPayerName"] = zmPayerName
 }
 
 private fun Document.toInsurance(): Insurance =
@@ -308,7 +326,9 @@ private fun Document.toInsurance(): Insurance =
         typeCode = opt("typeCode"),
         payerId = opt("payerId"),
         planCode = opt("planCode"),
-        payerName = opt("payerName")
+        payerName = opt("payerName"),
+        zmPayerId = opt("zmPayerId"),
+        zmPayerName = opt("zmPayerName")
     )
 
 private fun Document.toSubscriber(): Subscriber =
@@ -316,9 +336,11 @@ private fun Document.toSubscriber(): Subscriber =
         firstName = opt("firstName"),
         lastName = opt("lastName"),
         mi = opt("mi"),
+        gender = opt("gender"),
         dob = opt("dob"),
         groupName = opt("groupName"),
         groupId = opt("groupId"),
+        relationshipCode = opt("relationshipCode"),
         policyNumber = opt("policyNumber")
     )
 
@@ -326,9 +348,11 @@ private fun Subscriber.toDocument(): Document = doc {
     doc["firstName"] = firstName
     doc["lastName"] = lastName
     doc["mi"] = mi
+    doc["gender"] = gender
     doc["dob"] = dob
     doc["groupName"] = groupName
     doc["groupId"] = groupId
+    doc["relationshipCode"] = relationshipCode
     doc["policyNumber"] = policyNumber
 }
 

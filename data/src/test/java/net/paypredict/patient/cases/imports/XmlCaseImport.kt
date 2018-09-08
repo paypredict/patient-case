@@ -235,15 +235,19 @@ object XmlCaseImport {
                                 typeCode = primarySubscriber("insuranceTypeCode"),
                                 payerId = primarySubscriber("payerId"),
                                 planCode = primarySubscriber("planCode"),
-                                payerName = primarySubscriber("payerName")
+                                payerName = primarySubscriber("payerName"),
+                                zmPayerId = primarySubscriber("zmPayerId"),
+                                zmPayerName = primarySubscriber("zmPayerName")
                             ),
                             subscriber = Subscriber(
                                 firstName = primarySubscriber("firstName"),
                                 lastName = primarySubscriber("organizationNameOrLastName"),
                                 mi = primarySubscriber("middleInitial"),
+                                gender = primarySubscriber("gender"),
                                 dob = primarySubscriber("dob"),
                                 groupName = primarySubscriber("groupOrPlanName"),
                                 groupId = primarySubscriber("groupOrPlanNumber"),
+                                relationshipCode = primarySubscriber("relationshipCode"),
                                 policyNumber = primarySubscriber("subscriberPolicyNumber")
                             )
                         ).toDocument()

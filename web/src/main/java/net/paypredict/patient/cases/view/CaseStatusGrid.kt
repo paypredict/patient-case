@@ -54,6 +54,7 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                         IconRenderer(
                             {
                                 when ((meta.prop.get(it) as? Status)?.value) {
+                                    "Saved" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                     "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                     "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
                                     else -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
@@ -86,6 +87,10 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
 
     fun addSelectionListener(listener: (SelectionEvent<Grid<CaseStatus>, CaseStatus>) -> Unit): Registration =
         content.addSelectionListener(listener)
+
+    fun refreshItem(item: CaseStatus) {
+        content.dataProvider.refreshItem(item)
+    }
 
 
     var width: String?
