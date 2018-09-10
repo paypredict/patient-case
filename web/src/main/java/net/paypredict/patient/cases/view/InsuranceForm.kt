@@ -77,6 +77,9 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
             field = new
         }
 
+    val isValid: Boolean
+        get() = binder.isValid
+
     init {
         content.isPadding = false
         content.isSpacing = false

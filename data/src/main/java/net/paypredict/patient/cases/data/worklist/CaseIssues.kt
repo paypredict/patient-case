@@ -1,10 +1,13 @@
 package net.paypredict.patient.cases.data.worklist
 
 import com.vaadin.flow.templatemodel.Encode
-import net.paypredict.patient.cases.*
+import net.paypredict.patient.cases.DataView
+import net.paypredict.patient.cases.MetaData
+import net.paypredict.patient.cases.VaadinBean
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.metaDataMap
 import org.bson.Document
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -80,7 +83,10 @@ data class IssueEligibility(
     var insurance: Insurance? = null,
 
     @DataView("Subscriber", order = 30, flexGrow = 2)
-    var subscriber: Subscriber? = null
+    var subscriber: Subscriber? = null,
+
+    @DataView("eligibility._id", order = 40, isVisible = false)
+    var eligibility: String? = null
 
 ) : IssuesStatus {
     companion object : IssuesClass<IssueEligibility> {
@@ -303,13 +309,15 @@ private fun Document.toIssueEligibility(): IssueEligibility =
     IssueEligibility(
         status = opt("status"),
         insurance = opt<Document>("insurance")?.toInsurance(),
-        subscriber = opt<Document>("subscriber")?.toSubscriber()
+        subscriber = opt<Document>("subscriber")?.toSubscriber(),
+        eligibility = opt<String>("eligibility")
     )
 
 fun IssueEligibility.toDocument(): Document = doc {
     doc["status"] = status
     doc["insurance"] = insurance?.toDocument()
     doc["subscriber"] = subscriber?.toDocument()
+    doc["eligibility"] = eligibility
 }
 
 private fun Insurance.toDocument(): Document = doc {

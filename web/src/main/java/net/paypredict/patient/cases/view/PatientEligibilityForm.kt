@@ -1,15 +1,20 @@
 package net.paypredict.patient.cases.view
 
+import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
-import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.html.H3
+import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
+import com.vaadin.flow.component.tabs.Tab
+import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
+import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
+import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import kotlin.properties.Delegates
 
 /**
@@ -18,45 +23,96 @@ import kotlin.properties.Delegates
  */
 @Route("eligibility")
 class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
-    private var insuranceForm = InsuranceForm().apply { width = "100%" }
-    private var subscriberForm = SubscriberForm()
+    private lateinit var tabs: Tabs
+    private val insuranceForm = InsuranceForm().apply { width = "100%" }
+    private val subscriberForm = SubscriberForm()
+    private val eligibilityCheckResTab = Tab("Eligibility")
+    private val eligibilityCheckResView = EligibilityCheckResView().apply {
+        isPadding = false
+        width = "100%"
+    }
 
     var value: IssueEligibility?
             by Delegates.observable(null) { _, _: IssueEligibility?, new: IssueEligibility? ->
                 insuranceForm.value = new?.insurance
                 subscriberForm.value = new?.subscriber
+                eligibilityCheckResView.value = new?.eligibility
             }
 
-    var checkPatientEligibility: ((IssueEligibility) -> Unit)? = null
-    var savePatientEligibility: ((IssueEligibility) -> Unit)? = null
+    var onPatientEligibilityChecked: ((IssueEligibility, EligibilityCheckRes) -> Unit)? = null
+    var onPatientEligibilitySave: ((IssueEligibility) -> Unit)? = null
 
-    init {
-        content += H2("Subscriber Information")
-        content += sectionHeader("Insurance Payer")
-        content += insuranceForm
-        content += sectionHeader("Subscriber")
-        content += subscriberForm
-
-        content += HorizontalLayout().apply {
-            isPadding = false
-            this += VerticalLayout().apply {
-                isPadding = false
-                this += Button("Verify Eligibility").apply {
-                    element.setAttribute("theme", "primary")
-                    isEnabled = false
-                }
-                this += Button("Save with no verification").apply {
-                    element.setAttribute("theme", "tertiary")
-                    addClickListener {
-                        savePatientEligibility?.invoke(
-                            (value ?: IssueEligibility())
-                                .copy(insurance = insuranceForm.value)
-                                .copy(subscriber = subscriberForm.value)
-                        )
-                    }
+    private val actions = HorizontalLayout().apply {
+        isPadding = false
+        defaultVerticalComponentAlignment = FlexComponent.Alignment.END
+        this += Button("Save with no verification").apply {
+            element.setAttribute("theme", "tertiary")
+            addClickListener {
+                if (insuranceForm.isValid && subscriberForm.isValid)
+                    onPatientEligibilitySave?.invoke(
+                        (value ?: IssueEligibility())
+                            .copy(insurance = insuranceForm.value)
+                            .copy(subscriber = subscriberForm.value)
+                    )
+            }
+        }
+        this += Button("Verify Eligibility").apply {
+            element.setAttribute("theme", "primary")
+            addClickListener {
+                if (insuranceForm.isValid && subscriberForm.isValid) {
+                    val issue = IssueEligibility(
+                        insurance = insuranceForm.value,
+                        subscriber = subscriberForm.value
+                    )
+                    val res = EligibilityChecker(issue).check()
+                    val eligibilityRes = if (res is EligibilityCheckRes.HasResult) res.id else null
+                    issue.eligibility = eligibilityRes
+                    eligibilityCheckResView.value = eligibilityRes
+                    if (eligibilityRes != null) tabs.selectedTab = eligibilityCheckResTab
+                    onPatientEligibilityChecked?.invoke(issue, res)
                 }
             }
         }
+    }
+
+
+    init {
+        content += sectionHeader("Subscriber Information")
+
+        val tabMap = mutableMapOf<Tab, Component>()
+        val inputTab = Tab("Subscriber")
+        tabMap[inputTab] = VerticalLayout().apply {
+            isPadding = false
+            this += sectionHeader("Insurance Payer")
+            this += insuranceForm
+            this += sectionHeader("Subscriber")
+            this += subscriberForm
+            this += actions
+            setHorizontalComponentAlignment(FlexComponent.Alignment.END, actions)
+            setFlexGrow(1.0, actions)
+        }
+
+        tabMap[eligibilityCheckResTab] = eligibilityCheckResView
+
+        fun Tab.select() {
+            tabMap.forEach {
+                it.value.isVisible = this == it.key
+            }
+        }
+
+        tabs = Tabs().apply {
+            tabMap.keys.forEach { add(it) }
+            addSelectedChangeListener {
+                selectedTab.select()
+            }
+        }
+        content += tabs
+        tabMap.values.forEach {
+            content += it
+            content.setFlexGrow(1.0, it)
+            it.isVisible = false
+        }
+        inputTab.select()
     }
 
     private fun sectionHeader(text: String) =

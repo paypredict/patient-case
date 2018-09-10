@@ -53,8 +53,9 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                     content.addColumn(
                         IconRenderer(
                             {
-                                when ((meta.prop.get(it) as? Status)?.value) {
-                                    "Saved" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
+                                when ((meta.prop.get(it) as? Status)?.value?.toUpperCase()) {
+                                    "SAVED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
+                                    "WARNING" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                     "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                     "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
                                     else -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }

@@ -33,16 +33,16 @@ class EligibilityChecker(private val issue: IssueEligibility) {
             )
         }
 
-        val insurancePayerName = insurance.payerName
-            ?: return EligibilityCheckRes.Error.insuranceFieldRequired("payerName")
+        val zmPayerId = insurance.zmPayerId
+            ?: return EligibilityCheckRes.Error.insuranceFieldRequired("zmPayerId")
 
         val tradingPartnerId = (DBS.Collections.PPPayers.lookupPkd()
             .find(doc {
-                doc["input"] = insurancePayerName
+                doc["zmPayerId"] = zmPayerId
             })
             .firstOrNull()
             ?.opt<String>("pkdId")
-            ?: return EligibilityCheckRes.Error.insurancePayerNameNotFoundInPP(insurancePayerName))
+            ?: return EligibilityCheckRes.Error.insuranceZirMedPayerIdNotFoundInPP(zmPayerId))
 
         val query = EligibilityQuery(member = member, trading_partner_id = tradingPartnerId)
         val digest = query.digest()
@@ -56,18 +56,32 @@ class EligibilityChecker(private val issue: IssueEligibility) {
         } catch (e: Throwable) {
             return EligibilityCheckRes.Error.apiCallError(e)
         }
+        val result: EligibilityCheckRes =
+            if (res.opt<Boolean>("data", "coverage", "active") == true)
+                EligibilityCheckRes.Pass(digest, res) else
+                EligibilityCheckRes.Warn(digest, res,
+                    listOf(EligibilityCheckRes.Warning("Coverage isn't active")))
+
         collection.updateOne(
             doc { doc["_id"] = digest },
             doc {
                 doc[`$set`] = doc {
+                    doc["status"] = when (result) {
+                        is EligibilityCheckRes.Pass -> "pass"
+                        is EligibilityCheckRes.Warn -> "warn"
+                        is EligibilityCheckRes.Error -> "error"
+                    }
                     doc["meta"] = res["meta"]
                     doc["data"] = res["data"]
+                    if (result is EligibilityCheckRes.Warn) {
+                        doc["warnings"] = result.warnings.map { it.message }
+                    }
                 }
             },
             UpdateOptions().upsert(true)
         )
 
-        return EligibilityCheckRes.Pass(digest, res)
+        return result
     }
 
 }
@@ -85,8 +99,8 @@ sealed class EligibilityCheckRes {
             val insuranceIsRequired = Error("insurance is required")
             fun subscriberFieldRequired(field: String) = Error("subscriber field $field is required")
             fun insuranceFieldRequired(field: String) = Error("insurance field $field is required")
-            fun insurancePayerNameNotFoundInPP(insurancePayerName: String) =
-                Error("$insurancePayerName insurance payer name not found in ppPayers")
+            fun insuranceZirMedPayerIdNotFoundInPP(zmPayerId: String) =
+                Error("ZirMed payer id $zmPayerId not found in ppPayers")
 
             fun apiCallError(x: Throwable) =
                 Error(
@@ -112,5 +126,29 @@ sealed class EligibilityCheckRes {
         val result: Document
     }
 
-    sealed class Warning(val message: String)
+    class Warning(val message: String)
 }
+
+fun Document.toEligibilityCheckRes(): EligibilityCheckRes? =
+    when (opt<String>("status")) {
+        null,
+        "pass" -> EligibilityCheckRes.Pass(get("_id") as String, this)
+
+        "warn" -> EligibilityCheckRes.Warn(get("_id") as String, this,
+            opt<List<*>>("warnings")?.mapNotNull { it.toWarning() } ?: emptyList()
+        )
+
+        "error" -> EligibilityCheckRes.Error(
+            opt<String>("error") ?: "Unknown Eligibility Error at ${get("_id")}"
+        )
+
+        else -> EligibilityCheckRes.Error(
+            "Invalid Eligibility Status '${opt<String>("status")}' at ${get("_id")}"
+        )
+    }
+
+private fun Any?.toWarning(): EligibilityCheckRes.Warning? =
+    when (this) {
+        is String -> EligibilityCheckRes.Warning(this)
+        else -> null
+    }

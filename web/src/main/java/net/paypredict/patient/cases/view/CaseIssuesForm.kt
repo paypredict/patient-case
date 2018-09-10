@@ -5,7 +5,6 @@ import com.pipl.api.data.fields.*
 import com.pipl.api.search.SearchAPIError
 import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
-import com.vaadin.flow.component.HasValue
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
@@ -21,7 +20,6 @@ import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
-import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import org.bson.Document
 import java.time.ZoneOffset
 import java.util.*
@@ -103,16 +101,32 @@ class CaseIssuesForm : Composite<Div>() {
 
     private fun openEligibilityDialog(eligibility: IssueEligibility) {
         Dialog().also { dialog ->
-            dialog += PatientEligibilityForm().apply {
-                isPadding = false
-                value = eligibility
-                checkPatientEligibility = { issue ->
-                    issue.checkEligibility {
-                        dialog.close()
+            dialog.width = "90vw"
+            dialog.height = "90vh"
+            dialog += PatientEligibilityForm().also { form ->
+                form.isPadding = false
+                form.width = "100%"
+                form.height = "100%"
+                form.value = eligibility
+                form.onPatientEligibilityChecked = { issue, res ->
+                    when (res) {
+                        is EligibilityCheckRes.Pass -> {
+                            value?.addEligibilityIssue(issue, "PASS")
+                        }
+                        is EligibilityCheckRes.Warn -> {
+                            value?.addEligibilityIssue(issue, "WARNING")
+                            showWarnings(res.warnings)
+                        }
+                        is EligibilityCheckRes.Error -> {
+                            value?.addEligibilityIssue(issue, "ERROR")
+                            showError(res.message)
+                        }
                     }
+                    onValueChange?.invoke()
                 }
-                savePatientEligibility = { issue ->
-                    this@CaseIssuesForm.value?.addEligibilityIssue(issue)
+                form.onPatientEligibilitySave = { issue ->
+                    value?.addEligibilityIssue(issue, "SAVED")
+                    onValueChange?.invoke()
                     dialog.close()
                 }
             }
@@ -120,34 +134,21 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private fun IssueEligibility.checkEligibility(checked: (EligibilityCheckRes.HasResult) -> Unit) {
-        val res = EligibilityChecker(this).check()
-        when (res) {
-            is EligibilityCheckRes.Pass -> {
-                checked(res)
-            }
-            is EligibilityCheckRes.Warn -> {
-                checked(res)
-                showWarnings(res.warnings)
-            }
-            is EligibilityCheckRes.Error -> {
-                showError(res.message)
-            }
-        }
-    }
 
-    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility) {
+    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: String) {
         val casesIssuesCollection = DBS.Collections.casesIssues()
         val byId = Document("_id", _id)
         val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssues()
-        caseIssues.eligibility += issue.copy(status = "Saved")
+        caseIssues.eligibility += issue.copy(status = statusValue)
         casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
+        val status = Status(value = statusValue)
         DBS.Collections.casesRaw().updateOne(byId, doc {
             doc[`$set`] = doc {
-                doc["status.values.eligibility"] = Status(value = "Saved").toDocument()
+                doc["status.values.eligibility"] = status.toDocument()
             }
         })
         issuesEligibility.value = caseIssues.eligibility
+        value?.eligibility = status
     }
 
 

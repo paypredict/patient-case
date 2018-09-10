@@ -16,7 +16,6 @@ import com.vaadin.flow.data.binder.ValueContext
 import net.paypredict.patient.cases.data.worklist.Subscriber
 import net.paypredict.patient.cases.data.worklist.formatAs
 import java.time.LocalDate
-import kotlin.properties.Delegates
 
 /**
  * <p>
@@ -65,6 +64,9 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             binder.readBean(new)
             field = new
         }
+
+    val isValid: Boolean
+        get() = binder.isValid
 
     init {
         content += relationshipCode
