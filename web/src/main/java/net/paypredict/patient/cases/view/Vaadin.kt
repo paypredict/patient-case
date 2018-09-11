@@ -2,6 +2,7 @@ package net.paypredict.patient.cases.view
 
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.HasComponents
+import com.vaadin.flow.component.UI
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.data.renderer.Renderer
 import com.vaadin.flow.data.renderer.TemplateRenderer
@@ -55,3 +56,9 @@ val String.escq: String
     get() = this
         .replace("&", "&amp;")
         .replace("\"", "&quote;")
+
+fun Grid<*>.scrollTo(index: Int) {
+    require(index >= 0) { "$index must be 0 or greater" }
+    val page = UI.getCurrent().page
+    page.executeJavaScript("$0._scrollToIndex($index)", element)
+}

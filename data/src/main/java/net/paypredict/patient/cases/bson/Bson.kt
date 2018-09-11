@@ -9,3 +9,9 @@ package net.paypredict.patient.cases.bson
 const val `$`: String = "$"
 @Suppress("ObjectPropertyName", "unused")
 const val `$set`: String = "$" + "set"
+@Suppress("ObjectPropertyName", "unused")
+const val `$text`: String = "$" + "text"
+@Suppress("ObjectPropertyName", "unused")
+const val `$search`: String = "$" + "search"
+@Suppress("ObjectPropertyName", "unused")
+const val `$meta`: String = "$" + "meta"

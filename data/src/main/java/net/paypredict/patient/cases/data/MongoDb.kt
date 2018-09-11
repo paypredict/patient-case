@@ -47,6 +47,8 @@ object DBS {
                 ppPayers().getCollection("zirmedPayers")
             fun matchPayers(): MongoCollection<Document> =
                 ppPayers().getCollection("matchPayers")
+            fun usersMatchPayers(): MongoCollection<Document> =
+                ppPayers().getCollection("usersMatchPayers")
         }
     }
 

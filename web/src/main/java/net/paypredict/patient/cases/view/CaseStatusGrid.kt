@@ -108,21 +108,23 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
         set(value) {
             content.height = value
         }
-}
 
-private val dateTimeFormat: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM dd yyyy hh:mm")
+    companion object {
+        private val dateTimeFormat: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("MMM dd yyyy hh:mm")
 
-private fun collection() = DBS.Collections.casesRaw()
+        private fun collection() = DBS.Collections.casesRaw()
 
-private fun Query<CaseStatus, *>.toMongoSort(): Bson? {
-    if (sortOrders.isEmpty()) return null
-    return Document().also { document ->
-        sortOrders.forEach { sortOrder: QuerySortOrder ->
-            document[sortOrder.sorted] = when (sortOrder.direction) {
-                null,
-                SortDirection.ASCENDING -> 1
-                SortDirection.DESCENDING -> -1
+        private fun Query<CaseStatus, *>.toMongoSort(): Bson? {
+            if (sortOrders.isEmpty()) return null
+            return Document().also { document ->
+                sortOrders.forEach { sortOrder: QuerySortOrder ->
+                    document[sortOrder.sorted] = when (sortOrder.direction) {
+                        null,
+                        SortDirection.ASCENDING -> 1
+                        SortDirection.DESCENDING -> -1
+                    }
+                }
             }
         }
     }

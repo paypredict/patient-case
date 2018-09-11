@@ -1,5 +1,7 @@
 package net.paypredict.patient.cases.pokitdok.eligibility
 
+import com.mongodb.client.FindIterable
+import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.UpdateOptions
 import net.paypredict.patient.cases.bson.`$set`
 import net.paypredict.patient.cases.data.DBS
@@ -36,13 +38,8 @@ class EligibilityChecker(private val issue: IssueEligibility) {
         val zmPayerId = insurance.zmPayerId
             ?: return EligibilityCheckRes.Error.insuranceFieldRequired("zmPayerId")
 
-        val tradingPartnerId = (DBS.Collections.PPPayers.lookupPkd()
-            .find(doc {
-                doc["zmPayerId"] = zmPayerId
-            })
-            .firstOrNull()
-            ?.opt<String>("pkdId")
-            ?: return EligibilityCheckRes.Error.insuranceZirMedPayerIdNotFoundInPP(zmPayerId))
+        val tradingPartnerId = PayersData().findPkdPayerId(zmPayerId)
+            ?: return EligibilityCheckRes.Error.insuranceZirMedPayerIdNotFoundInPP(zmPayerId)
 
         val query = EligibilityQuery(member = member, trading_partner_id = tradingPartnerId)
         val digest = query.digest()
@@ -152,3 +149,132 @@ private fun Any?.toWarning(): EligibilityCheckRes.Warning? =
         is String -> EligibilityCheckRes.Warning(this)
         else -> null
     }
+
+class PayersData {
+    data class ZirMedPayer(
+        override val _id: String,
+        val displayName: String
+    ) : Doc
+
+    val zirmedPayers: Map<String, ZirMedPayer> by lazy {
+        findAndMap(
+            collection = DBS.Collections.PPPayers.zirmedPayers()
+        ) { doc ->
+            ZirMedPayer(
+                _id = doc["_id"] as String,
+                displayName = doc.opt<String>("displayName") ?: "???"
+            )
+        }
+    }
+
+    private class UsersData {
+        data class UsersMatchPayer(
+            override val _id: String,
+            val zmPayerId: String,
+            val pkdPayerId: String?
+        ) : Doc
+
+        private val usersMatchPayers: Map<String, UsersMatchPayer> by lazy {
+            findAndMap(
+                collection = DBS.Collections.PPPayers.usersMatchPayers()
+            ) { doc ->
+                UsersMatchPayer(
+                    _id = doc["_id"] as String,
+                    zmPayerId = doc.opt<String>("zmPayerId")!!,
+                    pkdPayerId = doc.opt<String>("pkdPayerId")
+                )
+            }
+        }
+
+        val usersMatchPayersByZmPayerId: Map<String, UsersMatchPayer> by lazy {
+            usersMatchPayers.values.map { it.zmPayerId to it }.toMap()
+        }
+
+        val usersMatchPayersByZmPkdPayerId: Map<String, UsersMatchPayer> by lazy {
+            usersMatchPayers.values
+                .mapNotNull { payer -> payer.pkdPayerId?.let { it to payer } }
+                .toMap()
+        }
+
+    }
+
+    private var usersData: UsersData = UsersData()
+
+    data class MatchPayer(
+        override val _id: String,
+        val displayName: String?,
+        val zmPayerId: String?
+    ) : Doc
+
+    val matchPayers: Map<String, MatchPayer> by lazy {
+        findAndMap(
+            collection = DBS.Collections.PPPayers.matchPayers()
+        ) { doc ->
+            MatchPayer(
+                _id = doc["_id"] as String,
+                displayName = doc.opt<String>("displayName"),
+                zmPayerId = doc.opt<String>("zmPayerId")
+            )
+        }
+    }
+
+    val matchPayersByZmPayerId: Map<String, MatchPayer> by lazy {
+        matchPayers.values.mapNotNull { it.zmPayerId?.let { key -> key to it } }.toMap()
+    }
+
+    data class TradingPartner(
+        override val _id: String,
+        val name: String?
+    ) : Doc
+
+    val tradingPartners: Map<String, TradingPartner> by lazy {
+        findAndMap(
+            collection = DBS.Collections.tradingPartners(),
+            prepare = { projection(doc { doc["data.name"] = 1 }) }
+        ) { doc ->
+            TradingPartner(
+                _id = doc["_id"] as String,
+                name = doc.opt<String>("data", "name") ?: "???"
+            )
+        }
+    }
+
+    fun findPkdPayerId(zmPayerId: String?): String? {
+        val usersMatchPayer =
+            usersData.usersMatchPayersByZmPayerId[zmPayerId]
+        if (usersMatchPayer != null) return usersMatchPayer.pkdPayerId
+        return matchPayersByZmPayerId[zmPayerId]?._id
+    }
+
+    fun updateUsersPayerIds(pkdPayerId: String?, zmPayerId: String) {
+        DBS.Collections.PPPayers.usersMatchPayers().updateOne(
+            doc { doc["_id"] = zmPayerId },
+            doc {
+                doc[`$set`] = doc {
+                    doc["zmPayerId"] = zmPayerId
+                    doc["pkdPayerId"] = pkdPayerId
+                }
+            },
+            UpdateOptions().upsert(true)
+        )
+        usersData = UsersData()
+    }
+
+    companion object {
+        private inline fun <reified T : Doc> findAndMap(
+            collection: MongoCollection<Document>,
+            prepare: FindIterable<Document>.() -> FindIterable<Document> = { this },
+            map: (Document) -> T
+        ): Map<String, T> =
+            mutableMapOf<String, T>().also { result ->
+                collection.find().prepare().forEach { doc ->
+                    map(doc).also { result[it._id] = it }
+                }
+            }
+
+        interface Doc {
+            @Suppress("PropertyName")
+            val _id: String
+        }
+    }
+}
