@@ -40,6 +40,7 @@ object XmlCaseImport {
         val casesRaw = DBS.Collections.casesRaw()
         val update = Document(
             `$set`, doc {
+                doc["date"] = Date(xmlFile.lastModified())
                 doc["case"] = case
                 doc["file"] = doc {
                     doc["name"] = xmlFile.name
@@ -311,7 +312,7 @@ object XmlCaseImport {
     private fun Array<String>.toOptions(): Options =
         Options(
             removePrsData = contains("--remove-prs"),
-            addRndStatus = contains("--add-rdd-status")
+            addRndStatus = contains("--add-rnd-status")
         )
 
 

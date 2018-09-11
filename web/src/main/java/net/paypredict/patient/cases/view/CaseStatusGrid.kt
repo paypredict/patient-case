@@ -20,6 +20,7 @@ import net.paypredict.patient.cases.data.worklist.toCaseStatus
 import org.bson.Document
 import org.bson.conversions.Bson
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.collections.set
 import kotlin.reflect.jvm.javaType
@@ -41,11 +42,13 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                 Date::class.java -> {
                     column.isVisible = false
                     content.addColumn(
-                        LocalDateTimeRenderer { status ->
-                            status.date?.toInstant()?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
-                        }
+                        LocalDateTimeRenderer(
+                            { it.date?.toInstant()?.atZone(ZoneOffset.UTC)?.toLocalDateTime() },
+                            dateTimeFormat
+                        )
                     ).apply {
                         setHeader(meta.view.caption)
+                        setSortProperty(meta.prop.name)
                     }
                 }
                 Status::class.javaObjectType -> {
@@ -106,6 +109,9 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
             content.height = value
         }
 }
+
+private val dateTimeFormat: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM dd yyyy hh:mm")
 
 private fun collection() = DBS.Collections.casesRaw()
 
