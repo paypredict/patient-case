@@ -15,3 +15,5 @@ const val `$text`: String = "$" + "text"
 const val `$search`: String = "$" + "search"
 @Suppress("ObjectPropertyName", "unused")
 const val `$meta`: String = "$" + "meta"
+@Suppress("ObjectPropertyName", "unused")
+const val `$ne`: String = "$" + "ne"

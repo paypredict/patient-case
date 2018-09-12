@@ -5,6 +5,7 @@ import com.pipl.api.data.fields.*
 import com.pipl.api.search.SearchAPIError
 import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
+import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
@@ -12,6 +13,8 @@ import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.html.H4
+import com.vaadin.flow.component.orderedlayout.FlexComponent
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import net.paypredict.patient.cases.apis.pipl.piplApiSearchConfiguration
@@ -35,7 +38,8 @@ class CaseIssuesForm : Composite<Div>() {
             by Delegates.observable(null) { _, _: CaseStatus?, new: CaseStatus? ->
                 update(new)
             }
-    var onValueChange: (() -> Unit)? = null
+    var onValueChange: ((CaseStatus?) -> Unit)? = null
+    var onSolved: ((CaseStatus, statusValue: String?) -> Unit)? = null
 
     private fun update(new: CaseStatus?) {
         accession.value = new?.accession ?: ""
@@ -54,6 +58,9 @@ class CaseIssuesForm : Composite<Div>() {
         issuesEligibility.value = caseIssues?.eligibility
         issuesAddress.value = caseIssues?.address
         issuesExpert.value = caseIssues?.expert
+
+        issueActions.isVisible = new != null
+        issueSolved.value = new?.statusValue == "SOLVED"
     }
 
     private val accession = TextField("Accession").apply { isReadOnly = true }
@@ -70,6 +77,26 @@ class CaseIssuesForm : Composite<Div>() {
     }
     private val issuesAddress = IssuesFormGrid(IssueAddress) { openAddressDialog(it) }
     private val issuesExpert = IssuesFormNote(IssueExpert)
+
+    private val issueSolved = Checkbox("Issue Solved").also { checkbox ->
+        checkbox.addValueChangeListener { event ->
+            if (event.isFromClient) {
+                value?.let { caseStatus ->
+                    val statusValue = when (event.value) {
+                        true -> "SOLVED"
+                        false -> null
+                    }
+                    caseStatus.statusValue = statusValue
+                    onSolved?.invoke(caseStatus, statusValue)
+                }
+            }
+        }
+    }
+
+    private val issueActions = HorizontalLayout(issueSolved).apply {
+        isVisible = false
+        isPadding = false
+    }
 
     init {
         content.setSizeFull()
@@ -94,9 +121,10 @@ class CaseIssuesForm : Composite<Div>() {
                 this += patientDOB
 
             }
-            this += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
+            this += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress, issuesExpert, issueActions).apply {
                 isPadding = false
                 height = null
+                setHorizontalComponentAlignment(FlexComponent.Alignment.END, issueActions)
             }
         }
     }
@@ -126,11 +154,11 @@ class CaseIssuesForm : Composite<Div>() {
                             showError(res.message)
                         }
                     }
-                    onValueChange?.invoke()
+                    onValueChange?.invoke(value)
                 }
                 form.onPatientEligibilitySave = { issue ->
                     addEligibilityIssue(issue, "SAVED")
-                    onValueChange?.invoke()
+                    onValueChange?.invoke(value)
                     dialog.close()
                 }
             }

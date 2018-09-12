@@ -12,7 +12,9 @@ import com.vaadin.flow.data.renderer.IconRenderer
 import com.vaadin.flow.data.renderer.LocalDateTimeRenderer
 import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.shared.Registration
+import net.paypredict.patient.cases.bson.`$ne`
 import net.paypredict.patient.cases.data.DBS
+import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.worklist.CASE_STATUS_META_DATA_MAP
 import net.paypredict.patient.cases.data.worklist.CaseStatus
 import net.paypredict.patient.cases.data.worklist.Status
@@ -32,6 +34,8 @@ import kotlin.reflect.jvm.javaType
 class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
     override fun initContent(): Grid<CaseStatus> =
         Grid(CaseStatus::class.java)
+
+    private var filter = doc { }
 
     init {
         content.setColumns(*CASE_STATUS_META_DATA_MAP.entries.sortedBy { it.value.view.order }.map { it.key }.toTypedArray())
@@ -75,10 +79,34 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                 }
             }
         }
+        refresh()
+    }
+
+    fun filter(
+        viewOnlyUnsolved: Boolean = false
+    ) {
+        filter = when {
+            viewOnlyUnsolved -> doc {
+                doc["status.value"] = doc { doc[`$ne`] = "SOLVED" }
+            }
+            else -> doc { }
+        }
+        refresh()
+    }
+
+
+    fun addSelectionListener(listener: (SelectionEvent<Grid<CaseStatus>, CaseStatus>) -> Unit): Registration =
+        content.addSelectionListener(listener)
+
+    fun refreshItem(item: CaseStatus) {
+        content.dataProvider.refreshItem(item)
+    }
+
+    fun refresh() {
         content.dataProvider = DataProvider.fromFilteringCallbacks(
             { query: Query<CaseStatus, Unit> ->
                 collection()
-                    .find()
+                    .find(filter)
                     .sort(query.toMongoSort())
                     .skip(query.offset)
                     .limit(query.limit)
@@ -86,15 +114,8 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                     .toList()
                     .stream()
             },
-            { collection().count().toInt() }
+            { collection().count(filter).toInt() }
         )
-    }
-
-    fun addSelectionListener(listener: (SelectionEvent<Grid<CaseStatus>, CaseStatus>) -> Unit): Registration =
-        content.addSelectionListener(listener)
-
-    fun refreshItem(item: CaseStatus) {
-        content.dataProvider.refreshItem(item)
     }
 
 
@@ -114,7 +135,10 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
         private val dateTimeFormat: DateTimeFormatter =
             DateTimeFormatter.ofPattern("MMM dd yyyy hh:mm")
 
-        private fun collection() = DBS.Collections.casesRaw()
+        private fun collection() = DBS.Collections.casesRaw().apply {
+            createIndex(doc { doc["date"] = 1 })
+            createIndex(doc { doc["status.value"] = 1 })
+        }
 
         private fun Query<CaseStatus, *>.toMongoSort(): Bson? {
             val sortOrders = if (sortOrders.isNotEmpty())

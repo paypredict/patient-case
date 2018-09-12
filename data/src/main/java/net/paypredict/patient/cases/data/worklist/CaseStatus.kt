@@ -4,6 +4,8 @@ import com.vaadin.flow.templatemodel.Encode
 import net.paypredict.patient.cases.DataView
 import net.paypredict.patient.cases.MetaData
 import net.paypredict.patient.cases.VaadinBean
+import net.paypredict.patient.cases.bson.`$set`
+import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
@@ -73,3 +75,21 @@ fun Status.toDocument(): Document = doc {
     doc["value"] = value
     doc["description"] = description
 }
+
+
+var CaseStatus.statusValue: String?
+    get() {
+        val case = DBS.Collections.casesRaw()
+            .find(Document("_id", _id))
+            .projection(Document("status.value", 1))
+            .firstOrNull() ?: return null
+        return case.opt<String>("status", "value")
+    }
+
+    set(value) {
+        DBS.Collections.casesRaw().updateOne(
+            Document("_id", _id),
+            Document(`$set`, Document("status.value", value))
+        )
+    }
+
