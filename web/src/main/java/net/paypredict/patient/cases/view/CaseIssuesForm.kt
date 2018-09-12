@@ -111,6 +111,7 @@ class CaseIssuesForm : Composite<Div>() {
                 form.height = "100%"
                 form.caseId = _id
                 form.value = eligibility
+                form.onCancel = { dialog.close() }
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
                         is EligibilityCheckRes.Pass -> {

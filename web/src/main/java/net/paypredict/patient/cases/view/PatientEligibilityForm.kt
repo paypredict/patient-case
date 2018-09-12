@@ -4,6 +4,7 @@ import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
+import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
@@ -26,6 +27,8 @@ class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLay
     private lateinit var tabs: Tabs
     private val insuranceForm =
         InsuranceForm(sectionHeader("Insurance Payer")).apply { width = "100%" }
+    private val requisitionsView =
+        RequisitionsView(sectionHeader("Requisition Forms")).apply { setSizeUndefined() }
     private val subscriberForm = SubscriberForm()
     private val eligibilityCheckResTab = Tab("Eligibility")
     private val eligibilityCheckResView = EligibilityCheckResView().apply {
@@ -36,6 +39,7 @@ class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLay
     var caseId: String? = null
         set(value) {
             insuranceForm.caseId = value
+            requisitionsView.caseId = value
             subscriberForm.caseId = value
             field = value
         }
@@ -49,10 +53,15 @@ class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLay
 
     var onPatientEligibilityChecked: ((IssueEligibility, EligibilityCheckRes) -> Unit)? = null
     var onPatientEligibilitySave: ((IssueEligibility) -> Unit)? = null
+    var onCancel: (() -> Unit)? = null
 
     private val actions = HorizontalLayout().apply {
         isPadding = false
         defaultVerticalComponentAlignment = FlexComponent.Alignment.END
+        this += Button("Close").apply {
+            element.setAttribute("theme", "contrast tertiary")
+            addClickListener { onCancel?.invoke() }
+        }
         this += Button("Save with no verification").apply {
             element.setAttribute("theme", "tertiary")
             addClickListener {
@@ -91,7 +100,14 @@ class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLay
         val inputTab = Tab("Subscriber")
         tabMap[inputTab] = VerticalLayout().apply {
             isPadding = false
-            this += insuranceForm
+            this += HorizontalLayout().apply {
+                isPadding = false
+                width = "100%"
+                defaultVerticalComponentAlignment = FlexComponent.Alignment.START
+                this += insuranceForm
+                this += requisitionsView
+                setFlexGrow(3.0, insuranceForm)
+            }
             this += sectionHeader("Subscriber")
             this += subscriberForm
             this += actions
