@@ -114,10 +114,16 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
     }
 
     companion object {
-        private val projectionName: Document by lazy { doc { doc["data.name"] = 1 } }
+        private val projectionName: Document by lazy {
+            doc {
+                doc["data.name"] = 1
+                doc["data.payer_id"] = 1
+            }
+        }
         private val projectionScore: Document by lazy {
             doc {
                 doc["data.name"] = 1
+                doc["data.payer_id"] = 1
                 doc["score"] = doc { doc[`$meta`] = "textScore" }
             }
         }
@@ -126,16 +132,18 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
             if (filter.isEmpty()) projectionName else projectionScore
 
         private fun collection(): MongoCollection<Document> =
-            DBS.Collections.tradingPartners().also { collection ->
-                if (collection.listIndexes().none { it.opt<String>("name") == "data.name_text" }) {
-                    collection.createIndex(doc { doc["data.name"] = "text" })
-                }
+            DBS.Collections.tradingPartners().apply {
+                createIndex(doc {
+                    doc["data.name"] = "text"
+//                    doc["data.payer_id"] = "text"
+                })
             }
 
         private fun Document.toTradingPartnerItem(): TradingPartnerItem =
             TradingPartnerItem(
                 _id = opt("_id"),
-                name = opt("data", "name")
+                name = opt("data", "name"),
+                payerId = opt("data", "payer_id")
             )
 
         private fun Query<TradingPartnerItem, *>.toMongoSort(filter: Document): Bson? {
@@ -152,6 +160,7 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
                     when (sortOrder.sorted) {
                         TradingPartnerItem::_id.name -> "_id"
                         TradingPartnerItem::name.name -> "data.name"
+                        TradingPartnerItem::payerId.name -> "data.payer_id"
                         else -> null
                     }?.let {
                         document[it] = when (sortOrder.direction) {
@@ -173,7 +182,10 @@ data class TradingPartnerItem(
     val _id: String?,
 
     @DataView("Name", order = 10)
-    val name: String?
+    val name: String?,
+
+    @DataView("Name", order = 20)
+    val payerId: String?
 ) {
     companion object {
         val META_DATA_MAP: Map<String, MetaData<TradingPartnerItem>> by lazy { metaDataMap<TradingPartnerItem>() }

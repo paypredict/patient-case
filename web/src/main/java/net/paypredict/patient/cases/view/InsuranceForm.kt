@@ -36,7 +36,7 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
 
         setItemLabelGenerator { it?.displayName }
         addValueChangeListener { event ->
-            pokitDokPayer.value = event?.value?.toTradingPartner()?.name ?: ""
+            pokitDokPayer.value = event?.value?.toTradingPartner()?.displayName ?: ""
         }
 
         binder
@@ -84,7 +84,7 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
         }
         set(new) {
             zmPayerId.setItems(InsuranceItem.all)
-            pokitDokPayer.value = new?.toTradingPartner()?.name ?: ""
+            pokitDokPayer.value = new?.toTradingPartner()?.displayName ?: ""
             binder.readBean(new)
             field = new
         }
@@ -162,7 +162,7 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
                                     pkdPayerId = selected?._id,
                                     zmPayerId = zmPayerId
                                 )
-                                pokitDokPayer.value = value?.toTradingPartner()?.name ?: ""
+                                pokitDokPayer.value = value?.toTradingPartner()?.displayName ?: ""
                                 dialog.close()
                             }
                         }

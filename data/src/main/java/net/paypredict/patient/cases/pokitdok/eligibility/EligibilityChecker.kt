@@ -56,8 +56,10 @@ class EligibilityChecker(private val issue: IssueEligibility) {
         val result: EligibilityCheckRes =
             if (res.opt<Boolean>("data", "coverage", "active") == true)
                 EligibilityCheckRes.Pass(digest, res) else
-                EligibilityCheckRes.Warn(digest, res,
-                    listOf(EligibilityCheckRes.Warning("Coverage isn't active")))
+                EligibilityCheckRes.Warn(
+                    digest, res,
+                    listOf(EligibilityCheckRes.Warning("Coverage isn't active"))
+                )
 
         collection.updateOne(
             doc { doc["_id"] = digest },
@@ -224,17 +226,27 @@ class PayersData {
 
     data class TradingPartner(
         override val _id: String,
-        val name: String?
-    ) : Doc
+        val name: String?,
+        val payerId: String?
+    ) : Doc {
+        val displayName: String?
+            get() = payerId?.let { "$name [ $it ]" } ?: name
+    }
 
     val tradingPartners: Map<String, TradingPartner> by lazy {
         findAndMap(
             collection = DBS.Collections.tradingPartners(),
-            prepare = { projection(doc { doc["data.name"] = 1 }) }
+            prepare = {
+                projection(doc {
+                    doc["data.name"] = 1
+                    doc["data.payer_id"] = 1
+                })
+            }
         ) { doc ->
             TradingPartner(
                 _id = doc["_id"] as String,
-                name = doc.opt<String>("data", "name") ?: "???"
+                name = doc.opt<String>("data", "name"),
+                payerId = doc.opt<String>("data", "payer_id")
             )
         }
     }
