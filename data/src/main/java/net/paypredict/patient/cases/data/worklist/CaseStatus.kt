@@ -18,10 +18,10 @@ import java.util.*
 @VaadinBean
 data class CaseStatus(
     @DataView("_id", isVisible = false)
-    val _id: String?,
+    val _id: String,
 
     @set:Encode(DateToDateTimeBeanEncoder::class)
-    @DataView("Date.Time", order = 10)
+    @DataView("Date.Time", order = 10, docKey = "file.date")
     var date: Date?,
 
     @DataView("Accession", order = 20)
@@ -54,7 +54,7 @@ data class Status(
 fun Document.toCaseStatus(): CaseStatus =
     CaseStatus(
         _id = get("_id").toString(),
-        date = opt("status", "checked"),
+        date = opt<Date>("file", "date"),
         accession = opt("case", "Case", "accessionNumber"),
         claim = opt("case", "Case", "SuperBillDetails", "claimNumber"),
         npi = opt<Document>("status", "values", "npi")?.toStatus(),

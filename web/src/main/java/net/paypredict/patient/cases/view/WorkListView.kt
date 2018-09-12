@@ -27,7 +27,7 @@ class WorkListView : Composite<SplitLayout>() {
             this += HorizontalLayout().apply {
                 defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
                 width = "100%"
-                this += Checkbox("Show only not fixed items", true).apply { isReadOnly = true }
+                this += Checkbox("Show only not fixed items", false).apply { isReadOnly = true }
                 this += Button("Archive All")
                 this += Button("History")
                 this += Button("Subscribe")

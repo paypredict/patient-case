@@ -11,5 +11,6 @@ annotation class DataView(
     val section: String = "",
     val isVisible: Boolean = true,
     val order: Int = -1,
+    val docKey: String = "",
     val flexGrow: Int = 1
 )

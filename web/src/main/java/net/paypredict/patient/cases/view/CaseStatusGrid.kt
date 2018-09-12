@@ -61,7 +61,9 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                                     "WARNING" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                     "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                     "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
-                                    else -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
+                                    "PASS" -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
+                                    null -> Icon(VaadinIcon.BAN).apply { color = "lightgray" }
+                                    else -> Icon(VaadinIcon.BAN).apply { color = "red" }
                                 }
                             },
                             { "" })
@@ -86,7 +88,6 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
             },
             { collection().count().toInt() }
         )
-
     }
 
     fun addSelectionListener(listener: (SelectionEvent<Grid<CaseStatus>, CaseStatus>) -> Unit): Registration =
@@ -116,10 +117,15 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
         private fun collection() = DBS.Collections.casesRaw()
 
         private fun Query<CaseStatus, *>.toMongoSort(): Bson? {
-            if (sortOrders.isEmpty()) return null
+            val sortOrders = if (sortOrders.isNotEmpty())
+                sortOrders else
+                listOf(QuerySortOrder("date", SortDirection.DESCENDING))
             return Document().also { document ->
                 sortOrders.forEach { sortOrder: QuerySortOrder ->
-                    document[sortOrder.sorted] = when (sortOrder.direction) {
+                    val docKey = CASE_STATUS_META_DATA_MAP[sortOrder.sorted]?.run {
+                        if (view.docKey.isNotBlank()) view.docKey else prop.name
+                    }
+                    document[docKey] = when (sortOrder.direction) {
                         null,
                         SortDirection.ASCENDING -> 1
                         SortDirection.DESCENDING -> -1

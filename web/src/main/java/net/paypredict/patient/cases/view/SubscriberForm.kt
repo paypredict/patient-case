@@ -5,16 +5,24 @@ import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.datepicker.DatePicker
+import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
+import com.vaadin.flow.component.html.H3
+import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
+import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.binder.Binder
 import com.vaadin.flow.data.binder.ValidationResult
 import com.vaadin.flow.data.binder.ValueContext
+import net.paypredict.patient.cases.data.DBS
+import net.paypredict.patient.cases.data.doc
+import net.paypredict.patient.cases.data.opt
 import net.paypredict.patient.cases.data.worklist.Subscriber
 import net.paypredict.patient.cases.data.worklist.formatAs
+import org.bson.Document
 import java.time.LocalDate
 
 /**
@@ -29,7 +37,6 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             ValidationResult.ok()
     }
     private val relationshipCode: ComboBox<String?> = ComboBox<String?>("Relation with patient").apply {
-        isRequired = true
         isAllowCustomValue = false
         isPreventInvalidInput = true
         setItems()
@@ -54,8 +61,10 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             )
     }
 
+    var caseId: String? = null
+
     var value: Subscriber? = null
-        get() = field?.also { res ->
+        get() = (field ?: Subscriber()).also { res ->
             binder.writeBean(res)
         }
         set(new) {
@@ -66,7 +75,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         }
 
     val isValid: Boolean
-        get() = binder.isValid
+        get() = binder.validate().isOk
 
     init {
         content += relationshipCode
@@ -76,6 +85,9 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
             this += Button("Copy from Patient").apply {
                 element.setAttribute("theme", "tertiary-inline")
+                addClickListener {
+                    showCopyFromPatientDialog()
+                }
             }
         }
         content += TextField("First Name").apply {
@@ -131,4 +143,37 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         )
     }
 
+    private fun showCopyFromPatientDialog() {
+        val case = DBS.Collections.casesRaw().find(doc { doc["_id"] = caseId }).firstOrNull()
+        val patient = case?.opt<Document>("case", "Case", "Patient")
+        if (patient == null) {
+            Notification.show("Patient data not found")
+            return
+        }
+        Dialog().also { dialog ->
+            dialog += VerticalLayout().apply {
+                defaultHorizontalComponentAlignment = FlexComponent.Alignment.CENTER
+                this += H3("Copy from Patient will override Subscriber data")
+                this += HorizontalLayout().apply {
+                    this += Button("Cancel") { dialog.close() }
+                    this += Button("Override").apply {
+                        element.setAttribute("theme", "error primary")
+                        addClickListener {
+                            binder.readBean(
+                                Subscriber(
+                                    firstName = patient.opt("firstName"),
+                                    lastName = patient.opt("lastName"),
+                                    mi = patient.opt("middleInitials"),
+                                    gender = patient.opt("gender"),
+                                    dob = patient.opt("dateOfBirth")
+                                )
+                            )
+                            dialog.close()
+                        }
+                    }
+                }
+            }
+            dialog.open()
+        }
+    }
 }

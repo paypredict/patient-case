@@ -32,6 +32,13 @@ class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLay
         width = "100%"
     }
 
+    var caseId: String? = null
+        set(value) {
+            insuranceForm.caseId = value
+            subscriberForm.caseId = value
+            field = value
+        }
+
     var value: IssueEligibility?
             by Delegates.observable(null) { _, _: IssueEligibility?, new: IssueEligibility? ->
                 insuranceForm.value = new?.insurance

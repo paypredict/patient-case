@@ -42,7 +42,7 @@ class CaseIssuesForm : Composite<Div>() {
         claim.value = new?.claim ?: ""
 
         val caseIssues = new?.let {
-            DBS.Collections.casesIssues().find(Document("_id", it._id)).firstOrNull()?.toCaseIssues()
+            DBS.Collections.casesIssues().find(Document("_id", it._id)).firstOrNull()?.toCaseIssue()
         }
         val patient = caseIssues?.patient
         patientFirstName.value = patient?.firstName ?: ""
@@ -65,7 +65,9 @@ class CaseIssuesForm : Composite<Div>() {
     private val patientDOB = DatePicker("Patient DOB").apply { isReadOnly = true }
 
     private val issuesNPI = IssuesFormGrid(IssueNPI)
-    private val issuesEligibility = IssuesFormGrid(IssueEligibility) { openEligibilityDialog(it) }
+    private val issuesEligibility = IssuesFormGrid(IssueEligibility) {
+        value?.openEligibilityDialog(it)
+    }
     private val issuesAddress = IssuesFormGrid(IssueAddress) { openAddressDialog(it) }
     private val issuesExpert = IssuesFormNote(IssueExpert)
 
@@ -99,7 +101,7 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private fun openEligibilityDialog(eligibility: IssueEligibility) {
+    private fun CaseStatus.openEligibilityDialog(eligibility: IssueEligibility) {
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
@@ -107,25 +109,26 @@ class CaseIssuesForm : Composite<Div>() {
                 form.isPadding = false
                 form.width = "100%"
                 form.height = "100%"
+                form.caseId = _id
                 form.value = eligibility
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
                         is EligibilityCheckRes.Pass -> {
-                            value?.addEligibilityIssue(issue, "PASS")
+                            addEligibilityIssue(issue, "PASS")
                         }
                         is EligibilityCheckRes.Warn -> {
-                            value?.addEligibilityIssue(issue, "WARNING")
+                            addEligibilityIssue(issue, "WARNING")
                             showWarnings(res.warnings)
                         }
                         is EligibilityCheckRes.Error -> {
-                            value?.addEligibilityIssue(issue, "ERROR")
+                            addEligibilityIssue(issue, "ERROR")
                             showError(res.message)
                         }
                     }
                     onValueChange?.invoke()
                 }
                 form.onPatientEligibilitySave = { issue ->
-                    value?.addEligibilityIssue(issue, "SAVED")
+                    addEligibilityIssue(issue, "SAVED")
                     onValueChange?.invoke()
                     dialog.close()
                 }
@@ -138,7 +141,7 @@ class CaseIssuesForm : Composite<Div>() {
     private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: String) {
         val casesIssuesCollection = DBS.Collections.casesIssues()
         val byId = Document("_id", _id)
-        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssues()
+        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
         caseIssues.eligibility += issue.copy(status = statusValue)
         casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
         val status = Status(value = statusValue)

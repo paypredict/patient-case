@@ -19,7 +19,7 @@ import java.util.*
  */
 
 @VaadinBean
-data class CaseIssues(
+data class CaseIssue(
     @DataView("_id", isVisible = false)
     val _id: String? = null,
 
@@ -254,8 +254,8 @@ data class IssueExpert(
     }
 }
 
-fun Document.toCaseIssues(): CaseIssues =
-    CaseIssues(
+fun Document.toCaseIssue(): CaseIssue =
+    CaseIssue(
         _id = get("_id").toString(),
         time = opt<Date>("time"),
         patient = opt<Document>("patient")?.toPerson(),
@@ -277,7 +277,7 @@ fun Document.toCaseIssues(): CaseIssues =
             ?: emptyList()
     )
 
-fun CaseIssues.toDocument(): Document = doc {
+fun CaseIssue.toDocument(): Document = doc {
     doc["_id"] = _id
     doc["time"] = time
     doc["patient"] = patient?.toDocument()

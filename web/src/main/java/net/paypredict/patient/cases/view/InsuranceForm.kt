@@ -76,8 +76,10 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
         }
     }
 
+    var caseId: String? = null
+
     var value: Insurance? = null
-        get() = field?.also { res ->
+        get() = (field ?: Insurance()).also { res ->
             binder.writeBean(res)
         }
         set(new) {
@@ -88,29 +90,31 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
         }
 
     val isValid: Boolean
-        get() = binder.isValid
+        get() = binder.validate().isOk
 
     init {
         content.isPadding = false
         content.isSpacing = false
         content.width = "100%"
-        content += Div().apply {
-            width = "100%"
-            style["display"] = "inline-flex"
-            style["flex-wrap"] = "wrap"
-            fun KMutableProperty1<Insurance, String?>.bindTextView(label: String, marginRight: String? = "1em") =
-                TextField(label).apply {
-                    binder.forField(this).bind(getter, setter)
-                    isReadOnly = true
-                    style["max-width"] = "100%"
-                    style["margin-right"] = marginRight
-                }
-            add(
-                Insurance::payerName.bindTextView("Payer Name").apply { style["flex-grow"] = "100" },
-                Insurance::typeCode.bindTextView("Type"),
-                Insurance::payerId.bindTextView("Payer ID"),
-                Insurance::planCode.bindTextView("Plan Code", marginRight = null)
-            )
+        if (false) {
+            content += Div().apply {
+                width = "100%"
+                style["display"] = "inline-flex"
+                style["flex-wrap"] = "wrap"
+                fun KMutableProperty1<Insurance, String?>.bindTextView(label: String, marginRight: String? = "1em") =
+                    TextField(label).apply {
+                        binder.forField(this).bind(getter, setter)
+                        isReadOnly = true
+                        style["max-width"] = "100%"
+                        style["margin-right"] = marginRight
+                    }
+                add(
+                    Insurance::payerName.bindTextView("Payer Name").apply { style["flex-grow"] = "100" },
+                    Insurance::typeCode.bindTextView("Type"),
+                    Insurance::payerId.bindTextView("Payer ID"),
+                    Insurance::planCode.bindTextView("Plan Code", marginRight = null)
+                )
+            }
         }
         content += zmPayerId
         content += pokitDokPayer

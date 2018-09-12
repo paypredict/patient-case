@@ -73,7 +73,7 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
                 .map { it.key }
                 .toTypedArray())
         content.getColumnByKey("name").apply {
-            flexGrow = 2
+            flexGrow = 5
             setHeader(HorizontalLayout().apply {
                 isPadding = false
                 defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
@@ -81,6 +81,7 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
                 this += TextField().apply {
                     placeholder = "Find..."
                     valueChangeMode = ValueChangeMode.EAGER
+                    width = "32em"
                     addValueChangeListener {
                         filter = if (value.isNullOrBlank()) doc { } else doc {
                             doc[`$text`] = doc { doc[`$search`] = value }
