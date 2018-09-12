@@ -160,7 +160,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                         element.setAttribute("theme", "error primary")
                         addClickListener {
                             binder.readBean(
-                                Subscriber(
+                                (value ?: Subscriber()).copy(
                                     firstName = patient.opt("firstName"),
                                     lastName = patient.opt("lastName"),
                                     mi = patient.opt("middleInitials"),
