@@ -8,9 +8,9 @@ import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H2
+import com.vaadin.flow.component.html.Label
 import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
-import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
@@ -41,7 +41,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
 
         setItemLabelGenerator { it?.displayName }
         addValueChangeListener { event ->
-            pokitDokPayer.value = event?.value?.toTradingPartner()?.displayName ?: ""
+            pokitDokPayer.setPokitDokPayer(event?.value?.toTradingPartner())
         }
 
         binder
@@ -57,26 +57,38 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
             )
     }
 
-    private val pokitDokPayer = TextField("PokitDok Payer").apply {
-        width = "100%"
-        isReadOnly = true
-        suffixComponent = HorizontalLayout().apply {
+    private val pokitDokPayer = TextField("PokitDok Payer").also { field ->
+        field.width = "100%"
+        field.isReadOnly = true
+        field.suffixComponent = HorizontalLayout().apply {
             isPadding = false
             isSpacing = false
-            this += Button(VaadinIcon.EDIT.create()).apply {
-                element.setAttribute("theme", "icon small tertiary")
+            fun Button.withStyle(): Button = apply {
+                style["padding"] = "0"
+                style["color"] = "var(--lumo-contrast-60pct)"
+                element.setAttribute("theme", "icon small contrast tertiary")
+            }
+            this += Button(VaadinIcon.CLOSE.create()).withStyle().apply {
+                addClickListener {
+                    val zmPayerIdStr = zmPayerId.value?.zmPayerId
+                    if (zmPayerIdStr != null) {
+                        payersData.removeUsersMatchPayersRecord(zmPayerIdStr)
+                        field.setPokitDokPayer(value?.toTradingPartner())
+                    } else {
+                        zmPayerId.focus()
+                        field.prefixComponent = errorLabel("ZirMed Payer Required")
+                    }
+                }
+            }
+            this += Button(VaadinIcon.EDIT.create()).withStyle().apply {
                 addClickListener {
                     if (zmPayerId.value?.zmPayerId != null) {
                         selectPokitDokPayer()
                     } else {
                         zmPayerId.focus()
-                        Notification.show("ZirMed Payer Required")
+                        field.prefixComponent = errorLabel("ZirMed Payer Required")
                     }
-
                 }
-            }
-            this += Button(VaadinIcon.QUESTION_CIRCLE.create()).apply {
-                element.setAttribute("theme", "icon small tertiary")
             }
         }
     }
@@ -90,7 +102,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         set(new) {
             payerName.text = new?.payerName ?: ""
             zmPayerId.setItems(InsuranceItem.all)
-            pokitDokPayer.value = new?.toTradingPartner()?.displayName ?: ""
+            pokitDokPayer.setPokitDokPayer(new?.toTradingPartner())
             binder.readBean(new)
             field = new
         }
@@ -173,11 +185,11 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                             val zmPayerId = zmPayerId.value?.zmPayerId
                             if (zmPayerId != null) {
                                 val selected = grid.value
-                                payersData.updateUsersPayerIds(
-                                    pkdPayerId = selected?._id,
-                                    zmPayerId = zmPayerId
+                                payersData.updateUsersMatchPayersRecord(
+                                    zmPayerId = zmPayerId,
+                                    pkdPayerId = selected?._id
                                 )
-                                pokitDokPayer.value = value?.toTradingPartner()?.displayName ?: ""
+                                pokitDokPayer.setPokitDokPayer(value?.toTradingPartner())
                                 dialog.close()
                             }
                         }
@@ -195,5 +207,12 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         }
     }
 
+    private fun TextField.setPokitDokPayer(tradingPartner: PayersData.TradingPartner?) {
+        value = tradingPartner?.displayName ?: ""
+        prefixComponent = null
+    }
+
+
+    private fun errorLabel(text: String) = Label(text).apply { style["color"] = "red" }
 }
 

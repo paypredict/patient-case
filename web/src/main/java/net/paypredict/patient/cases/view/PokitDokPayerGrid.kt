@@ -184,7 +184,7 @@ data class TradingPartnerItem(
     @DataView("Name", order = 10)
     val name: String?,
 
-    @DataView("Name", order = 20)
+    @DataView("Payer ID", order = 20)
     val payerId: String?
 ) {
     companion object {

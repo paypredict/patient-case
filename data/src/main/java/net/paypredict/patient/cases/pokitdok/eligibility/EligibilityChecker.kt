@@ -258,7 +258,7 @@ class PayersData {
         return matchPayersByZmPayerId[zmPayerId]?._id
     }
 
-    fun updateUsersPayerIds(pkdPayerId: String?, zmPayerId: String) {
+    fun updateUsersMatchPayersRecord(zmPayerId: String, pkdPayerId: String?) {
         DBS.Collections.PPPayers.usersMatchPayers().updateOne(
             doc { doc["_id"] = zmPayerId },
             doc {
@@ -269,6 +269,11 @@ class PayersData {
             },
             UpdateOptions().upsert(true)
         )
+        usersData = UsersData()
+    }
+
+    fun removeUsersMatchPayersRecord(zmPayerId: String) {
+        DBS.Collections.PPPayers.usersMatchPayers().deleteOne(doc { doc["_id"] = zmPayerId })
         usersData = UsersData()
     }
 
