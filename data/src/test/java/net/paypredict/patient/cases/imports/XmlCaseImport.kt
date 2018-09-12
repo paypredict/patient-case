@@ -40,11 +40,11 @@ object XmlCaseImport {
         val casesRaw = DBS.Collections.casesRaw()
         val update = Document(
             `$set`, doc {
-                doc["date"] = Date(xmlFile.lastModified())
                 doc["case"] = case
                 doc["file"] = doc {
                     doc["name"] = xmlFile.name
                     doc["size"] = xmlFile.length().toInt()
+                    doc["date"] = Date(xmlFile.lastModified())
                 }
                 if (options.addRndStatus) {
                     doc["status"] = doc {
