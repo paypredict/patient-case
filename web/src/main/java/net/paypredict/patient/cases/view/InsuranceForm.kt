@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.view
 
+import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
@@ -7,6 +8,7 @@ import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H2
+import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.orderedlayout.FlexComponent
@@ -23,10 +25,13 @@ import kotlin.reflect.KMutableProperty1
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 9/5/2018.
  */
-class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
+class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), HasSize, ThemableLayout {
+
     private val payersData = PayersData()
 
     private var binder: Binder<Insurance> = Binder()
+
+    private val payerName = Span()
 
     private val zmPayerId: ComboBox<InsuranceItem?> = ComboBox<InsuranceItem?>("ZirMed Payer").apply {
         width = "100%"
@@ -83,6 +88,7 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
             binder.writeBean(res)
         }
         set(new) {
+            payerName.text = new?.payerName ?: ""
             zmPayerId.setItems(InsuranceItem.all)
             pokitDokPayer.value = new?.toTradingPartner()?.displayName ?: ""
             binder.readBean(new)
@@ -96,6 +102,15 @@ class InsuranceForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
         content.isPadding = false
         content.isSpacing = false
         content.width = "100%"
+
+        content += HorizontalLayout().apply {
+            isPadding = false
+            style["flex-wrap"] = "wrap"
+            defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
+            if (header != null) this += header
+            this += payerName
+        }
+
         if (false) {
             content += Div().apply {
                 width = "100%"

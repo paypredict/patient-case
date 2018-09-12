@@ -24,7 +24,8 @@ import kotlin.properties.Delegates
 @Route("eligibility")
 class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
     private lateinit var tabs: Tabs
-    private val insuranceForm = InsuranceForm().apply { width = "100%" }
+    private val insuranceForm =
+        InsuranceForm(sectionHeader("Insurance Payer")).apply { width = "100%" }
     private val subscriberForm = SubscriberForm()
     private val eligibilityCheckResTab = Tab("Eligibility")
     private val eligibilityCheckResView = EligibilityCheckResView().apply {
@@ -90,7 +91,6 @@ class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLay
         val inputTab = Tab("Subscriber")
         tabMap[inputTab] = VerticalLayout().apply {
             isPadding = false
-            this += sectionHeader("Insurance Payer")
             this += insuranceForm
             this += sectionHeader("Subscriber")
             this += subscriberForm
