@@ -4,7 +4,8 @@ import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
-import com.vaadin.flow.component.icon.VaadinIcon
+import com.vaadin.flow.component.dialog.Dialog
+import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import net.paypredict.patient.cases.data.DBS
@@ -36,9 +37,15 @@ class RequisitionsView(header: Component? = null) : Composite<VerticalLayout>(),
             .filter { it.opt<String>("category") == "Requisition" }
             .mapNotNull { it.opt<String>("fileName") }
 
-        fileNameList.forEach {
-            attachments += Button(it).apply {
+        fileNameList.forEach { fileName ->
+            attachments += Button(fileName).apply {
                 element.setAttribute("theme", "tertiary-inline")
+                addClickListener {
+                    Dialog().also { dialog ->
+                        dialog += H3("Cannot view requisitions yet")
+                        dialog.open()
+                    }
+                }
             }
         }
 
