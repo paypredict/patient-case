@@ -39,6 +39,7 @@ object UpdateCasesIssues {
                     casesIssues.insertOne(caseIssue.toDocument())
                     casesRaw.updateOne(caseIdFilter, doc {
                         doc[`$set`] = doc {
+                            doc["status.value"] = "ELIGIBILITY_PROBLEM"
                             doc["status.values.eligibility"] =
                                     Status("WARNING", "Primary Subscriber not found").toDocument()
                         }
@@ -70,6 +71,11 @@ object UpdateCasesIssues {
                         ))
                     )
                     casesIssues.insertOne(caseIssue.toDocument())
+                    casesRaw.updateOne(caseIdFilter, doc {
+                        doc[`$set`] = doc {
+                            doc["status.value"] = "SOLVED"
+                        }
+                    })
                 }
             }
         }
