@@ -3,6 +3,8 @@ package net.paypredict.patient.cases.view
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.dependency.HtmlImport
 import com.vaadin.flow.component.page.Push
+import com.vaadin.flow.router.BeforeEnterEvent
+import com.vaadin.flow.router.BeforeEnterObserver
 import com.vaadin.flow.router.PageTitle
 import com.vaadin.flow.router.Route
 
@@ -13,4 +15,7 @@ import com.vaadin.flow.router.Route
 @Route("")
 @Push
 @PageTitle("WorkList")
-class MainView : Composite<WorkListView>()
+class MainView : Composite<WorkListView>(), BeforeEnterObserver {
+    override fun beforeEnter(event: BeforeEnterEvent) =
+        checkUserOnBeforeEnterEvent<MainView>(event)
+}
