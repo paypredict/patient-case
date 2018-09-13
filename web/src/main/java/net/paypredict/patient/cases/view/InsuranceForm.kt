@@ -97,7 +97,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
 
     var value: Insurance? = null
         get() = (field ?: Insurance()).also { res ->
-            binder.writeBean(res)
+            binder.writeBeanIfValid(res)
         }
         set(new) {
             payerName.text = new?.payerName ?: ""

@@ -20,6 +20,7 @@ import com.vaadin.flow.data.binder.ValueContext
 import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.data.worklist.Person
 import net.paypredict.patient.cases.data.worklist.Subscriber
 import net.paypredict.patient.cases.data.worklist.formatAs
 import org.bson.Document
@@ -48,6 +49,34 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             )
     }
     private val genderItems = listOf("Male", "Female", "Unknown")
+    private val firstName = TextField("First Name").apply {
+        isRequired = true
+        binder
+            .forField(this)
+            .withValidator(fieldIsRequired)
+            .bind(
+                Subscriber::firstName.getter,
+                Subscriber::firstName.setter
+            )
+    }
+    private val lastName = TextField("Last Name").apply {
+        isRequired = true
+        binder
+            .forField(this)
+            .withValidator(fieldIsRequired)
+            .bind(
+                Subscriber::lastName.getter,
+                Subscriber::lastName.setter
+            )
+    }
+    private val mi = TextField("MI").apply {
+        binder
+            .forField(this)
+            .bind(
+                Subscriber::mi.getter,
+                Subscriber::mi.setter
+            )
+    }
     private val gender: ComboBox<String?> = ComboBox<String?>("Gender").apply {
         isRequired = true
         isAllowCustomValue = false
@@ -60,12 +89,35 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                 Subscriber::gender.setter
             )
     }
+    private val dob = DatePicker("Date Of Birth").apply {
+        isRequired = true
+        binder
+            .forField(this)
+            .withValidator(fieldIsRequired)
+            .bind(
+                { it.dobAsLocalDate },
+                { item: Subscriber?, value: LocalDate? ->
+                    item?.dob = value?.let { it formatAs Subscriber.dateFormat }
+                }
+            )
+    }
+    private val policyNumber = TextField("Policy #").apply {
+        isRequired = true
+        binder
+            .forField(this)
+            .withValidator(fieldIsRequired)
+            .bind(
+                Subscriber::policyNumber.getter,
+                Subscriber::policyNumber.setter
+            )
+    }
 
     var caseId: String? = null
-
     var value: Subscriber? = null
-        get() = (field ?: Subscriber()).also { res ->
-            binder.writeBean(res)
+        get() {
+            if (field == null) field = Subscriber()
+            binder.writeBeanIfValid(field)
+            return field
         }
         set(new) {
             relationshipCode.setItems(listOfNotNull(new?.relationshipCode))
@@ -90,49 +142,12 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                 }
             }
         }
-        content += TextField("First Name").apply {
-            isRequired = true
-            binder
-                .forField(this)
-                .withValidator(fieldIsRequired)
-                .bind(
-                    Subscriber::firstName.getter,
-                    Subscriber::firstName.setter
-                )
-        }
-        content += TextField("Last Name").apply {
-            isRequired = true
-            binder
-                .forField(this)
-                .withValidator(fieldIsRequired)
-                .bind(
-                    Subscriber::lastName.getter,
-                    Subscriber::lastName.setter
-                )
-        }
+        content += firstName
+        content += lastName
+        content += mi
         content += gender
-        content += DatePicker("Date Of Birth").apply {
-            isRequired = true
-            binder
-                .forField(this)
-                .withValidator(fieldIsRequired)
-                .bind(
-                    { it.dobAsLocalDate },
-                    { item: Subscriber?, value: LocalDate? ->
-                        item?.dob = value?.let { it formatAs Subscriber.dateFormat }
-                    }
-                )
-        }
-        content += TextField("Policy #").apply {
-            isRequired = true
-            binder
-                .forField(this)
-                .withValidator(fieldIsRequired)
-                .bind(
-                    Subscriber::policyNumber.getter,
-                    Subscriber::policyNumber.setter
-                )
-        }
+        content += dob
+        content += policyNumber
 
         content.setResponsiveSteps(
             FormLayout.ResponsiveStep("10em", 1),
@@ -158,16 +173,13 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                     this += Button("Cancel") { dialog.close() }
                     this += Button("Override").apply {
                         element.setAttribute("theme", "error primary")
-                        addClickListener {
-                            binder.readBean(
-                                (value ?: Subscriber()).copy(
-                                    firstName = patient.opt("firstName"),
-                                    lastName = patient.opt("lastName"),
-                                    mi = patient.opt("middleInitials"),
-                                    gender = patient.opt("gender"),
-                                    dob = patient.opt("dateOfBirth")
-                                )
-                            )
+                        addClickListener { _ ->
+                            firstName.value = patient.opt("firstName") ?: ""
+                            lastName.value = patient.opt("lastName") ?: ""
+                            mi.value = patient.opt("middleInitials") ?: ""
+                            gender.value = patient.opt("gender") ?: ""
+                            dob.value = patient.opt<String>("dateOfBirth")
+                                ?.let { LocalDate.parse(it, Person.dateFormat) }
                             dialog.close()
                         }
                     }

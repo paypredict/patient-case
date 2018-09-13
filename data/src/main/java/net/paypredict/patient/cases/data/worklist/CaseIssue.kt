@@ -189,6 +189,9 @@ data class Person(
     @DataView("MI")
     val mi: String? = null,
 
+    @DataView("Gender")
+    val gender: String? = null,
+
     @DataView("DOB")
     val dob: String? = null
 ) {
@@ -369,6 +372,7 @@ fun Document.toPerson(): Person =
         firstName = opt("firstName"),
         lastName = opt("lastName"),
         mi = opt("mi"),
+        gender = opt("gender"),
         dob = opt("dob")
     )
 
@@ -376,6 +380,7 @@ fun Person.toDocument(): Document = doc {
     doc["firstName"] = firstName
     doc["lastName"] = lastName
     doc["mi"] = mi
+    doc["gender"] = gender
     doc["dob"] = dob
 }
 

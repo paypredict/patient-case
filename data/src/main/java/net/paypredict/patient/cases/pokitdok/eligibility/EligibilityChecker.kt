@@ -27,11 +27,12 @@ class EligibilityChecker(private val issue: IssueEligibility) {
 
         val member = subscriber.run {
             EligibilityQuery.Member(
+                id = policyNumber ?: return EligibilityCheckRes.Error.subscriberFieldRequired("policyNumber"),
                 first_name = firstName ?: return EligibilityCheckRes.Error.subscriberFieldRequired("firstName"),
                 last_name = lastName ?: return EligibilityCheckRes.Error.subscriberFieldRequired("lastName"),
                 birth_date = dobAsLocalDate?.let { it formatAs EligibilityQuery.Member.dateFormat }
                     ?: return EligibilityCheckRes.Error.subscriberFieldRequired("dob"),
-                id = policyNumber ?: return EligibilityCheckRes.Error.subscriberFieldRequired("policyNumber")
+                gender = gender
             )
         }
 

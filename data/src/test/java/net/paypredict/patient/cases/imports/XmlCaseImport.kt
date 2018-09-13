@@ -292,6 +292,7 @@ object XmlCaseImport {
                                         firstName = patient("firstName"),
                                         lastName = patient("lastName"),
                                         mi = patient("middleInitials"),
+                                        gender = patient("gender"),
                                         dob = patient("dateOfBirth")
                                     ).toDocument()
 

@@ -23,10 +23,11 @@ data class EligibilityQuery(
     val trading_partner_id: String
 ) {
     data class Member(
+        val id: String,
         val first_name: String,
         val last_name: String,
         val birth_date: String,
-        val id: String
+        val gender: String?
     ) {
         companion object {
             val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -121,10 +122,13 @@ private fun EligibilityQuery.toJson(): JsonObject =
 
 private fun EligibilityQuery.Member.toJson(): JsonObject =
     Json.createObjectBuilder()
-        .add("birth_date", birth_date)
-        .add("first_name", first_name)
-        .add("last_name", last_name)
-        .add("id", id)
+        .also { builder ->
+            builder.add("id", id)
+            builder.add("first_name", first_name)
+            builder.add("last_name", last_name)
+            builder.add("birth_date", birth_date)
+            gender?.let { builder.add("gender", it) }
+        }
         .build()
 
 private fun EligibilityQuery.Provider.toJson(): JsonObject =
@@ -260,7 +264,8 @@ private object Conf {
         val provider: JsonObject = conf.getJsonObject("provider")
         EligibilityQuery.Provider(
             provider.getString("organization_name"),
-            provider.getString("npi"))
+            provider.getString("npi")
+        )
     }
 
     private val conf: JsonObject =
