@@ -4,6 +4,7 @@ import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.icon.Icon
 import com.vaadin.flow.component.icon.VaadinIcon
+import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.data.provider.DataProvider
 import com.vaadin.flow.data.provider.Query
 import com.vaadin.flow.data.provider.QuerySortOrder
@@ -19,8 +20,9 @@ import net.paypredict.patient.cases.data.worklist.CASE_STATUS_META_DATA_MAP
 import net.paypredict.patient.cases.data.worklist.CaseStatus
 import net.paypredict.patient.cases.data.worklist.Status
 import net.paypredict.patient.cases.data.worklist.toCaseStatus
+import net.paypredict.patient.cases.ifHasDocKey
+import net.paypredict.patient.cases.ifSortable
 import org.bson.Document
-import org.bson.conversions.Bson
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -31,7 +33,7 @@ import kotlin.reflect.jvm.javaType
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
-class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
+class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
     override fun initContent(): Grid<CaseStatus> =
         Grid(CaseStatus::class.java)
 
@@ -42,6 +44,9 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
         for (column in content.columns) {
             val meta = CASE_STATUS_META_DATA_MAP[column.key] ?: continue
             column.isVisible = meta.view.isVisible
+            column.flexGrow = meta.view.flexGrow
+            if (meta.view.sortable)
+                column.setSortProperty(meta.prop.name)
             when (meta.prop.returnType.javaType) {
                 Date::class.java -> {
                     column.isVisible = false
@@ -51,8 +56,9 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                             dateTimeFormat
                         )
                     ).apply {
-                        setHeader(meta.view.caption)
-                        setSortProperty(meta.prop.name)
+                        setHeader(meta.view.label)
+                        if (meta.view.sortable)
+                            setSortProperty(meta.prop.name)
                     }
                 }
                 Status::class.javaObjectType -> {
@@ -72,7 +78,9 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
                             },
                             { "" })
                     ).apply {
-                        setHeader(meta.view.caption)
+                        setHeader(meta.view.label)
+                        if (meta.view.sortable)
+                            setSortProperty(meta.prop.name)
                         flexGrow = 0
                         width = "75px"
                     }
@@ -107,6 +115,7 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
             { query: Query<CaseStatus, Unit> ->
                 collection()
                     .find(filter)
+                    .projection(projection)
                     .sort(query.toMongoSort())
                     .skip(query.offset)
                     .limit(query.limit)
@@ -134,25 +143,34 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>() {
     companion object {
         private val dateTimeFormat: DateTimeFormatter =
             DateTimeFormatter.ofPattern("MMM dd yyyy hh:mm")
+        private val projection =
+            doc {
+                for (metaData in CASE_STATUS_META_DATA_MAP.values) {
+                    metaData.view.ifHasDocKey { doc[it] = 1 }
+                }
+            }
 
         private fun collection() = DBS.Collections.casesRaw().apply {
-            createIndex(doc { doc["date"] = 1 })
-            createIndex(doc { doc["status.value"] = 1 })
+            for (metaData in CASE_STATUS_META_DATA_MAP.values) {
+                metaData.view.ifHasDocKey { docKey ->
+                    createIndex(doc { doc[docKey] = 1 })
+                }
+            }
         }
 
-        private fun Query<CaseStatus, *>.toMongoSort(): Bson? {
-            val sortOrders = if (sortOrders.isNotEmpty())
-                sortOrders else
-                listOf(QuerySortOrder("date", SortDirection.DESCENDING))
-            return Document().also { document ->
+        private fun Query<CaseStatus, *>.toMongoSort(): Document {
+            val sortOrders =
+                if (sortOrders.isNotEmpty())
+                    sortOrders else
+                    listOf(QuerySortOrder("date", SortDirection.DESCENDING))
+            return doc {
                 sortOrders.forEach { sortOrder: QuerySortOrder ->
-                    val docKey = CASE_STATUS_META_DATA_MAP[sortOrder.sorted]?.run {
-                        if (view.docKey.isNotBlank()) view.docKey else prop.name
-                    }
-                    document[docKey] = when (sortOrder.direction) {
-                        null,
-                        SortDirection.ASCENDING -> 1
-                        SortDirection.DESCENDING -> -1
+                    CASE_STATUS_META_DATA_MAP[sortOrder.sorted]?.view?.ifSortable { sortKey ->
+                        doc[sortKey] = when (sortOrder.direction) {
+                            null,
+                            SortDirection.ASCENDING -> 1
+                            SortDirection.DESCENDING -> -1
+                        }
                     }
                 }
             }

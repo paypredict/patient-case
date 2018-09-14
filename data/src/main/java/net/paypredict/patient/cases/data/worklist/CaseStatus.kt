@@ -23,25 +23,50 @@ data class CaseStatus(
     val _id: String,
 
     @set:Encode(DateToDateTimeBeanEncoder::class)
-    @DataView("Date.Time", order = 10, docKey = "file.date")
+    @DataView(
+        label = "Date.Time", order = 10,
+        docKey = "file.date"
+    )
     var date: Date?,
 
-    @DataView("Accession", order = 20)
+    @DataView(
+        label = "Accession", order = 20,
+        docKey = "case.Case.accessionNumber"
+    )
     var accession: String?,
 
-    @DataView("Claim", order = 30)
-    var claim: String?,
+    @DataView(
+        label = "Payer Name", order = 30,
+        flexGrow = 5,
+        docKey = "case.view.subscriber.payerName"
+    )
+    var payerName: String?,
 
-    @DataView("NPI", order = 40)
+    @DataView(
+        label = "NPI", order = 40,
+        docKey = "status.values.npi.value"
+    )
     var npi: Status?,
 
-    @DataView("Eligibility", order = 50)
+    @DataView(
+        label = "Eligibility", order = 50,
+        docKey = "status.values.eligibility",
+        srtKey = "status.values.eligibility.value"
+    )
     var eligibility: Status?,
 
-    @DataView("Address", order = 60)
+    @DataView(
+        label = "Address", order = 60,
+        docKey = "status.values.address",
+        srtKey = "status.values.address.value"
+    )
     var address: Status?,
 
-    @DataView("Expert", order = 70)
+    @DataView(
+        label = "Expert", order = 70,
+        docKey = "status.values.expert",
+        srtKey = "status.values.expert.value"
+    )
     var expert: Status?
 )
 
@@ -58,7 +83,7 @@ fun Document.toCaseStatus(): CaseStatus =
         _id = get("_id").toString(),
         date = opt<Date>("file", "date"),
         accession = opt("case", "Case", "accessionNumber"),
-        claim = opt("case", "Case", "SuperBillDetails", "claimNumber"),
+        payerName = opt("case", "view", "subscriber", "payerName"),
         npi = opt<Document>("status", "values", "npi")?.toStatus(),
         eligibility = opt<Document>("status", "values", "eligibility")?.toStatus(),
         address = opt<Document>("status", "values", "address")?.toStatus(),
@@ -85,7 +110,6 @@ var CaseStatus.statusValue: String?
             .firstOrNull() ?: return null
         return case.opt<String>("status", "value")
     }
-
     set(value) {
         DBS.Collections.casesRaw().updateOne(
             Document("_id", _id),

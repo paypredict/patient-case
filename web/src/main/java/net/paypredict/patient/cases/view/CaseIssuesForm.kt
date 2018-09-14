@@ -43,7 +43,7 @@ class CaseIssuesForm : Composite<Div>() {
 
     private fun update(new: CaseStatus?) {
         accession.value = new?.accession ?: ""
-        claim.value = new?.claim ?: ""
+        payerName.value = new?.payerName ?: ""
 
         val caseIssues = new?.let {
             DBS.Collections.casesIssues().find(Document("_id", it._id)).firstOrNull()?.toCaseIssue()
@@ -63,8 +63,8 @@ class CaseIssuesForm : Composite<Div>() {
         issueSolved.value = new?.statusValue == "SOLVED"
     }
 
+    private val payerName = TextField("Payer Name").apply { isReadOnly = true }
     private val accession = TextField("Accession").apply { isReadOnly = true }
-    private val claim = TextField("Claim ID").apply { isReadOnly = true }
 
     private val patientFirstName = TextField("Patient First Name").apply { isReadOnly = true }
     private val patientLastName = TextField("Patient Last Name").apply { isReadOnly = true }
@@ -105,15 +105,18 @@ class CaseIssuesForm : Composite<Div>() {
             setSizeUndefined()
             this += FormLayout().apply {
                 setResponsiveSteps(
-                    FormLayout.ResponsiveStep("0", 1),
-                    FormLayout.ResponsiveStep("32em", 2),
-                    FormLayout.ResponsiveStep("32em", 3),
+                    FormLayout.ResponsiveStep("8em", 1),
+                    FormLayout.ResponsiveStep("16em", 2),
+                    FormLayout.ResponsiveStep("24em", 3),
                     FormLayout.ResponsiveStep("32em", 4)
                 )
 
-                this += H2("Case Issues").apply { element.setAttribute("colspan", "2") }
+                this += H3("Case Issues").apply {
+                    style["margin-top"] = "0"
+                    style["white-space"] = "nowrap"
+                }
+                this += payerName.apply { element.setAttribute("colspan", "2") }
                 this += accession
-                this += claim
 
                 this += patientLastName
                 this += patientFirstName

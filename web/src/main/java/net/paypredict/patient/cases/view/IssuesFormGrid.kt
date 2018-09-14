@@ -71,7 +71,7 @@ class IssuesFormGrid<T : IssuesStatus>(
                         .of<T>(template)
                         .withProperty(name) { metaData.prop.get(it) }
                     addColumn(renderer).apply {
-                        setHeader(metaData.view.caption)
+                        setHeader(metaData.view.label)
                         flexGrow = metaData.view.flexGrow
                         isVisible = metaData.view.isVisible
                     }

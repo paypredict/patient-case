@@ -6,6 +6,7 @@ import net.paypredict.patient.cases.bson.`$set`
 import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.invoke
+import net.paypredict.patient.cases.data.opt
 import net.paypredict.patient.cases.data.worklist.*
 import org.bson.Document
 import org.bson.json.JsonMode
@@ -40,7 +41,7 @@ object XmlCaseImport {
         val casesRaw = DBS.Collections.casesRaw()
         val update = Document(
             `$set`, doc {
-                doc["case"] = case
+                doc["case"] = case.withView()
                 doc["file"] = doc {
                     doc["name"] = xmlFile.name
                     doc["size"] = xmlFile.length().toInt()
@@ -65,6 +66,17 @@ object XmlCaseImport {
             UpdateOptions().upsert(true)
         )
         return digest
+    }
+
+    private fun Document.withView(): Document = also { case ->
+        val subscribers = case.opt<List<*>>("Case", "SubscriberDetails", "Subscriber")
+            ?.filterIsInstance<Document>()
+        val subscriber = subscribers
+            ?.firstOrNull { it<String>("responsibilityCode") == "Primary" }
+            ?: subscribers?.firstOrNull()
+        case["view"] = doc {
+            doc["subscriber"] = subscriber
+        }
     }
 
     private val rnd: Random by lazy { Random() }

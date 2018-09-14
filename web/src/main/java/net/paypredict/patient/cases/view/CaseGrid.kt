@@ -42,7 +42,7 @@ class CaseGrid(
             column.isVisible = column.key in visibleColumns
             column.isSortable = column.key in sortableColumns
             val dataView = caseDataViewMap[column.key] ?: continue
-            column.setHeader(Span(dataView.caption).apply {
+            column.setHeader(Span(dataView.label).apply {
                 element.setAttribute("title", dataView.description)
             })
         }

@@ -3,6 +3,7 @@ package net.paypredict.patient.cases.view
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
+import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
@@ -11,6 +12,8 @@ import com.vaadin.flow.component.splitlayout.SplitLayout
 class WorkListView : Composite<SplitLayout>() {
     private val grid = CaseStatusGrid().apply {
         height = "100%"
+        element.style["border-left"] = "none"
+        element.style["border-right"] = "none"
         filter(viewOnlyUnsolved = true)
     }
     private val form = CaseIssuesForm().apply {
@@ -32,14 +35,17 @@ class WorkListView : Composite<SplitLayout>() {
         }
 
         val layoutLeft = VerticalLayout().apply {
+            isPadding = false
             setSizeFull()
             this += HorizontalLayout().apply {
+                isPadding = true
                 defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
                 width = "100%"
                 this += viewOnlyUnsolved
                 this += Button("Archive All")
                 this += Button("History")
                 this += Button("Subscribe")
+                this += Button("Filter", VaadinIcon.SEARCH.create())
             }
             this += grid
         }
