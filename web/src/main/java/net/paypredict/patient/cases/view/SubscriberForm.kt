@@ -101,7 +101,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                 }
             )
     }
-    private val policyNumber = TextField("Policy #").apply {
+    private val policyNumber = TextField("Member ID").apply {
         isRequired = true
         binder
             .forField(this)
