@@ -1,5 +1,7 @@
 package net.paypredict.patient.cases
 
+import com.mongodb.ServerAddress
+import net.paypredict.patient.cases.data.opt
 import org.bson.Document
 import java.io.File
 
@@ -17,6 +19,12 @@ object PatientCases {
             Document()
     }
 
-    fun readConfDoc(): Document =
-        Document.parse(conf.toJson())
+    object mongo {
+        val host: String by lazy { conf.opt<String>("mongo", "host") ?: ServerAddress.defaultHost() }
+        val port: Int by lazy { (conf.opt<Number>("mongo", "port") ?:  ServerAddress.defaultPort()).toInt() }
+
+        val serverAddress: ServerAddress by lazy {
+            ServerAddress(host, port)
+        }
+    }
 }

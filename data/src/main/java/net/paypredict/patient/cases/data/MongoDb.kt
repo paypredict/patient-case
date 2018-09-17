@@ -20,56 +20,49 @@ import kotlin.concurrent.withLock
  * Created by alexei.vylegzhanin@gmail.com on 8/12/2018.
  */
 object DBS {
-    fun ptn(): MongoDatabase = mongoClient.getDatabase(databaseName)
     fun orders(): MongoDatabase = mongoClient.getDatabase("orders")
     fun pokitDok(): MongoDatabase = mongoClient.getDatabase("pokitDok")
+    fun nppes(): MongoDatabase = mongoClient.getDatabase("nppes")
+    fun pipl(): MongoDatabase = mongoClient.getDatabase("pipl")
     fun ppPayers(): MongoDatabase = mongoClient.getDatabase("ppPayers")
     fun smartyStreets(): MongoDatabase = mongoClient.getDatabase("smartyStreets")
 
     object Collections {
         fun cases(): MongoCollection<Document> =
-            ptn().getCollection("cases")
+            orders().getCollection("cases")
 
         fun casesRaw(): MongoCollection<Document> =
-            ptn().getCollection("casesRaw")
+            orders().getCollection("casesRaw")
+
         fun casesIssues(): MongoCollection<Document> =
-            ptn().getCollection("casesIssues")
+            orders().getCollection("casesIssues")
 
         fun tradingPartners(): MongoCollection<Document> =
             pokitDok().getCollection("tradingPartners")
+
         fun eligibility(): MongoCollection<Document> =
             pokitDok().getCollection("eligibility")
+
+        fun npiRegistry(): MongoCollection<Document> =
+            nppes().getCollection("npiRegistry")
 
         object PPPayers {
             fun lookupPkd(): MongoCollection<Document> =
                 ppPayers().getCollection("lookupPkd")
+
             fun zirmedPayers(): MongoCollection<Document> =
                 ppPayers().getCollection("zirmedPayers")
+
             fun matchPayers(): MongoCollection<Document> =
                 ppPayers().getCollection("matchPayers")
+
             fun usersMatchPayers(): MongoCollection<Document> =
                 ppPayers().getCollection("usersMatchPayers")
         }
     }
 
-    private val mongoConf : Document by lazy {
-        (PatientCases.readConfDoc()["mongo"] as? Document) ?: Document()
-    }
-
-
-    private val address: ServerAddress by lazy {
-        ServerAddress(
-            mongoConf["host"] as? String ?: ServerAddress.defaultHost(),
-            (mongoConf["port"] as? Number ?: ServerAddress.defaultPort()).toInt()
-        )
-    }
-
     private val mongoClient: MongoClient by lazy {
-        MongoClient(address)
-    }
-
-    private val databaseName: String  by lazy {
-        mongoConf["db"] as? String ?: "ptn"
+        MongoClient(PatientCases.mongo.serverAddress)
     }
 
     fun addShutdownListener(shutdownListener: () -> Unit) = lock.withLock {

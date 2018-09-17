@@ -56,16 +56,26 @@ interface IssuesClass<T : IssuesStatus> {
 @VaadinBean
 data class IssueNPI(
     @DataView("Status", order = 10)
-    override var status: String?,
+    override var status: String? = null,
 
     @DataView("NPI", order = 20)
-    var npi: String?,
+    var npi: String? = null,
 
     @DataView("First Name", order = 30)
-    var firstName: String?,
+    var firstName: String? = null,
 
     @DataView("Last Name", order = 40)
-    var lastName: String?
+    var lastName: String? = null,
+
+    @DataView("MI", order = 40)
+    var mi: String? = null,
+
+    @DataView("Original", order = 50, isVisible = false)
+    var original: IssueNPI? = null,
+
+    @DataView("Error", order = 60, isVisible = false)
+    var error: String? = null
+
 ) : IssuesStatus {
     companion object : IssuesClass<IssueNPI> {
         override val caption = "Physician NPI"
@@ -297,14 +307,20 @@ private fun Document.toIssueNPI(): IssueNPI =
         status = opt("status"),
         npi = opt("npi"),
         firstName = opt("firstName"),
-        lastName = opt("lastName")
+        lastName = opt("lastName"),
+        mi = opt("mi"),
+        original = opt<Document>("original")?.toIssueNPI(),
+        error = opt("error")
     )
 
 private fun IssueNPI.toDocument(): Document = doc {
-    doc["status"] = status
+    opt("status", status)
     doc["npi"] = npi
     doc["firstName"] = firstName
     doc["lastName"] = lastName
+    doc["mi"] = mi
+    opt("original", original?.toDocument())
+    opt("error", error)
 }
 
 

@@ -21,7 +21,7 @@ object PiplApiTestAddress {
     @JvmStatic
     fun main(args: Array<String>) {
         val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
-        val collection = DBS.ptn().getCollection("piplTestAddress")
+        val collection = DBS.pipl().getCollection("piplTestAddress")
         val lines = File(args.last()).readLines()
         val headers = lines
             .first()

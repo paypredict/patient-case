@@ -50,7 +50,11 @@ inline fun <reified T> Document.opt(vararg path: String): T? {
 inline operator fun <reified T> Document?.invoke(vararg path: String): T? =
     this?.opt(*path)
 
-class DocBuilder(val doc: Document)
+class DocBuilder(val doc: Document) {
+    fun opt(key: String, value: Any?) {
+        if (value != null) doc[key] = value
+    }
+}
 
 fun doc(builder: DocBuilder.() -> Unit = {}): Document =
     DocBuilder(Document()).apply(builder).doc

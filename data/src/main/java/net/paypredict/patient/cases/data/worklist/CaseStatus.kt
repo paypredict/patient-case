@@ -43,27 +43,33 @@ data class CaseStatus(
     var payerName: String?,
 
     @DataView(
-        label = "NPI", order = 40,
+        label = "Problems", order = 40,
+        docKey = "status.problems"
+    )
+    var problems: Int?,
+
+    @DataView(
+        label = "NPI", order = 50,
         docKey = "status.values.npi.value"
     )
     var npi: Status?,
 
     @DataView(
-        label = "Eligibility", order = 50,
+        label = "Eligibility", order = 60,
         docKey = "status.values.eligibility",
         srtKey = "status.values.eligibility.value"
     )
     var eligibility: Status?,
 
     @DataView(
-        label = "Address", order = 60,
+        label = "Address", order = 70,
         docKey = "status.values.address",
         srtKey = "status.values.address.value"
     )
     var address: Status?,
 
     @DataView(
-        label = "Expert", order = 70,
+        label = "Expert", order = 80,
         docKey = "status.values.expert",
         srtKey = "status.values.expert.value"
     )
@@ -84,6 +90,7 @@ fun Document.toCaseStatus(): CaseStatus =
         date = opt<Date>("file", "date"),
         accession = opt("case", "Case", "accessionNumber"),
         payerName = opt("case", "view", "subscriber", "payerName"),
+        problems =  opt("status", "problems"),
         npi = opt<Document>("status", "values", "npi")?.toStatus(),
         eligibility = opt<Document>("status", "values", "eligibility")?.toStatus(),
         address = opt<Document>("status", "values", "address")?.toStatus(),
