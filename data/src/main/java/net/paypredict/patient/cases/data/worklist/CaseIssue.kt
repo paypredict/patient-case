@@ -55,13 +55,13 @@ interface IssuesClass<T : IssuesStatus> {
 
 @VaadinBean
 data class IssueNPI(
-    @DataView("Status", order = 10)
+    @DataView("Status", flexGrow = 1, order = 10)
     override var status: String? = null,
 
-    @DataView("NPI", order = 20)
+    @DataView("NPI", flexGrow = 1, order = 20)
     var npi: String? = null,
 
-    @DataView("Name", order = 30)
+    @DataView("Name", flexGrow = 3, order = 30)
     var name: Person? = null,
 
     @DataView("Taxonomies", order = 200, isVisible = false)
@@ -75,7 +75,7 @@ data class IssueNPI(
 
 ) : IssuesStatus {
 
-    @DataView("Taxonomy", order = 40)
+    @DataView("Taxonomy", flexGrow = 3, order = 40)
     val primaryTaxonomy: Taxonomy?
         get() = taxonomies.firstOrNull { it.primary == true }
 
