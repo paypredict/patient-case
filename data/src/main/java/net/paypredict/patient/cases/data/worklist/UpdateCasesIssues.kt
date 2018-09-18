@@ -3,7 +3,7 @@ package net.paypredict.patient.cases.data.worklist
 import com.mongodb.client.MongoCollection
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistry
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
-import net.paypredict.patient.cases.bson.`$exists`
+import net.paypredict.patient.cases.bson.`$ne`
 import net.paypredict.patient.cases.bson.`$set`
 import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.doc
@@ -19,7 +19,7 @@ import org.bson.Document
 fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     val casesRaw = DBS.Collections.casesRaw()
     val casesIssues = DBS.Collections.casesIssues()
-    val filter = doc { doc["status.problems"] = doc { doc[`$exists`] = false } }
+    val filter = doc { doc["status.problems"] = doc { doc[`$ne`] = 0 } }
     for (case in casesRaw.find(filter)) {
         IssuesChecker(casesRaw, casesIssues, case).check()
         if (isInterrupted()) break

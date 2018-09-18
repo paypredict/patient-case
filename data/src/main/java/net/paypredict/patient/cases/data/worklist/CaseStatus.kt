@@ -44,7 +44,8 @@ data class CaseStatus(
 
     @DataView(
         label = "Problems", order = 40,
-        docKey = "status.problems"
+        docKey = "status.problems",
+        isVisible = false
     )
     var problems: Int?,
 
@@ -90,7 +91,7 @@ fun Document.toCaseStatus(): CaseStatus =
         date = opt<Date>("file", "date"),
         accession = opt("case", "Case", "accessionNumber"),
         payerName = opt("case", "view", "subscriber", "payerName"),
-        problems =  opt("status", "problems"),
+        problems = opt("status", "problems"),
         npi = opt<Document>("status", "values", "npi")?.toStatus(),
         eligibility = opt<Document>("status", "values", "eligibility")?.toStatus(),
         address = opt<Document>("status", "values", "address")?.toStatus(),
