@@ -77,7 +77,7 @@ class IssuesFormGrid<T : IssuesStatus>(
                                             <span>Primary: </span>
                                             <span>[[$itemName.${IssueNPI.Taxonomy::code.name}]]</span>
                                             <span> - </span>
-                                            <span>[[$itemName.${IssueNPI.Taxonomy::descr.name}]]</span>
+                                            <span>[[$itemName.${IssueNPI.Taxonomy::desc.name}]]</span>
                                         </div>
                                     </template>
                                 </dom-if>

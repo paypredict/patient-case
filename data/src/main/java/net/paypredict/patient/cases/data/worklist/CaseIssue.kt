@@ -84,7 +84,7 @@ data class IssueNPI(
         val primary: Boolean? = null,
         val code: String? = null,
         val license: String? = null,
-        val descr: String? = null,
+        val desc: String? = null,
         val state: String? = null
     )
 
@@ -359,7 +359,7 @@ fun Document.toTaxonomy(): IssueNPI.Taxonomy =
         primary = opt("primary"),
         code = opt("code"),
         license = opt("license"),
-        descr = opt("descr"),
+        desc = opt("desc"),
         state = opt("state")
     )
 
@@ -367,7 +367,7 @@ fun IssueNPI.Taxonomy.toDocument(): Document = doc {
     opt("primary", primary)
     opt("code", code)
     opt("license", license)
-    opt("descr", descr)
+    opt("desc", desc)
     opt("state", state)
 }
 
