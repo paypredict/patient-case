@@ -70,6 +70,9 @@ data class IssueNPI(
     @DataView("MI", order = 40)
     var mi: String? = null,
 
+    @DataView("Taxonomies", order = 50, isVisible = false)
+    var taxonomies: List<Taxonomy> = emptyList(),
+
     @DataView("Original", order = 50, isVisible = false)
     var original: IssueNPI? = null,
 
@@ -77,12 +80,29 @@ data class IssueNPI(
     var error: String? = null
 
 ) : IssuesStatus {
+
+    data class Taxonomy(
+        val primary: Boolean? = null,
+        val code: String? = null,
+        val license: String? = null,
+        val descr: String? = null,
+        val state: String? = null
+    )
+
     companion object : IssuesClass<IssueNPI> {
         override val caption = "Physician NPI"
         override val beanType = IssueNPI::class.java
         override val metaData = metaDataMap<IssueNPI>()
     }
 }
+
+fun IssueNPI.nameEquals(other: IssueNPI, ignoreCase: Boolean = true, compareMI: Boolean = true): Boolean {
+    if (!(firstName ?: "").equals(other.firstName ?: "", ignoreCase = ignoreCase)) return false
+    if (!(lastName ?: "").equals(other.lastName ?: "", ignoreCase = ignoreCase)) return false
+    if (compareMI && !(mi ?: "").equals(other.mi ?: "", ignoreCase = ignoreCase)) return false
+    return true
+}
+
 
 @VaadinBean
 data class IssueEligibility(
@@ -302,7 +322,7 @@ fun CaseIssue.toDocument(): Document = doc {
     }
 }
 
-private fun Document.toIssueNPI(): IssueNPI =
+fun Document.toIssueNPI(): IssueNPI =
     IssueNPI(
         status = opt("status"),
         npi = opt("npi"),
@@ -310,17 +330,42 @@ private fun Document.toIssueNPI(): IssueNPI =
         lastName = opt("lastName"),
         mi = opt("mi"),
         original = opt<Document>("original")?.toIssueNPI(),
+        taxonomies = opt<List<*>>("taxonomies")
+            ?.asSequence()
+            ?.filterIsInstance<Document>()
+            ?.map { it.toTaxonomy() }
+            ?.toList()
+            ?: emptyList(),
         error = opt("error")
     )
 
-private fun IssueNPI.toDocument(): Document = doc {
+fun IssueNPI.toDocument(): Document = doc {
     opt("status", status)
     doc["npi"] = npi
     doc["firstName"] = firstName
     doc["lastName"] = lastName
     doc["mi"] = mi
     opt("original", original?.toDocument())
+    opt("taxonomies", taxonomies.map { it.toDocument() })
     opt("error", error)
+}
+
+
+fun Document.toTaxonomy(): IssueNPI.Taxonomy =
+    IssueNPI.Taxonomy(
+        primary = opt("primary"),
+        code = opt("code"),
+        license = opt("license"),
+        descr = opt("descr"),
+        state = opt("state")
+    )
+
+fun IssueNPI.Taxonomy.toDocument(): Document = doc {
+    opt("primary", primary)
+    opt("code", code)
+    opt("license", license)
+    opt("descr", descr)
+    opt("state", state)
 }
 
 

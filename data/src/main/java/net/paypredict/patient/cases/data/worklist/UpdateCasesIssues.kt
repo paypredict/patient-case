@@ -65,7 +65,7 @@ private class IssuesChecker(
         })
     }
 
-    private class CheckingException(override val message: String) : Exception()
+    private class CheckingException(override val message: String, var status: String = "ERROR") : Exception()
 
     private fun checkNPI() {
         val provider = case<Document>("case", "Case", "OrderingProvider", "Provider")
@@ -86,7 +86,7 @@ private class IssuesChecker(
                 if (npi == null) throw CheckingException("Case Provider npi in null")
 
                 val npiRes = try {
-                    NpiRegistry(npi)
+                    NpiRegistry.find(npi)
                 } catch (e: NpiRegistryException) {
                     throw CheckingException(e.message)
                 }
@@ -104,16 +104,22 @@ private class IssuesChecker(
                 apiNPI.firstName = basic<String>("first_name")
                 apiNPI.lastName = basic<String>("last_name")
                 apiNPI.mi = basic<String>("middle_name")
+                apiNPI.taxonomies = res<List<*>>("taxonomies")
+                    ?.asSequence()
+                    ?.filterIsInstance<Document>()
+                    ?.map { it.toTaxonomy() }
+                    ?.toList()
+                        ?: emptyList()
 
-                if (apiNPI != originalNPI)
-                    throw CheckingException("apiNPI != providerNPI")
+                if (!apiNPI.nameEquals(originalNPI))
+                    throw CheckingException("apiNPI != providerNPI", status = "WARNING")
 
             } catch (e: CheckingException) {
-                apiNPI.status = "ERROR"
+                apiNPI.status = e.status
                 apiNPI.error = e.message
                 apiNPI.original = originalNPI
                 statusProblems += 1
-                statusValues["status.values.npi"] = Status("ERROR", e.message).toDocument()
+                statusValues["status.values.npi"] = Status(e.status, e.message).toDocument()
             }
             caseIssue = caseIssue.copy(npi = listOf(apiNPI))
         }
