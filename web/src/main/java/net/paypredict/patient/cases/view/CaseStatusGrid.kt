@@ -13,6 +13,8 @@ import com.vaadin.flow.data.renderer.IconRenderer
 import com.vaadin.flow.data.renderer.LocalDateTimeRenderer
 import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.shared.Registration
+import net.paypredict.patient.cases.bson.`$and`
+import net.paypredict.patient.cases.bson.`$gt`
 import net.paypredict.patient.cases.bson.`$ne`
 import net.paypredict.patient.cases.data.DBS
 import net.paypredict.patient.cases.data.doc
@@ -96,7 +98,10 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
     ) {
         filter = when {
             viewOnlyUnsolved -> doc {
-                doc["status.value"] = doc { doc[`$ne`] = "SOLVED" }
+                doc[`$and`] = listOf(
+                    doc { doc["status.problems"] = doc { doc[`$gt`] = 0 } },
+                    doc { doc["status.value"] = doc { doc[`$ne`] = "SOLVED" } }
+                )
             }
             else -> doc { }
         }
