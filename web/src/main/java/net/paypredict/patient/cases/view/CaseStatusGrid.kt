@@ -72,7 +72,7 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
                                     "AUTO_FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
                                     "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
                                     "PASS" -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
-                                    null -> Icon(VaadinIcon.BAN).apply { color = "lightgray" }
+                                    null -> Icon(VaadinIcon.BAN).apply { isVisible = false }
                                     else -> Icon(VaadinIcon.BAN).apply { color = "red" }
                                 }
                             },
