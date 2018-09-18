@@ -422,12 +422,12 @@ private fun Document.toSubscriber(): Subscriber =
 private fun Subscriber.toDocument(): Document = doc {
     doc["firstName"] = firstName
     doc["lastName"] = lastName
-    doc["mi"] = mi
-    doc["gender"] = gender
-    doc["dob"] = dob
-    doc["groupName"] = groupName
-    doc["groupId"] = groupId
-    doc["relationshipCode"] = relationshipCode
+    opt("mi", mi)
+    opt("gender", gender)
+    opt("dob", dob)
+    opt("groupName", groupName)
+    opt("groupId", groupId)
+    opt("relationshipCode", relationshipCode)
     doc["policyNumber"] = policyNumber
 }
 
@@ -443,9 +443,9 @@ fun Document.toPerson(): Person =
 fun Person.toDocument(): Document = doc {
     doc["firstName"] = firstName
     doc["lastName"] = lastName
-    doc["mi"] = mi
-    doc["gender"] = gender
-    doc["dob"] = dob
+    opt("mi", mi)
+    opt("gender", gender)
+    opt("dob", dob)
 }
 
 private fun Document.toIssueAddress(): IssueAddress =
