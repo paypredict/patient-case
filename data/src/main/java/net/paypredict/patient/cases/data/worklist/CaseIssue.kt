@@ -89,7 +89,7 @@ data class IssueNPI(
     )
 
     companion object : IssuesClass<IssueNPI> {
-        override val caption = "Physician NPI"
+        override val caption = "Referring Provider"
         override val beanType = IssueNPI::class.java
         override val metaData = metaDataMap<IssueNPI>()
     }

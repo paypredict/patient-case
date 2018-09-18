@@ -116,7 +116,7 @@ private class IssuesChecker(
                         ?: emptyList()
 
                 if (!apiNPI.nameEquals(originalNPI))
-                    throw CheckingException("apiNPI != providerNPI", status = "WARNING")
+                    throw CheckingException("apiNPI != providerNPI", status = "Name Updated")
 
             } catch (e: CheckingException) {
                 apiNPI.status = e.status
