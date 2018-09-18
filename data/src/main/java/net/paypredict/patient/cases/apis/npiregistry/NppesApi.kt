@@ -24,6 +24,7 @@ object NpiRegistry {
             throw NpiRegistryException("NpiRegistry API isn't enabled")
         val connection: HttpURLConnection =
             URL("${Conf.npiRegistryUrl}?number=$npi").openConnection() as HttpURLConnection
+        connection.connect()
         if (connection.responseCode != 200)
             throw NpiRegistryException("invalid connection.responseCode: " + connection.responseCode)
 
@@ -59,5 +60,5 @@ private object Conf {
     val enabled: Boolean by lazy { conf.opt<Boolean>("enabled") ?: true }
 
     val npiRegistryUrl: String by lazy { conf.opt<String>("npiRegistryUrl")
-        ?: "https://npiregistry.cms.hhs.gov/api/resultsDemo2" }
+        ?: "https://npiregistry.cms.hhs.gov/api/resultsDemo2/" }
 }
