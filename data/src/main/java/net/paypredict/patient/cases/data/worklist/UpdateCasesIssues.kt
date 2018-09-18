@@ -77,9 +77,11 @@ private class IssuesChecker(
             val npi = provider<String>("npi")
             val originalNPI = IssueNPI(
                 npi = npi,
-                firstName = provider<String>("firstName"),
-                lastName = provider<String>("lastName"),
-                mi = provider<String>("middleInitials")
+                name = Person(
+                    firstName = provider<String>("firstName"),
+                    lastName = provider<String>("lastName"),
+                    mi = provider<String>("middleInitials")
+                )
             )
             val apiNPI = IssueNPI(npi = npi)
             try {
@@ -101,9 +103,11 @@ private class IssuesChecker(
 
                 val basic = res<Document>("basic")
 
-                apiNPI.firstName = basic<String>("first_name")
-                apiNPI.lastName = basic<String>("last_name")
-                apiNPI.mi = basic<String>("middle_name")
+                apiNPI.name = Person(
+                    firstName = basic<String>("first_name"),
+                    lastName = basic<String>("last_name"),
+                    mi = basic<String>("middle_name")
+                )
                 apiNPI.taxonomies = res<List<*>>("taxonomies")
                     ?.asSequence()
                     ?.filterIsInstance<Document>()

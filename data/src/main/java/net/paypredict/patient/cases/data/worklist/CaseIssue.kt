@@ -61,26 +61,25 @@ data class IssueNPI(
     @DataView("NPI", order = 20)
     var npi: String? = null,
 
-    @DataView("First Name", order = 30)
-    var firstName: String? = null,
+    @DataView("Name", order = 30)
+    var name: Person? = null,
 
-    @DataView("Last Name", order = 40)
-    var lastName: String? = null,
-
-    @DataView("MI", order = 40)
-    var mi: String? = null,
-
-    @DataView("Taxonomies", order = 50, isVisible = false)
+    @DataView("Taxonomies", order = 200, isVisible = false)
     var taxonomies: List<Taxonomy> = emptyList(),
 
-    @DataView("Original", order = 50, isVisible = false)
+    @DataView("Original", order = 201, isVisible = false)
     var original: IssueNPI? = null,
 
-    @DataView("Error", order = 60, isVisible = false)
+    @DataView("Error", order = 202, isVisible = false)
     var error: String? = null
 
 ) : IssuesStatus {
 
+    @DataView("Taxonomy", order = 40)
+    val primaryTaxonomy: Taxonomy?
+        get() = taxonomies.firstOrNull { it.primary == true }
+
+    @VaadinBean
     data class Taxonomy(
         val primary: Boolean? = null,
         val code: String? = null,
@@ -97,9 +96,9 @@ data class IssueNPI(
 }
 
 fun IssueNPI.nameEquals(other: IssueNPI, ignoreCase: Boolean = true, compareMI: Boolean = true): Boolean {
-    if (!(firstName ?: "").equals(other.firstName ?: "", ignoreCase = ignoreCase)) return false
-    if (!(lastName ?: "").equals(other.lastName ?: "", ignoreCase = ignoreCase)) return false
-    if (compareMI && !(mi ?: "").equals(other.mi ?: "", ignoreCase = ignoreCase)) return false
+    if (!(name?.firstName ?: "").equals(other.name?.firstName ?: "", ignoreCase = ignoreCase)) return false
+    if (!(name?.lastName ?: "").equals(other.name?.lastName ?: "", ignoreCase = ignoreCase)) return false
+    if (compareMI && !(name?.mi ?: "").equals(other.name?.mi ?: "", ignoreCase = ignoreCase)) return false
     return true
 }
 
@@ -293,20 +292,28 @@ fun Document.toCaseIssue(): CaseIssue =
         time = opt<Date>("time"),
         patient = opt<Document>("patient")?.toPerson(),
         npi = opt<List<*>>("issue", "npi")
+            ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueNPI() }
+            ?.toList()
             ?: emptyList(),
         eligibility = opt<List<*>>("issue", "eligibility")
+            ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueEligibility() }
+            ?.toList()
             ?: emptyList(),
         address = opt<List<*>>("issue", "address")
+            ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueAddress() }
+            ?.toList()
             ?: emptyList(),
         expert = opt<List<*>>("issue", "expert")
+            ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueExpert() }
+            ?.toList()
             ?: emptyList()
     )
 
@@ -326,9 +333,7 @@ fun Document.toIssueNPI(): IssueNPI =
     IssueNPI(
         status = opt("status"),
         npi = opt("npi"),
-        firstName = opt("firstName"),
-        lastName = opt("lastName"),
-        mi = opt("mi"),
+        name = opt<Document>("name")?.toPerson(),
         original = opt<Document>("original")?.toIssueNPI(),
         taxonomies = opt<List<*>>("taxonomies")
             ?.asSequence()
@@ -342,9 +347,7 @@ fun Document.toIssueNPI(): IssueNPI =
 fun IssueNPI.toDocument(): Document = doc {
     opt("status", status)
     doc["npi"] = npi
-    doc["firstName"] = firstName
-    doc["lastName"] = lastName
-    doc["mi"] = mi
+    doc["name"] = name?.toDocument()
     opt("original", original?.toDocument())
     opt("taxonomies", taxonomies.map { it.toDocument() })
     opt("error", error)

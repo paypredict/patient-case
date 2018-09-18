@@ -63,6 +63,23 @@ class IssuesFormGrid<T : IssuesStatus>(
                                     <span title="Policy Number">[[$itemName.${Subscriber::policyNumber.name}]]</span>
                                 </div>
                                 """
+                            IssueNPI::name -> """
+                                <div class='overflow-ellipsis'>
+                                    <span title="First Name">[[$itemName.${Person::firstName.name}]]</span>
+                                    <span title="Last Name">[[$itemName.${Person::lastName.name}]]</span>
+                                    <span title="MI">[[$itemName.${Person::mi.name}]]</span>
+                                </div>
+                                """
+                            IssueNPI::primaryTaxonomy -> """
+                                <div class='overflow-ellipsis'>
+                                    <dom-if if="{{{$itemName}}">
+                                        <span>Primary: </span>
+                                        <span>[[$itemName.${IssueNPI.Taxonomy::code.name}]]</span>
+                                        <span> - </span>
+                                        <span>[[$itemName.${IssueNPI.Taxonomy::descr.name}]]</span>
+                                    </dom-if>
+                                </div>
+                                """
                             else -> """
                                 <div class='overflow-ellipsis'>[[$itemName]]</div>
                                 """
