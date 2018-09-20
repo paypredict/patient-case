@@ -41,7 +41,7 @@ data class CaseIssue(
     @DataView("Address", order = 50)
     var address: List<IssueAddress> = emptyList(),
 
-    @DataView("Expert", order = 60)
+    @DataView("AI", order = 60)
     var expert: List<IssueExpert> = emptyList()
 )
 

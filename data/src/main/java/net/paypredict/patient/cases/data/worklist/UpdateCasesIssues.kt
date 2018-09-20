@@ -8,6 +8,7 @@ import com.smartystreets.api.us_street.Lookup
 import com.smartystreets.api.us_street.MatchType
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistry
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
+import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
 import net.paypredict.patient.cases.apis.smartystreets.smartyStreetsApiCredentials
 import net.paypredict.patient.cases.bson.`$exists`
@@ -221,11 +222,22 @@ private class IssuesChecker(
                 }
             }
 
-            val footNoteSet = candidate.analysis.footNoteSet
-            if (footNoteSet.isNotEmpty())
-                throw CheckingException("Address has footnotes", status = "WARNING")
+            val maxFootNote = candidate.analysis.footNoteSet.asSequence().maxBy { it.level }
+            when (maxFootNote?.level) {
+                FootNote.Level.ERROR,
+                FootNote.Level.WARNING -> {
+                    issue.status = maxFootNote.level.name
+                    statusValues["status.values.address"] = Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
+                    statusProblems += 1
+                }
+                FootNote.Level.INFO -> {
+                    issue.status = maxFootNote.level.name
+                    statusValues["status.values.address"] = Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
+                }
+                null ->
+                    original = null
+            }
 
-            original = null
         } catch (x: Throwable) {
             val e = when (x) {
                 is BadRequestException -> CheckingException("BadRequest: " + x.message, "ERROR")

@@ -70,7 +70,7 @@ data class CaseStatus(
     var address: Status?,
 
     @DataView(
-        label = "Expert", order = 80,
+        label = "AI", order = 80,
         docKey = "status.values.expert",
         srtKey = "status.values.expert.value"
     )

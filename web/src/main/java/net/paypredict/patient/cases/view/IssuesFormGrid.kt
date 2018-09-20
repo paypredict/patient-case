@@ -82,17 +82,6 @@ class IssuesFormGrid<T : IssuesStatus>(
                                     </template>
                                 </dom-if>
                                 """
-                            IssueNPI::status -> """
-                                <div class='overflow-ellipsis'>[[$itemName]]</div>
-                                <dom-if if="{{item.${IssueNPI::error.name}}}">
-                                    <template>
-                                        <div class='overflow-ellipsis'>
-                                            <span title="[[item.${IssueNPI::error.name}]]" style="color: red"
-                                                        >[[item.${IssueNPI::error.name}]]</span>
-                                        </div>
-                                    </template>
-                                </dom-if>
-                                """
                             IssueAddress::status -> """
                                 <div class='overflow-ellipsis'>[[$itemName]]</div>
                                 <dom-if if="{{item.${IssueAddress::error.name}}}">
@@ -106,8 +95,16 @@ class IssuesFormGrid<T : IssuesStatus>(
                                 """
                             IssueAddress::footNoteSet -> """
                                 <template is="dom-repeat" items="{{$itemName}}">
+                                    <style>
+                                        .INFO { color: #1e8e3e }
+                                        .WARNING { color: #f4b400 }
+                                        .ERROR { color: #d23f31 }
+                                    </style>
                                     <div class='overflow-ellipsis'>
-                                        <span title="{{item.note}}">[[item.label]]</span>
+                                        <span
+                                            title="{{item.note}}"
+                                            class${'$'}="[[item.level]]"
+                                            >[[item.label]]</span>
                                     </div>
                                 </template>
                                 """
