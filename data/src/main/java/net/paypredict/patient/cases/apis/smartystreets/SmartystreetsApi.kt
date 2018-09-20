@@ -66,16 +66,15 @@ val footNoteMap: Map<String, FootNote> by lazy {
                     val name = record["Value"] ?: continue
                     val label = record["Definition"] ?: continue
                     val note = record["Details"] ?: continue
-                    val level = record["Level"]
+                    val level = record["Level"]?.toUpperCase() ?: FootNote.Level.WARNING.name
                     map[name] = FootNote(
-                        name,
-                        label,
-                        note,
-                        when (level?.toLowerCase()) {
-                            "green" -> FootNote.Level.INFO
-                            "yellow" -> FootNote.Level.WARNING
-                            "red" -> FootNote.Level.ERROR
-                            else -> FootNote.Level.WARNING
+                        name = name,
+                        label = label,
+                        note = note,
+                        level = try {
+                            FootNote.Level.valueOf(level)
+                        } catch (e: Exception) {
+                            FootNote.Level.WARNING
                         }
                     )
                 }

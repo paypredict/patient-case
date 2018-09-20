@@ -22,6 +22,7 @@ import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
 import net.paypredict.patient.cases.data.worklist.Person
 import net.paypredict.patient.cases.data.worklist.Subscriber
+import net.paypredict.patient.cases.data.worklist.asLocalDateOrNull
 import net.paypredict.patient.cases.data.worklist.formatAs
 import org.bson.Document
 import java.time.LocalDate
@@ -178,8 +179,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                             lastName.value = patient.opt("lastName") ?: ""
                             mi.value = patient.opt("middleInitials") ?: ""
                             gender.value = patient.opt("gender") ?: ""
-                            dob.value = patient.opt<String>("dateOfBirth")
-                                ?.let { LocalDate.parse(it, Person.dateFormat) }
+                            dob.value = patient.opt<String>("dateOfBirth") asLocalDateOrNull  Person.dateFormat
                             dialog.close()
                         }
                     }

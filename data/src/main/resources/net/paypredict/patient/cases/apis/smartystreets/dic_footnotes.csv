@@ -11,6 +11,7 @@ I,Insufficient/ incorrect address data,"More than one ZIP+4 Code was found to sa
 J,Dual address,The input contained two addresses. For example: 123 MAIN ST PO BOX 99.,
 K,Cardinal rule match,"Although the address as submitted is not valid, we were able to find a match by changing the cardinal direction (North, South, East, West). The cardinal direction we used to find a match is found in the components.",
 L,Changed address component,"An address component (i.e., directional or suffix only) was added, changed, or deleted in order to achieve a match.",
+LI,Flagged address for LACSLink,"The input address matched a record that was LACS-indicated, that was submitted to LACSLink for processing. This does not mean that the address was converted; it only means that the address was submitted to LACSLink because the input address had the LACS indicator set.",
 LL,Flagged address for LACSLink,"The input address matched a record that was LACS-indicated, that was submitted to LACSLink for processing. This does not mean that the address was converted; it only means that the address was submitted to LACSLink because the input address had the LACS indicator set.",
 M,Fixed street spelling,The spelling of the street name was changed in order to achieve a match.,
 N,Fixed abbreviations,"The delivery address was standardized. For example, if STREET was in the delivery address,  will return ST as its standard spelling.",INFO

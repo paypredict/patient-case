@@ -13,6 +13,7 @@ import net.paypredict.patient.cases.metaDataMap
 import org.bson.Document
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.*
 
 /**
@@ -203,7 +204,7 @@ data class Subscriber(
     }
 
     val dobAsLocalDate: LocalDate?
-        get() = dob?.let { LocalDate.parse(it, dateFormat) }
+        get() = dob asLocalDateOrNull dateFormat
 }
 
 /**
@@ -231,8 +232,16 @@ data class Person(
     }
 
     val dobAsLocalDate: LocalDate?
-        get() = dob?.let { LocalDate.parse(it, dateFormat) }
+        get() = dob asLocalDateOrNull dateFormat
 }
+
+infix fun String?.asLocalDateOrNull(dateFormat: DateTimeFormatter): LocalDate? =
+    if (this == null) null else
+        try {
+            LocalDate.parse(this, dateFormat)
+        } catch (e: DateTimeParseException) {
+            null
+        }
 
 infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
     dateFormat.format(this)
@@ -240,7 +249,7 @@ infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
 
 @VaadinBean
 data class IssueAddress(
-    @DataView("Status",  flexGrow = 0, order = 10)
+    @DataView("Status", flexGrow = 0, order = 10)
     override var status: String? = null,
 
     @DataView("Address 1", order = 20)
