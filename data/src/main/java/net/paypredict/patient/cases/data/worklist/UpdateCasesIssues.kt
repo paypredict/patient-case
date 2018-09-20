@@ -2,6 +2,7 @@ package net.paypredict.patient.cases.data.worklist
 
 import com.mongodb.client.MongoCollection
 import com.smartystreets.api.ClientBuilder
+import com.smartystreets.api.exceptions.BadRequestException
 import com.smartystreets.api.us_street.Client
 import com.smartystreets.api.us_street.Lookup
 import com.smartystreets.api.us_street.MatchType
@@ -179,6 +180,9 @@ private class IssuesChecker(
             issue.zip = person("zip")
             issue.city = person("city")
             issue.state = person("state")
+
+            if (issue.address1.isNullOrBlank()) throw CheckingException("Address not found")
+
             original = issue.copy()
 
             val lookup = Lookup().apply {
@@ -190,7 +194,10 @@ private class IssuesChecker(
                 zipCode = issue.zip
             }
 
-            smartyStreets.send(lookup)
+            try {
+                smartyStreets.send(lookup)
+            } catch (e: BadRequestException) {
+            }
             val notFoundInRangeMode = lookup.result.isEmpty()
             if (notFoundInRangeMode) {
                 lookup.match = MatchType.INVALID
@@ -219,7 +226,12 @@ private class IssuesChecker(
                 throw CheckingException("Address has footnotes", status = "WARNING")
 
             original = null
-        } catch (e: CheckingException) {
+        } catch (x: Throwable) {
+            val e = when (x) {
+                is BadRequestException -> CheckingException("BadRequest: " + x.message, "ERROR")
+                is CheckingException -> x
+                else -> throw x
+            }
             issue.status = e.status
             issue.error = e.message
             issue.original = original
