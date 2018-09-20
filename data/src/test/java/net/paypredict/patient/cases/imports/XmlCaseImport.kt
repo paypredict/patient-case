@@ -346,11 +346,29 @@ object XmlCaseImport {
             } else
                 listOf(file)
         }
-        files.forEach { xmlFile ->
+
+        val minTime = args.minTime()
+        println("minTime: [${Date(minTime)}]")
+        for (xmlFile in files) {
+            val modified = xmlFile.lastModified()
+            print("${xmlFile.name} [${Date(modified)}]")
+            if (modified < minTime) {
+                println(" < minTime")
+                continue
+            }
+
             val _id = importFile(xmlFile, args.toOptions())
-            println("${xmlFile.name}: $_id")
+            println(" $_id")
             args.jsonOutOption(_id)
             args.testIssuesOption(_id)
         }
     }
+
+    private fun Array<String>.minTime(): Long {
+        val prefix = "--days:"
+        val arg = firstOrNull { it.startsWith(prefix) } ?: return 0
+        val days = arg.removePrefix(prefix).toIntOrNull() ?: return 0
+        return System.currentTimeMillis() - 1000L * 60 * 60 * 24 * days
+    }
+
 }
