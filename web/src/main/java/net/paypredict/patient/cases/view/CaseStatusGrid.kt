@@ -69,14 +69,14 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
                         IconRenderer(
                             {
                                 when ((meta.prop.get(it) as? Status)?.value?.toUpperCase()) {
-                                    "SAVED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
-                                    "WARNING" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
-                                    "NAME UPDATED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
-                                    "AUTO FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "gold" }
-                                    "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "red" }
-                                    "PASS" -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "lightgreen" }
+                                    "SAVED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
+                                    "WARNING" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
+                                    "NAME UPDATED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
+                                    "AUTO FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
+                                    "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "#d23f31" }
+                                    "PASS" -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "#1e8e3e" }
                                     null -> Icon(VaadinIcon.BAN).apply { isVisible = false }
-                                    else -> Icon(VaadinIcon.BAN).apply { color = "red" }
+                                    else -> Icon(VaadinIcon.BAN).apply { color = "#d23f31" }
                                 }
                             },
                             { "" })
