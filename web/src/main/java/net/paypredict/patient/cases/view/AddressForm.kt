@@ -138,7 +138,7 @@ class AddressForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
         form += VerticalLayout().apply {
             isPadding = false
             element.setAttribute("colspan", "3")
-            this += actions
+//            this += actions
             defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
         }
 
