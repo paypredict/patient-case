@@ -4,6 +4,8 @@ import com.vaadin.flow.templatemodel.Encode
 import net.paypredict.patient.cases.DataView
 import net.paypredict.patient.cases.MetaData
 import net.paypredict.patient.cases.VaadinBean
+import net.paypredict.patient.cases.apis.smartystreets.FootNote
+import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
 import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.opt
@@ -238,7 +240,7 @@ infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
 
 @VaadinBean
 data class IssueAddress(
-    @DataView("Status", order = 10)
+    @DataView("Status",  flexGrow = 0, order = 10)
     override var status: String? = null,
 
     @DataView("Address 1", order = 20)
@@ -253,13 +255,31 @@ data class IssueAddress(
     @DataView("City", order = 50)
     var city: String? = null,
 
-    @DataView("State", order = 60)
+    @DataView("State", flexGrow = 0, order = 60)
     var state: String? = null,
 
-    @DataView("Person", order = 70, isVisible = false)
-    var person: Person? = null
+    @DataView("Person", order = 100, isVisible = false)
+    var person: Person? = null,
+
+    @DataView("Footnotes code", order = 200, isVisible = false)
+    var footnotes: String? = null,
+
+    @DataView("Original", order = 201, isVisible = false)
+    var original: IssueAddress? = null,
+
+    @DataView("Error", order = 202, isVisible = false)
+    var error: String? = null
 
 ) : IssuesStatus {
+
+    @DataView("Footnotes", flexGrow = 3, order = 70)
+    var footNoteSet: FootNoteSet = emptySet()
+        get() = FootNote.decodeFootNoteSet(footnotes)
+        set(value) {
+            field = value
+            footnotes = FootNote.encodeFootNoteSet(value)
+        }
+
     companion object : IssuesClass<IssueAddress> {
         override val caption = "Patient Address"
         override val beanType = IssueAddress::class.java
@@ -456,6 +476,7 @@ private fun Document.toIssueAddress(): IssueAddress =
         zip = opt("zip"),
         city = opt("city"),
         state = opt("state"),
+        footnotes = opt("footnotes"),
         person = opt<Document>("person")?.toPerson()
     )
 
@@ -466,6 +487,7 @@ private fun IssueAddress.toDocument(): Document = doc {
     doc["zip"] = zip
     doc["city"] = city
     doc["state"] = state
+    doc["footnotes"] = footnotes
     doc["person"] = person?.toDocument()
 }
 

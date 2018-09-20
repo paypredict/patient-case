@@ -1,8 +1,14 @@
 package net.paypredict.patient.cases.data.worklist
 
 import com.mongodb.client.MongoCollection
+import com.smartystreets.api.ClientBuilder
+import com.smartystreets.api.us_street.Client
+import com.smartystreets.api.us_street.Lookup
+import com.smartystreets.api.us_street.MatchType
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistry
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
+import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
+import net.paypredict.patient.cases.apis.smartystreets.smartyStreetsApiCredentials
 import net.paypredict.patient.cases.bson.`$exists`
 import net.paypredict.patient.cases.bson.`$set`
 import net.paypredict.patient.cases.data.DBS
@@ -20,8 +26,10 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     val casesRaw = DBS.Collections.casesRaw()
     val casesIssues = DBS.Collections.casesIssues()
     val filter = doc { doc["status.problems"] = doc { doc[`$exists`] = false } }
+    val smartyStreets = ClientBuilder(smartyStreetsApiCredentials)
+        .buildUsStreetApiClient()
     for (case in casesRaw.find(filter)) {
-        IssuesChecker(casesRaw, casesIssues, case).check()
+        IssuesChecker(casesRaw, casesIssues, smartyStreets, case).check()
         if (isInterrupted()) break
     }
 }
@@ -29,6 +37,8 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
 private class IssuesChecker(
     val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
     val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
+    val smartyStreets: Client = ClientBuilder(smartyStreetsApiCredentials)
+        .buildUsStreetApiClient(),
     val case: Document
 ) {
 
@@ -40,7 +50,6 @@ private class IssuesChecker(
     var statusProblems = 0
     val statusValues = mutableMapOf<String, Any>()
 
-
     fun check() {
         if (issue != null) return
         caseIssue = CaseIssue(
@@ -51,6 +60,7 @@ private class IssuesChecker(
 
         checkNPI()
         checkSubscriber()
+        checkAddress()
 
         casesIssues.insertOne(caseIssue.toDocument())
         casesRaw.updateOne(caseIdFilter, doc {
@@ -85,7 +95,7 @@ private class IssuesChecker(
             )
             val apiNPI = IssueNPI(npi = npi)
             try {
-                if (npi == null) throw CheckingException("Case Provider npi in null")
+                if (npi == null) throw CheckingException("Case Provider npi is null")
 
                 val npiRes = try {
                     NpiRegistry.find(npi)
@@ -130,34 +140,13 @@ private class IssuesChecker(
     }
 
     private fun checkSubscriber() {
-        val subscribers = case<List<*>>("case", "Case", "SubscriberDetails", "Subscriber")
-            ?.filterIsInstance<Document>()
-        val subscriber = subscribers
-            ?.firstOrNull { it<String>("responsibilityCode") == "Primary" }
-            ?: subscribers?.firstOrNull()
+        val subscriber = case.findSubscriber()
         if (subscriber != null) {
             caseIssue = caseIssue.copy(
                 eligibility = listOf(
                     IssueEligibility(
-                        insurance = Insurance(
-                            typeCode = subscriber("insuranceTypeCode"),
-                            payerId = subscriber("payerId"),
-                            planCode = subscriber("planCode"),
-                            payerName = subscriber("payerName"),
-                            zmPayerId = subscriber("zmPayerId"),
-                            zmPayerName = subscriber("zmPayerName")
-                        ),
-                        subscriber = Subscriber(
-                            firstName = subscriber("firstName"),
-                            lastName = subscriber("organizationNameOrLastName"),
-                            mi = subscriber("middleInitial"),
-                            gender = subscriber("gender"),
-                            dob = subscriber("dob"),
-                            groupName = subscriber("groupOrPlanName"),
-                            groupId = subscriber("groupOrPlanNumber"),
-                            relationshipCode = subscriber("relationshipCode"),
-                            policyNumber = subscriber("subscriberPolicyNumber")
-                        )
+                        insurance = subscriber.toInsurance(),
+                        subscriber = subscriber.toSubscriber()
                     )
                 )
             )
@@ -170,7 +159,115 @@ private class IssuesChecker(
                     Status("WARNING", "Primary Subscriber not found").toDocument()
         }
     }
+
+
+    private fun checkAddress() {
+        val person = case.findSubscriber() ?: case.findPatient()
+        var original: IssueAddress? = null
+        val issue = IssueAddress()
+        try {
+            if (person == null) throw CheckingException("Case Subscriber and Patient is null")
+            issue.person = Person(
+                firstName = person("firstName"),
+                lastName = person("organizationNameOrLastName") ?: person("firstName"),
+                mi = person("middleInitial"),
+                gender = person("gender"),
+                dob = person("dob") ?: person("dateOfBirth")
+            )
+            issue.address1 = person("address1")
+            issue.address2 = person("address2")
+            issue.zip = person("zip")
+            issue.city = person("city")
+            issue.state = person("state")
+            original = issue.copy()
+
+            val lookup = Lookup().apply {
+                match = MatchType.RANGE
+                street = issue.address1
+                street2 = issue.address2
+                city = issue.city
+                state = issue.state
+                zipCode = issue.zip
+            }
+
+            smartyStreets.send(lookup)
+            val notFoundInRangeMode = lookup.result.isEmpty()
+            if (notFoundInRangeMode) {
+                lookup.match = MatchType.INVALID
+                smartyStreets.send(lookup)
+            }
+            val candidate = lookup.result.firstOrNull()
+                ?: throw throw CheckingException("Address not found by smartyStreets api")
+
+            issue.footnotes = candidate.analysis.footnotes
+
+            issue.address1 = candidate.deliveryLine1
+            issue.address2 = candidate.deliveryLine2
+            val components = candidate.components
+                ?: throw CheckingException("candidate.components not found in smartyStreets api response")
+            issue.city = components.cityName
+            issue.state = components.state
+            issue.zip = components.zipCode + components.plus4Code.let {
+                when {
+                    it.isNullOrBlank() -> ""
+                    else -> "-$it"
+                }
+            }
+
+            val footNoteSet = candidate.analysis.footNoteSet
+            if (footNoteSet.isNotEmpty())
+                throw CheckingException("Address has footnotes", status = "WARNING")
+
+            original = null
+        } catch (e: CheckingException) {
+            issue.status = e.status
+            issue.error = e.message
+            issue.original = original
+            statusProblems += 1
+            statusValues["status.values.address"] = Status(e.status, e.message).toDocument()
+        }
+        caseIssue = caseIssue.copy(address = listOfNotNull(original, issue))
+    }
+
+    companion object {
+        private fun Document.findSubscriber(): Document? {
+            val subscribers = opt<List<*>>("case", "Case", "SubscriberDetails", "Subscriber")
+                ?.filterIsInstance<Document>()
+            return subscribers
+                ?.firstOrNull { it<String>("responsibilityCode") == "Primary" }
+                ?: subscribers?.firstOrNull()
+        }
+
+        private fun Document.findPatient(): Document? {
+            return opt<Document>("case", "Case", "Patient")
+        }
+
+        private fun Document.toSubscriber(): Subscriber =
+            Subscriber(
+                firstName = opt("firstName"),
+                lastName = opt("organizationNameOrLastName"),
+                mi = opt("middleInitial"),
+                gender = opt("gender"),
+                dob = opt("dob"),
+                groupName = opt("groupOrPlanName"),
+                groupId = opt("groupOrPlanNumber"),
+                relationshipCode = opt("relationshipCode"),
+                policyNumber = opt("subscriberPolicyNumber")
+            )
+
+        private fun Document.toInsurance(): Insurance =
+            Insurance(
+                typeCode = opt("insuranceTypeCode"),
+                payerId = opt("payerId"),
+                planCode = opt("planCode"),
+                payerName = opt("payerName"),
+                zmPayerId = opt("zmPayerId"),
+                zmPayerName = opt("zmPayerName")
+            )
+    }
+
 }
+
 
 private fun Document?.casePatient(): Person? =
     this<Document>("case", "Case", "Patient")

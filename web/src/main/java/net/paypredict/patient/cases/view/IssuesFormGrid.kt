@@ -82,6 +82,35 @@ class IssuesFormGrid<T : IssuesStatus>(
                                     </template>
                                 </dom-if>
                                 """
+                            IssueNPI::status -> """
+                                <div class='overflow-ellipsis'>[[$itemName]]</div>
+                                <dom-if if="{{item.${IssueNPI::error.name}}}">
+                                    <template>
+                                        <div class='overflow-ellipsis'>
+                                            <span title="[[item.${IssueNPI::error.name}]]" style="color: red"
+                                                        >[[item.${IssueNPI::error.name}]]</span>
+                                        </div>
+                                    </template>
+                                </dom-if>
+                                """
+                            IssueAddress::status -> """
+                                <div class='overflow-ellipsis'>[[$itemName]]</div>
+                                <dom-if if="{{item.${IssueAddress::error.name}}}">
+                                    <template>
+                                        <div class='overflow-ellipsis'>
+                                            <span title="[[item.${IssueAddress::error.name}]]" style="color: red"
+                                                        >[[item.${IssueAddress::error.name}]]</span>
+                                        </div>
+                                    </template>
+                                </dom-if>
+                                """
+                            IssueAddress::footNoteSet -> """
+                                <template is="dom-repeat" items="{{$itemName}}">
+                                    <div class='overflow-ellipsis'>
+                                        <span title="{{item.note}}">[[item.label]]</span>
+                                    </div>
+                                </template>
+                                """
                             else -> """
                                 <div class='overflow-ellipsis'>[[$itemName]]</div>
                                 """
