@@ -103,7 +103,6 @@ class IssuesFormGrid<T : IssuesStatus>(
                                     <div class='overflow-ellipsis'>
                                         <span
                                             title="{{item.note}}"
-                                            class${'$'}="[[item.level]]"
                                             >[[item.label]]</span>
                                     </div>
                                 </template>
