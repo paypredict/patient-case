@@ -32,6 +32,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     private val insuranceForm =
         InsuranceForm(sectionHeader("Insurance Payer")).apply { width = "100%" }
     private val requisitionDiv = Div().apply {
+        style["padding-left"] = "1em"
         setSizeFull()
         isVisible = false
     }
@@ -48,7 +49,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                         requisitionDiv.removeAll()
                         requisitionDiv += IFrame().apply {
                             setSizeFull()
-                            setSrc(StreamResource(requisitionForm.fileName) {  -> file.inputStream() })
+                            setSrc(StreamResource(requisitionForm.fileName, file::inputStream))
                         }
                     } else {
                         requisitionDiv.isVisible = false
@@ -125,22 +126,28 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
 
     init {
         val main = VerticalLayout().apply {
+            isPadding = false
             this += sectionHeader("Subscriber Information")
 
             val tabMap = mutableMapOf<Tab, Component>()
             val inputTab = Tab("Subscriber")
             tabMap[inputTab] = VerticalLayout().apply {
                 isPadding = false
-                this += HorizontalLayout().apply {
-                    isPadding = false
-                    width = "100%"
-                    defaultVerticalComponentAlignment = FlexComponent.Alignment.START
-                    this += insuranceForm
-                    this += requisitionsView
-                    setFlexGrow(3.0, insuranceForm)
+                this += Div().apply {
+                    style["overflow"] = "auto"
+                    style["width"] = "100%"
+                    style["height"] = "100%"
+                    this += HorizontalLayout().apply {
+                        isPadding = false
+                        width = "100%"
+                        defaultVerticalComponentAlignment = FlexComponent.Alignment.START
+                        this += insuranceForm
+                        this += requisitionsView
+                        setFlexGrow(3.0, insuranceForm)
+                    }
+                    this += sectionHeader("Subscriber")
+                    this += subscriberForm
                 }
-                this += sectionHeader("Subscriber")
-                this += subscriberForm
                 this += actions
                 setHorizontalComponentAlignment(FlexComponent.Alignment.END, actions)
                 setFlexGrow(1.0, actions)
