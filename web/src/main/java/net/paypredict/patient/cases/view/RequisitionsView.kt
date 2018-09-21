@@ -3,8 +3,8 @@ package net.paypredict.patient.cases.view
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
-import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.dialog.Dialog
+import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
@@ -25,42 +25,46 @@ class RequisitionsView(header: Component? = null) : Composite<VerticalLayout>(),
             updateUI(value)
         }
 
-    var onRequisitionsSelected: (RequisitionForm) -> Unit = {
+    var onRequisitionsSelected: (RequisitionForm?) -> Unit = {
         Dialog().also { dialog ->
             dialog += H3("Cannot view requisitions yet")
             dialog.open()
         }
     }
 
-    private val attachments = VerticalLayout()
+    private val grid: Grid<RequisitionForm> = Grid<RequisitionForm>(RequisitionForm::class.java).apply {
+        addSelectionListener {
+            onRequisitionsSelected(it.firstSelectedItem.orElseGet { null })
+        }
+    }
 
     private fun updateUI(caseId: String?) {
-        attachments.removeAll()
-        if (caseId == null) return
+        val requisitionFormList = requisitionFormList(caseId)
+        grid.setItems(requisitionFormList)
+        grid.isHeightByRows = requisitionFormList.size < 8
+        grid.width = (requisitionFormList.asSequence().map { it.fileName.length }.max() ?: 8).let {
+            "%.1fem".format(it * 0.5)
+        }
+    }
 
-        val case = DBS.Collections.casesRaw().find(doc { doc["_id"] = caseId }).firstOrNull() ?: return
-        val files = case.opt<List<*>>("case", "Case", "Attachments", "File") ?: return
-        val fileNameList = files
+    private fun requisitionFormList(caseId: String?): List<RequisitionForm> {
+        caseId ?: return emptyList()
+        val case = DBS.Collections.casesRaw().find(doc { doc["_id"] = caseId }).firstOrNull()
+            ?: return emptyList()
+        val files = case.opt<List<*>>("case", "Case", "Attachments", "File")
+            ?: return emptyList()
+        return files
             .asSequence()
             .filterIsInstance<Document>()
             .filter { it.opt<String>("category") == "Requisition" }
             .mapNotNull { it.opt<String>("fileName") }
+            .map { RequisitionForm(it) }
             .toList()
-
-        fileNameList.forEach { fileName ->
-            attachments += Button(fileName).apply {
-                element.setAttribute("theme", "tertiary-inline")
-                addClickListener {
-                    onRequisitionsSelected(RequisitionForm(fileName))
-                }
-            }
-        }
-
     }
 
     init {
         content.isPadding = false
         if (header != null) content += header
-        content += attachments
+        content += grid
     }
 }

@@ -39,19 +39,23 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         RequisitionsView(sectionHeader("Requisition Forms")).apply {
             setSizeUndefined()
             onRequisitionsSelected = { requisitionForm ->
-                val file = requisitionForm.file()
-                if (file != null) {
-                    requisitionDiv.isVisible = true
-                    requisitionDiv.removeAll()
-                    requisitionDiv += IFrame().apply {
-                        setSizeFull()
-                        setSrc(StreamResource(requisitionForm.fileName) {  -> file.inputStream() })
-                    }
-                } else {
+                if (requisitionForm == null) {
                     requisitionDiv.isVisible = false
-                    Dialog().also { dialog ->
-                        dialog += H3("RequisitionForm file not found")
-                        dialog.open()
+                } else {
+                    val file = requisitionForm.file()
+                    if (file != null) {
+                        requisitionDiv.isVisible = true
+                        requisitionDiv.removeAll()
+                        requisitionDiv += IFrame().apply {
+                            setSizeFull()
+                            setSrc(StreamResource(requisitionForm.fileName) {  -> file.inputStream() })
+                        }
+                    } else {
+                        requisitionDiv.isVisible = false
+                        Dialog().also { dialog ->
+                            dialog += H3("RequisitionForm file not found")
+                            dialog.open()
+                        }
                     }
                 }
             }
