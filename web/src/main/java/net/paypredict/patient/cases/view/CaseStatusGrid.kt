@@ -70,13 +70,17 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
                             {
                                 when ((meta.prop.get(it) as? Status)?.value?.toUpperCase()) {
                                     "SAVED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
+                                    "INFO" -> Icon(VaadinIcon.CHECK).apply { color = "#1e8e3e" }
                                     "WARNING" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
+                                    "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "#d23f31" }
                                     "NAME UPDATED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
                                     "AUTO FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
-                                    "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "#d23f31" }
                                     "PASS" -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "#1e8e3e" }
                                     null -> Icon(VaadinIcon.BAN).apply { isVisible = false }
                                     else -> Icon(VaadinIcon.BAN).apply { color = "#d23f31" }
+                                }.apply {
+                                    style["width"] = "1em"
+                                    style["height"] = "1em"
                                 }
                             },
                             { "" })
