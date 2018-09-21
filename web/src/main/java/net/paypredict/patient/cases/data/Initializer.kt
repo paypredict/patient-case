@@ -4,6 +4,7 @@ package net.paypredict.patient.cases.data
  * Created by alexei.vylegzhanin@gmail.com on 9/18/2018.
  */
 
+import net.paypredict.patient.cases.PatientCases
 import net.paypredict.patient.cases.data.worklist.updateCasesIssues
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -13,9 +14,9 @@ import javax.servlet.annotation.WebListener
 import kotlin.concurrent.thread
 
 @WebListener
-class UpdateCasesIssuesStarter : ServletContextListener {
-    private val log: Logger by lazy { Logger.getLogger(UpdateCasesIssuesStarter::class.qualifiedName) }
-    private val thread = thread(start = false, name = "UpdateCasesIssues Starter") {
+class Initializer : ServletContextListener {
+    private val log: Logger by lazy { Logger.getLogger(Initializer::class.qualifiedName) }
+    private val thread = thread(start = false, name = "UpdateCasesIssues Thread") {
         val currentThread = Thread.currentThread()
         while (!currentThread.isInterrupted) {
             try {
@@ -33,6 +34,9 @@ class UpdateCasesIssuesStarter : ServletContextListener {
     }
 
     override fun contextInitialized(sce: ServletContextEvent) {
+        PatientCases.client = sce.servletContext.contextPath
+            .replace("/", "")
+            .run { if (isNotBlank()) this else "test" }
         thread.start()
     }
 

@@ -4,7 +4,8 @@ import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
-import com.vaadin.flow.component.formlayout.FormLayout
+import com.vaadin.flow.component.dialog.Dialog
+import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
@@ -13,7 +14,10 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
+import com.vaadin.flow.server.StreamResource
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
+import net.paypredict.patient.cases.data.worklist.file
+import net.paypredict.patient.cases.html.IFrame
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import kotlin.properties.Delegates
@@ -23,12 +27,35 @@ import kotlin.properties.Delegates
  * Created by alexei.vylegzhanin@gmail.com on 8/25/2018.
  */
 @Route("eligibility")
-class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLayout {
+class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
     private lateinit var tabs: Tabs
     private val insuranceForm =
         InsuranceForm(sectionHeader("Insurance Payer")).apply { width = "100%" }
+    private val requisitionDiv = Div().apply {
+        setSizeFull()
+        isVisible = false
+    }
     private val requisitionsView =
-        RequisitionsView(sectionHeader("Requisition Forms")).apply { setSizeUndefined() }
+        RequisitionsView(sectionHeader("Requisition Forms")).apply {
+            setSizeUndefined()
+            onRequisitionsSelected = { requisitionForm ->
+                val file = requisitionForm.file()
+                if (file != null) {
+                    requisitionDiv.isVisible = true
+                    requisitionDiv.removeAll()
+                    requisitionDiv += IFrame().apply {
+                        setSizeFull()
+                        setSrc(StreamResource(requisitionForm.fileName) {  -> file.inputStream() })
+                    }
+                } else {
+                    requisitionDiv.isVisible = false
+                    Dialog().also { dialog ->
+                        dialog += H3("RequisitionForm file not found")
+                        dialog.open()
+                    }
+                }
+            }
+        }
     private val subscriberForm = SubscriberForm()
     private val eligibilityCheckResTab = Tab("Eligibility")
     private val eligibilityCheckResView = EligibilityCheckResView().apply {
@@ -92,50 +119,59 @@ class PatientEligibilityForm : Composite<VerticalLayout>(), HasSize, ThemableLay
         }
     }
 
-
     init {
-        content += sectionHeader("Subscriber Information")
+        val main = VerticalLayout().apply {
+            this += sectionHeader("Subscriber Information")
 
-        val tabMap = mutableMapOf<Tab, Component>()
-        val inputTab = Tab("Subscriber")
-        tabMap[inputTab] = VerticalLayout().apply {
-            isPadding = false
-            this += HorizontalLayout().apply {
+            val tabMap = mutableMapOf<Tab, Component>()
+            val inputTab = Tab("Subscriber")
+            tabMap[inputTab] = VerticalLayout().apply {
                 isPadding = false
-                width = "100%"
-                defaultVerticalComponentAlignment = FlexComponent.Alignment.START
-                this += insuranceForm
-                this += requisitionsView
-                setFlexGrow(3.0, insuranceForm)
+                this += HorizontalLayout().apply {
+                    isPadding = false
+                    width = "100%"
+                    defaultVerticalComponentAlignment = FlexComponent.Alignment.START
+                    this += insuranceForm
+                    this += requisitionsView
+                    setFlexGrow(3.0, insuranceForm)
+                }
+                this += sectionHeader("Subscriber")
+                this += subscriberForm
+                this += actions
+                setHorizontalComponentAlignment(FlexComponent.Alignment.END, actions)
+                setFlexGrow(1.0, actions)
             }
-            this += sectionHeader("Subscriber")
-            this += subscriberForm
-            this += actions
-            setHorizontalComponentAlignment(FlexComponent.Alignment.END, actions)
-            setFlexGrow(1.0, actions)
+
+            tabMap[eligibilityCheckResTab] = eligibilityCheckResView
+
+            fun select(tab: Tab) {
+                tabMap.forEach {
+                    it.value.isVisible = tab == it.key
+                }
+            }
+
+            tabs = Tabs().apply {
+                tabMap.keys.forEach { add(it) }
+                addSelectedChangeListener {
+                    select(selectedTab)
+                }
+            }
+            this += tabs
+            tabMap.values.forEach {
+                this += it
+                this.setFlexGrow(1.0, it)
+                it.isVisible = false
+            }
+            select(inputTab)
         }
 
-        tabMap[eligibilityCheckResTab] = eligibilityCheckResView
+        content.isPadding = false
+        content.isSpacing = false
 
-        fun Tab.select() {
-            tabMap.forEach {
-                it.value.isVisible = this == it.key
-            }
-        }
-
-        tabs = Tabs().apply {
-            tabMap.keys.forEach { add(it) }
-            addSelectedChangeListener {
-                selectedTab.select()
-            }
-        }
-        content += tabs
-        tabMap.values.forEach {
-            content += it
-            content.setFlexGrow(1.0, it)
-            it.isVisible = false
-        }
-        inputTab.select()
+        content += main
+        content += requisitionDiv
+        content.setFlexGrow(1.0, main)
+        content.setFlexGrow(0.7, requisitionDiv)
     }
 
     private fun sectionHeader(text: String) =

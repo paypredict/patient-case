@@ -10,6 +10,9 @@ import java.io.File
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
 object PatientCases {
+    var client = "test"
+    val clientDir get() = File("/PayPredict/clients/${PatientCases.client}")
+
     val dir = File("/PayPredict/ptn")
     private val confDir = dir.resolve("conf")
     private val confFile = confDir.resolve("ptn.json")
@@ -21,7 +24,7 @@ object PatientCases {
 
     object mongo {
         val host: String by lazy { conf.opt<String>("mongo", "host") ?: ServerAddress.defaultHost() }
-        val port: Int by lazy { (conf.opt<Number>("mongo", "port") ?:  ServerAddress.defaultPort()).toInt() }
+        val port: Int by lazy { (conf.opt<Number>("mongo", "port") ?: ServerAddress.defaultPort()).toInt() }
 
         val serverAddress: ServerAddress by lazy {
             ServerAddress(host, port)
