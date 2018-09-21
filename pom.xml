@@ -13,6 +13,7 @@
     <modules>
         <module>web</module>
         <module>data</module>
+        <module>pdf-img-qr</module>
         <module>plugins</module>
     </modules>
 
