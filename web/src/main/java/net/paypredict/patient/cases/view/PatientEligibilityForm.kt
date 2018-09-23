@@ -14,12 +14,12 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
+import com.vaadin.flow.server.StreamResource
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
 import net.paypredict.patient.cases.data.worklist.file
-import net.paypredict.patient.cases.html.Object
+import net.paypredict.patient.cases.html.ImgPanZoom
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
-import java.util.*
 import kotlin.properties.Delegates
 
 /**
@@ -47,13 +47,9 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                     if (file != null) {
                         requisitionDiv.isVisible = true
                         requisitionDiv.removeAll()
-                        requisitionDiv += Object().apply {
-                            element.setAttribute("type", "application/pdf")
-                            element.setAttribute(
-                                "data", "data:application/pdf;base64," + Base64
-                                    .getEncoder().encodeToString(file.readBytes())
-                            )
+                        requisitionDiv += ImgPanZoom().apply {
                             setSizeFull()
+                            setSrc(StreamResource("image.png", file::inputStream))
                         }
                     } else {
                         requisitionDiv.isVisible = false
