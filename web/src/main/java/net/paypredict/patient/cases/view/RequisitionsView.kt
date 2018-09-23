@@ -42,7 +42,7 @@ class RequisitionsView(header: Component? = null) : Composite<VerticalLayout>(),
         val requisitionFormList = requisitionFormList(caseId)
         grid.setItems(requisitionFormList)
         grid.isHeightByRows = requisitionFormList.size < 8
-        grid.width = (requisitionFormList.asSequence().map { it.fileName.length }.max() ?: 8).let {
+        grid.width = (requisitionFormList.asSequence().map { it.fileName.length }.max() ?: 32).let {
             "%.1fem".format(it * 0.5)
         }
     }
