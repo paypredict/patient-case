@@ -1,4 +1,4 @@
-package net.paypredict.patient.cases.pdf.img
+package net.paypredict.patient.cases.pdf.processing
 
 import org.apache.pdfbox.contentstream.PDFStreamEngine
 import org.apache.pdfbox.contentstream.operator.Operator

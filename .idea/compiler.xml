@@ -7,7 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="data" />
-        <module name="pdf-img-qr" />
+        <module name="pdf-processing" />
         <module name="plugins" />
         <module name="web" />
       </profile>
@@ -16,6 +16,7 @@
       <module name="data" target="1.8" />
       <module name="patient-case" target="1.8" />
       <module name="pdf-img-qr" target="1.8" />
+      <module name="pdf-processing" target="1.8" />
       <module name="plugins" target="1.8" />
       <module name="pokitdok" target="1.8" />
       <module name="web" target="1.8" />
