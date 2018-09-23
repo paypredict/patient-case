@@ -17,15 +17,24 @@ object TestBarcodeReaderDir {
     @JvmStatic
     fun main(args: Array<String>) {
         val reader = barcodeReader()
+        val barCodeNotFoundFiles = mutableListOf<File>()
         File(args.last())
             .listFiles { file: File -> file.isFile && file.name.endsWith(".png", ignoreCase = true) }
             ?.forEach { file ->
                 print(file.name + ": ")
                 val results: Array<out TextResult> = reader
                     .decodeFileInMemory(file.readBytes(), "exampleTpl")
-                if (results.isEmpty()) println("WARNING: barcode not found")
+                if (results.isEmpty()) {
+                    println("WARNING: barcode not found")
+                    barCodeNotFoundFiles += file
+                }
                 println(results.joinToString { it.barcodeText })
             }
+
+        if (barCodeNotFoundFiles.isNotEmpty()) {
+            println("barcode not found in ${barCodeNotFoundFiles.size} files: " +
+                    barCodeNotFoundFiles.joinToString { it.name })
+        }
     }
 }
 
