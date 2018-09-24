@@ -18,10 +18,10 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import net.paypredict.patient.cases.apis.pipl.piplApiSearchConfiguration
-import net.paypredict.patient.cases.bson.`$set`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.data.worklist.*
+import net.paypredict.patient.cases.mongo.`$set`
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import org.bson.Document
 import java.time.ZoneOffset
@@ -177,11 +177,12 @@ class CaseIssuesForm : Composite<Div>() {
         caseIssues.eligibility += issue.copy(status = statusValue)
         casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
         val status = Status(value = statusValue)
-        DBS.Collections.casesRaw().updateOne(byId, doc {
-            doc[`$set`] = doc {
-                doc["status.values.eligibility"] = status.toDocument()
-            }
-        })
+        DBS.Collections.casesRaw().updateOne(byId,
+            doc {
+                doc[`$set`] = doc {
+                    doc["status.values.eligibility"] = status.toDocument()
+                }
+            })
         issuesEligibility.value = caseIssues.eligibility
         value?.eligibility = status
     }

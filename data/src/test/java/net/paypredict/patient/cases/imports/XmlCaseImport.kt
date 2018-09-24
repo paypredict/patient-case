@@ -2,12 +2,8 @@ package net.paypredict.patient.cases.imports
 
 import com.mongodb.client.model.UpdateOptions
 import de.svenjacobs.loremipsum.LoremIpsum
-import net.paypredict.patient.cases.bson.`$set`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.invoke
-import net.paypredict.patient.cases.data.opt
 import net.paypredict.patient.cases.data.worklist.*
+import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import org.bson.json.JsonMode
 import org.bson.json.JsonWriterSettings

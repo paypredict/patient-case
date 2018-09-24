@@ -52,6 +52,7 @@
     <orderEntry type="library" scope="TEST" name="Maven: org.jetbrains.kotlin:kotlin-test-common:1.2.61" level="project" />
     <orderEntry type="module" module-name="data" />
     <orderEntry type="module" module-name="plugins" />
+    <orderEntry type="module" module-name="mongo" />
     <orderEntry type="library" name="Maven: com.pipl.api:piplapis:5.0.11" level="project" />
     <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.3.1" level="project" />
     <orderEntry type="library" name="Maven: com.smartystreets.api:smartystreets-java-sdk:3.3.3" level="project" />

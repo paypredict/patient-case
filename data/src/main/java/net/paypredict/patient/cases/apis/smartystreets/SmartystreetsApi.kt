@@ -3,7 +3,7 @@ package net.paypredict.patient.cases.apis.smartystreets
 import com.smartystreets.api.StaticCredentials
 import com.smartystreets.api.us_street.Analysis
 import net.paypredict.patient.cases.VaadinBean
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.opt
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import org.bson.Document

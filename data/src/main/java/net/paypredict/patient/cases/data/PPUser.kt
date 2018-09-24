@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.data
 
+import net.paypredict.patient.cases.mongo.opt
 import org.bson.Document
 import java.io.File
 

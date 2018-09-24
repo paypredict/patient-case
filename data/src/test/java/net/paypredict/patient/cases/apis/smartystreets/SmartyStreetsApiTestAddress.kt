@@ -4,8 +4,8 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.smartystreets.api.ClientBuilder
 import com.smartystreets.api.us_street.Lookup
 import com.smartystreets.api.us_street.MatchType
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.doc
 import org.bson.Document
 import java.io.File
 import java.io.IOException

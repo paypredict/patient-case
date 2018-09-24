@@ -17,9 +17,9 @@ import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.binder.Binder
 import com.vaadin.flow.data.binder.ValidationResult
 import com.vaadin.flow.data.binder.ValueContext
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.data.worklist.Person
 import net.paypredict.patient.cases.data.worklist.Subscriber
 import net.paypredict.patient.cases.data.worklist.asLocalDateOrNull
@@ -160,7 +160,9 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
     }
 
     private fun showCopyFromPatientDialog() {
-        val case = DBS.Collections.casesRaw().find(doc { doc["_id"] = caseId }).firstOrNull()
+        val case = DBS.Collections.casesRaw().find(doc {
+            doc["_id"] = caseId
+        }).firstOrNull()
         val patient = case?.opt<Document>("case", "Case", "Patient")
         if (patient == null) {
             Notification.show("Patient data not found")

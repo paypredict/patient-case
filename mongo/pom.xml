@@ -10,7 +10,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>data</artifactId>
+    <artifactId>mongo</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -43,36 +43,11 @@
         </dependency>
 
         <dependency>
-            <groupId>net.paypredict.patient.cases</groupId>
-            <artifactId>mongo</artifactId>
-            <version>1.0-SNAPSHOT</version>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/com.pipl.api/piplapis -->
-        <dependency>
-            <groupId>com.pipl.api</groupId>
-            <artifactId>piplapis</artifactId>
-            <version>5.0.11</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.smartystreets.api</groupId>
-            <artifactId>smartystreets-java-sdk</artifactId>
-            <version>3.3.3</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver</artifactId>
             <version>${mongodb.version}</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-csv -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-csv</artifactId>
-            <version>1.5</version>
-        </dependency>
 
         <dependency>
             <groupId>javax.json</groupId>
@@ -85,32 +60,6 @@
             <version>1.0.4</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/de.sven-jacobs/loremipsum -->
-        <dependency>
-            <groupId>de.sven-jacobs</groupId>
-            <artifactId>loremipsum</artifactId>
-            <version>1.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.vaadin</groupId>
-            <artifactId>vaadin-core</artifactId>
-        </dependency>
-
-        <!-- Added to provide logging output as Flow uses -->
-        <!-- the unbound SLF4J no-operation (NOP) logger implementation -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>3.1.0</version>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -161,4 +110,6 @@
             </plugin>
         </plugins>
     </build>
+
+    
 </project>

@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.data
 
+import net.paypredict.patient.cases.mongo.DBS
 import java.util.*
 
 /**

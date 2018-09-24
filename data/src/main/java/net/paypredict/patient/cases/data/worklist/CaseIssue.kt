@@ -7,8 +7,8 @@ import net.paypredict.patient.cases.VaadinBean
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.metaDataMap
 import org.bson.Document
 import java.time.LocalDate

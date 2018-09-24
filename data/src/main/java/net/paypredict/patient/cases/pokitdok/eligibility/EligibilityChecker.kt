@@ -3,12 +3,12 @@ package net.paypredict.patient.cases.pokitdok.eligibility
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.UpdateOptions
-import net.paypredict.patient.cases.bson.`$set`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
 import net.paypredict.patient.cases.data.worklist.formatAs
+import net.paypredict.patient.cases.mongo.`$set`
 import net.paypredict.patient.cases.pokitdok.client.EligibilityQuery
 import net.paypredict.patient.cases.pokitdok.client.PokitDokApiException
 import net.paypredict.patient.cases.pokitdok.client.digest
@@ -274,7 +274,9 @@ class PayersData {
     }
 
     fun removeUsersMatchPayersRecord(zmPayerId: String) {
-        DBS.Collections.PPPayers.usersMatchPayers().deleteOne(doc { doc["_id"] = zmPayerId })
+        DBS.Collections.PPPayers.usersMatchPayers().deleteOne(doc {
+            doc["_id"] = zmPayerId
+        })
         usersData = UsersData()
     }
 

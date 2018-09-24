@@ -7,6 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="data" />
+        <module name="mongo" />
         <module name="pdf-processing" />
         <module name="plugins" />
         <module name="web" />
@@ -14,6 +15,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="data" target="1.8" />
+      <module name="mongo" target="1.8" />
       <module name="patient-case" target="1.8" />
       <module name="pdf-img-qr" target="1.8" />
       <module name="pdf-processing" target="1.8" />

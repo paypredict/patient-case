@@ -4,12 +4,12 @@ import com.vaadin.flow.templatemodel.Encode
 import net.paypredict.patient.cases.DataView
 import net.paypredict.patient.cases.MetaData
 import net.paypredict.patient.cases.VaadinBean
-import net.paypredict.patient.cases.bson.`$set`
-import net.paypredict.patient.cases.data.DBS
+import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.metaDataMap
+import net.paypredict.patient.cases.mongo.`$set`
 import org.bson.Document
 import java.util.*
 

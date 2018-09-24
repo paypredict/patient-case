@@ -19,6 +19,9 @@
           <element id="archive" name="plugins-1.0-SNAPSHOT.jar">
             <element id="module-output" name="plugins" />
           </element>
+          <element id="archive" name="mongo-1.0-SNAPSHOT.jar">
+            <element id="module-output" name="mongo" />
+          </element>
           <element id="library" level="project" name="Maven: com.pipl.api:piplapis:5.0.11" />
           <element id="library" level="project" name="Maven: com.google.code.gson:gson:2.3.1" />
           <element id="library" level="project" name="Maven: com.smartystreets.api:smartystreets-java-sdk:3.3.3" />

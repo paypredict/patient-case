@@ -12,6 +12,7 @@
 
     <modules>
         <module>web</module>
+        <module>mongo</module>
         <module>data</module>
         <module>pdf-processing</module>
         <module>plugins</module>

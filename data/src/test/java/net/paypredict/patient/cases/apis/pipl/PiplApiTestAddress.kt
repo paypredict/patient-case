@@ -4,8 +4,8 @@ import com.pipl.api.data.Utils
 import com.pipl.api.data.containers.Person
 import com.pipl.api.data.fields.*
 import com.pipl.api.search.SearchAPIRequest
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.doc
 import org.bson.Document
 import java.io.File
 import java.time.LocalDate

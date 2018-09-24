@@ -2,7 +2,7 @@ package net.paypredict.patient.cases.apis.pipl
 
 import com.pipl.api.search.SearchAPIRequest
 import com.pipl.api.search.SearchConfiguration
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.opt
 import org.bson.Document
 import java.io.File
 

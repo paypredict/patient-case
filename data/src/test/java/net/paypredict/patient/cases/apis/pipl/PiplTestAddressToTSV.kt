@@ -1,8 +1,8 @@
 package net.paypredict.patient.cases.apis.pipl
 
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import java.io.File
 
 /**

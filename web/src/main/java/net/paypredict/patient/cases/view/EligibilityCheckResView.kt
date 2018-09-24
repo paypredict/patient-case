@@ -11,9 +11,9 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.data.binder.Binder
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.toEligibilityCheckRes
 import org.bson.Document

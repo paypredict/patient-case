@@ -13,17 +13,13 @@ import com.vaadin.flow.data.renderer.IconRenderer
 import com.vaadin.flow.data.renderer.LocalDateTimeRenderer
 import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.shared.Registration
-import net.paypredict.patient.cases.bson.`$and`
-import net.paypredict.patient.cases.bson.`$gt`
-import net.paypredict.patient.cases.bson.`$ne`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
 import net.paypredict.patient.cases.data.worklist.CASE_STATUS_META_DATA_MAP
 import net.paypredict.patient.cases.data.worklist.CaseStatus
 import net.paypredict.patient.cases.data.worklist.Status
 import net.paypredict.patient.cases.data.worklist.toCaseStatus
 import net.paypredict.patient.cases.ifHasDocKey
 import net.paypredict.patient.cases.ifSortable
+import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -103,8 +99,12 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
         filter = when {
             viewOnlyUnsolved -> doc {
                 doc[`$and`] = listOf(
-                    doc { doc["status.problems"] = doc { doc[`$gt`] = 0 } },
-                    doc { doc["status.value"] = doc { doc[`$ne`] = "SOLVED" } }
+                    doc {
+                        doc["status.problems"] = doc { doc[`$gt`] = 0 }
+                    },
+                    doc {
+                        doc["status.value"] = doc { doc[`$ne`] = "SOLVED" }
+                    }
                 )
             }
             else -> doc { }

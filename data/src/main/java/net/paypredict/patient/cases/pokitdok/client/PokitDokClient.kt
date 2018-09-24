@@ -1,11 +1,12 @@
 package net.paypredict.patient.cases.pokitdok.client
 
+import net.paypredict.patient.cases.toDigest
+import net.paypredict.patient.cases.toHexString
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.security.MessageDigest
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
@@ -63,55 +64,6 @@ class PokitDokApiException(
     val responseMessage: String?,
     val responseJson: JsonObject
 ) : IOException("API error: $responseCode - $responseMessage")
-
-private fun MessageDigest.toHexString(): String =
-    digest().joinToString(separator = "") {
-        (it.toInt() and 0xff).toString(16).padStart(2, '0')
-    }
-
-private fun JsonObject.toDigest(): MessageDigest =
-    MessageDigest.getInstance("SHA").also { updateDigest(it) }
-
-private fun JsonValue?.updateDigest(digest: MessageDigest) {
-    when (this) {
-        null -> {
-            digest.update(0)
-        }
-        is JsonObject -> {
-            digest.update('j'.toByte())
-            keys.sorted().forEach { key ->
-                digest.update('k'.toByte())
-                digest.update(key.toByteArray())
-                this[key].updateDigest(digest)
-            }
-        }
-        is JsonArray -> {
-            digest.update('a'.toByte())
-            this.forEach { item ->
-                digest.update('i'.toByte())
-                item.updateDigest(digest)
-            }
-        }
-        is JsonNumber -> {
-            digest.update('n'.toByte())
-            digest.update(this.valueType.name.toByteArray())
-            digest.update(this.toString().toByteArray())
-        }
-        is JsonString -> {
-            digest.update('s'.toByte())
-            digest.update(this.string.toByteArray())
-        }
-        JsonValue.NULL -> {
-            digest.update('N'.toByte())
-        }
-        JsonValue.TRUE -> {
-            digest.update('T'.toByte())
-        }
-        JsonValue.FALSE -> {
-            digest.update('F'.toByte())
-        }
-    }
-}
 
 private fun EligibilityQuery.toJson(): JsonObject =
     Json.createObjectBuilder()

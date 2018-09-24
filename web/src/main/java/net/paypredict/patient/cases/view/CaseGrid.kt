@@ -10,6 +10,7 @@ import com.vaadin.flow.data.provider.SortDirection
 import com.vaadin.flow.data.renderer.ComponentRenderer
 import com.vaadin.flow.function.SerializableFunction
 import net.paypredict.patient.cases.data.*
+import net.paypredict.patient.cases.mongo.DBS
 import org.bson.Document
 import org.bson.conversions.Bson
 import kotlin.reflect.KProperty1

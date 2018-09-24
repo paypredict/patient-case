@@ -15,13 +15,8 @@ import com.vaadin.flow.data.value.ValueChangeMode
 import net.paypredict.patient.cases.DataView
 import net.paypredict.patient.cases.MetaData
 import net.paypredict.patient.cases.VaadinBean
-import net.paypredict.patient.cases.bson.`$meta`
-import net.paypredict.patient.cases.bson.`$search`
-import net.paypredict.patient.cases.bson.`$text`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
 import net.paypredict.patient.cases.metaDataMap
+import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import org.bson.conversions.Bson
 
@@ -69,8 +64,10 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
         content.setColumns(
             *TradingPartnerItem.META_DATA_MAP
                 .entries
+                .asSequence()
                 .sortedBy { it.value.view.order }
                 .map { it.key }
+                .toList()
                 .toTypedArray())
         content.getColumnByKey("name").apply {
             flexGrow = 5

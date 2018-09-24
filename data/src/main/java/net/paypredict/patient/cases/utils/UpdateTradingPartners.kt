@@ -1,10 +1,10 @@
 package net.paypredict.patient.cases.utils
 
 import com.mongodb.client.model.UpdateOptions
-import net.paypredict.patient.cases.bson.`$set`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.`$set`
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.client.queryTradingPartners
 import org.bson.Document
 

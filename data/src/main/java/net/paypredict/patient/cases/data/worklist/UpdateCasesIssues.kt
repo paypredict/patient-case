@@ -11,12 +11,7 @@ import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
 import net.paypredict.patient.cases.apis.smartystreets.smartyStreetsApiCredentials
-import net.paypredict.patient.cases.bson.`$exists`
-import net.paypredict.patient.cases.bson.`$set`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.invoke
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 
 /**
@@ -27,7 +22,9 @@ import org.bson.Document
 fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     val casesRaw = DBS.Collections.casesRaw()
     val casesIssues = DBS.Collections.casesIssues()
-    val filter = doc { doc["status.problems"] = doc { doc[`$exists`] = false } }
+    val filter = doc {
+        doc["status.problems"] = doc { doc[`$exists`] = false }
+    }
     val smartyStreets = ClientBuilder(smartyStreetsApiCredentials)
         .buildUsStreetApiClient()
     for (case in casesRaw.find(filter)) {

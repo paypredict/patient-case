@@ -1,10 +1,10 @@
 package net.paypredict.patient.cases.apis.npiregistry
 
 import com.mongodb.client.model.UpdateOptions
-import net.paypredict.patient.cases.bson.`$set`
-import net.paypredict.patient.cases.data.DBS
-import net.paypredict.patient.cases.data.doc
-import net.paypredict.patient.cases.data.opt
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo.`$set`
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import org.bson.Document
 import java.io.File
 import java.net.HttpURLConnection
@@ -34,7 +34,9 @@ object NpiRegistry {
 
         val text = connection.inputStream.reader().readText()
         val response = Document.parse(text)
-        DBS.Collections.npiRegistry().updateOne(doc { doc["_id"] = npi }, doc {
+        DBS.Collections.npiRegistry().updateOne(doc {
+            doc["_id"] = npi
+        }, doc {
             doc[`$set`] = doc {
                 doc["response"] = response
                 doc["updated"] = Date()
