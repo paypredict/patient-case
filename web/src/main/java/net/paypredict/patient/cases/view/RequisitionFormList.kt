@@ -1,9 +1,6 @@
 package net.paypredict.patient.cases.view
 
-import com.vaadin.flow.component.Component
-import com.vaadin.flow.component.Composite
-import com.vaadin.flow.component.HasSize
-import com.vaadin.flow.component.HtmlComponent
+import com.vaadin.flow.component.*
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.html.H3
@@ -19,7 +16,7 @@ import org.bson.Document
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 9/12/2018.
  */
-class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>(), HasSize, ThemableLayout {
+class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>(), HasSize, HasStyle, ThemableLayout {
     var caseId: String? = null
         set(value) {
             field = value
@@ -56,8 +53,15 @@ class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>
     private fun updateUI(caseId: String?) {
         val requisitionFormList = requisitionFormList(caseId)
         grid.setItems(requisitionFormList)
-        grid.isHeightByRows = requisitionFormList.size <= 3
-        grid.width = "90px"
+        if (requisitionFormList.size <= 2) {
+            grid.width = null
+            grid.height = null
+            grid.isHeightByRows = true
+        } else {
+            grid.isHeightByRows = false
+            grid.width = "100%"
+            grid.height = "180px"
+        }
     }
 
     private fun requisitionFormList(caseId: String?): List<RequisitionForm> {
@@ -79,6 +83,8 @@ class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>
     }
 
     init {
+        content.width = "120px"
+        content.isMargin = false
         content.isPadding = false
         if (header != null) content += header
         content += grid
