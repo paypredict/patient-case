@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import javax.imageio.ImageIO
 import kotlin.math.min
 
@@ -239,7 +240,29 @@ class RequisitionFormsPdfProcessing(
             RequisitionFormsPdfProcessing(args.toOptions(), File(args.last())).process()
         }
     }
+
+    object Dir {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            val service: ExecutorService = Executors.newFixedThreadPool(8)
+            val options = args.toOptions()
+            val dir = File(args.last())
+            val count = AtomicInteger()
+            for (file in dir.walk()) {
+                if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true)) {
+                    count.incrementAndGet()
+                    service.submit {
+                        println("processing $file")
+                        RequisitionFormsPdfProcessing(options, file).process()
+                        count.decrementAndGet()
+                    }
+                }
+            }
+            service.shutdown()
+            while (count.get() > 0) {
+                println("$count files left")
+                service.awaitTermination(10, TimeUnit.SECONDS)
+            }
+        }
+    }
 }
-
-
-
