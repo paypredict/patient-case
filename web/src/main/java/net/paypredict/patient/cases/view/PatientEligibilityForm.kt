@@ -4,7 +4,6 @@ import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
-import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.orderedlayout.FlexComponent
@@ -14,9 +13,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
-import com.vaadin.flow.server.StreamResource
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
-import net.paypredict.patient.cases.data.worklist.file
 import net.paypredict.patient.cases.html.ImgPanZoom
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
@@ -36,27 +33,18 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         setSizeFull()
         isVisible = false
     }
-    private val requisitionsView =
-        RequisitionsView(sectionHeader("Requisition Forms")).apply {
+    private val requisitionFormList =
+        RequisitionFormList(sectionHeader("Requisition Forms")).apply {
             setSizeUndefined()
             onRequisitionsSelected = { requisitionForm ->
                 if (requisitionForm == null) {
                     requisitionDiv.isVisible = false
                 } else {
-                    val file = requisitionForm.file()
-                    if (file != null) {
-                        requisitionDiv.isVisible = true
-                        requisitionDiv.removeAll()
-                        requisitionDiv += ImgPanZoom().apply {
-                            setSizeFull()
-                            setSrc(StreamResource("image.png", file::inputStream))
-                        }
-                    } else {
-                        requisitionDiv.isVisible = false
-                        Dialog().also { dialog ->
-                            dialog += H3("RequisitionForm file not found")
-                            dialog.open()
-                        }
+                    requisitionDiv.isVisible = true
+                    requisitionDiv.removeAll()
+                    requisitionDiv += ImgPanZoom().apply {
+                        setSizeFull()
+                        src = requisitionForm.jpg
                     }
                 }
             }
@@ -71,7 +59,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     var caseId: String? = null
         set(value) {
             insuranceForm.caseId = value
-            requisitionsView.caseId = value
+            requisitionFormList.caseId = value
             subscriberForm.caseId = value
             field = value
         }
@@ -142,7 +130,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                         width = "100%"
                         defaultVerticalComponentAlignment = FlexComponent.Alignment.START
                         this += insuranceForm
-                        this += requisitionsView
+                        this += requisitionFormList
                         setFlexGrow(3.0, insuranceForm)
                     }
                     this += sectionHeader("Subscriber")
