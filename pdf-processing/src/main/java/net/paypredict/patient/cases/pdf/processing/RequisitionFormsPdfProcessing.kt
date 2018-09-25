@@ -104,7 +104,6 @@ class RequisitionFormsPdfProcessing(
                         }
 
                         write(dir.resolve("requisition.jpg"), image, "JPG")
-                        write(dir.resolve("requisition.png"), image, "PNG")
 
                         val scale = min(
                             64.toDouble() / image.height.toDouble(),
