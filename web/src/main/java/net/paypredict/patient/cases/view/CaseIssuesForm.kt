@@ -165,6 +165,7 @@ class CaseIssuesForm : Composite<Div>() {
                     dialog.close()
                 }
             }
+            dialog.isCloseOnOutsideClick = false
             dialog.open()
         }
     }
