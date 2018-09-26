@@ -75,42 +75,23 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     var onPatientEligibilitySave: ((IssueEligibility) -> Unit)? = null
     var onCancel: (() -> Unit)? = null
 
-    private val actions = HorizontalLayout().apply {
-        isPadding = false
-        defaultVerticalComponentAlignment = FlexComponent.Alignment.END
-        this += Button("Close").apply {
-            element.setAttribute("theme", "contrast tertiary")
-            addClickListener { onCancel?.invoke() }
-        }
-        this += Button("Save with no verification").apply {
-            element.setAttribute("theme", "tertiary")
-            addClickListener {
-                if (insuranceForm.isValid && subscriberForm.isValid)
-                    onPatientEligibilitySave?.invoke(
-                        (value ?: IssueEligibility())
-                            .copy(insurance = insuranceForm.value)
-                            .copy(subscriber = subscriberForm.value)
-                    )
-            }
-        }
-        this += Button("Verify Eligibility").apply {
-            element.setAttribute("theme", "primary")
-            addClickListener {
-                if (insuranceForm.isValid && subscriberForm.isValid) {
-                    val issue = IssueEligibility(
-                        insurance = insuranceForm.value,
-                        subscriber = subscriberForm.value
-                    )
-                    val res = EligibilityChecker(issue).check()
-                    val eligibilityRes = if (res is EligibilityCheckRes.HasResult) res.id else null
-                    issue.eligibility = eligibilityRes
-                    eligibilityCheckResView.value = eligibilityRes
-                    if (eligibilityRes != null) tabs.selectedTab = eligibilityCheckResTab
-                    onPatientEligibilityChecked?.invoke(issue, res)
-                }
-            }
-        }
+
+    private infix fun VerticalLayout.withActions(actions: HorizontalLayout) {
+        this += actions
+        setHorizontalComponentAlignment(FlexComponent.Alignment.END, actions)
+        setFlexGrow(1.0, actions)
     }
+
+    private fun actions(build: HorizontalLayout.() -> Unit = {}): HorizontalLayout =
+        HorizontalLayout().apply {
+            isPadding = false
+            defaultVerticalComponentAlignment = FlexComponent.Alignment.END
+            this += Button("Close").apply {
+                element.setAttribute("theme", "contrast tertiary")
+                addClickListener { onCancel?.invoke() }
+            }
+            build()
+        }
 
     init {
         val main = VerticalLayout().apply {
@@ -136,12 +117,43 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                     this += sectionHeader("Subscriber")
                     this += subscriberForm
                 }
-                this += actions
-                setHorizontalComponentAlignment(FlexComponent.Alignment.END, actions)
-                setFlexGrow(1.0, actions)
+                this withActions actions {
+                    this += Button("Save with no verification").apply {
+                        element.setAttribute("theme", "tertiary")
+                        addClickListener {
+                            if (insuranceForm.isValid && subscriberForm.isValid)
+                                onPatientEligibilitySave?.invoke(
+                                    (value ?: IssueEligibility())
+                                        .copy(insurance = insuranceForm.value)
+                                        .copy(subscriber = subscriberForm.value)
+                                )
+                        }
+                    }
+                    this += Button("Verify Eligibility").apply {
+                        element.setAttribute("theme", "primary")
+                        addClickListener {
+                            if (insuranceForm.isValid && subscriberForm.isValid) {
+                                val issue = IssueEligibility(
+                                    insurance = insuranceForm.value,
+                                    subscriber = subscriberForm.value
+                                )
+                                val res = EligibilityChecker(issue).check()
+                                val eligibilityRes = if (res is EligibilityCheckRes.HasResult) res.id else null
+                                issue.eligibility = eligibilityRes
+                                eligibilityCheckResView.value = eligibilityRes
+                                if (eligibilityRes != null) tabs.selectedTab = eligibilityCheckResTab
+                                onPatientEligibilityChecked?.invoke(issue, res)
+                            }
+                        }
+                    }
+                }
             }
 
-            tabMap[eligibilityCheckResTab] = eligibilityCheckResView
+            tabMap[eligibilityCheckResTab] = VerticalLayout().apply {
+                isPadding = false
+                this += eligibilityCheckResView
+                this withActions actions()
+            }
 
             fun select(tab: Tab) {
                 tabMap.forEach {
