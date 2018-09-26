@@ -94,16 +94,16 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
     }
 
     fun filter(
-        viewOnlyUnsolved: Boolean = false
+        viewOnlyUnresolved: Boolean = false
     ) {
         filter = when {
-            viewOnlyUnsolved -> doc {
+            viewOnlyUnresolved -> doc {
                 doc[`$and`] = listOf(
                     doc {
                         doc["status.problems"] = doc { doc[`$gt`] = 0 }
                     },
                     doc {
-                        doc["status.value"] = doc { doc[`$ne`] = "SOLVED" }
+                        doc["status.value"] = doc { doc[`$ne`] = "RESOLVED" }
                     }
                 )
             }

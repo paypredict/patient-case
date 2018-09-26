@@ -14,18 +14,18 @@ class WorkListView : Composite<SplitLayout>() {
         height = "100%"
         element.style["border-left"] = "none"
         element.style["border-right"] = "none"
-        filter(viewOnlyUnsolved = true)
+        filter(viewOnlyUnresolved = true)
     }
     private val form = CaseIssuesForm().apply {
         onValueChange = { caseStatus -> if (caseStatus != null) grid.refreshItem(caseStatus) }
-        onSolved = { _, statusValue ->
-            if (statusValue == "SOLVED" && viewOnlyUnsolved.value) grid.refresh()
+        onResolved = { _, statusValue ->
+            if (statusValue == "RESOLVED" && viewOnlyUnresolved.value) grid.refresh()
         }
     }
 
-    private val viewOnlyUnsolved = Checkbox("View only unsolved issues", true).apply {
+    private val viewOnlyUnresolved = Checkbox("View only unresolved issues", true).apply {
         addValueChangeListener {
-            grid.filter(viewOnlyUnsolved = value)
+            grid.filter(viewOnlyUnresolved = value)
         }
     }
 
@@ -41,7 +41,7 @@ class WorkListView : Composite<SplitLayout>() {
                 isPadding = true
                 defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
                 width = "100%"
-                this += viewOnlyUnsolved
+                this += viewOnlyUnresolved
                 this += Button("Archive All")
                 this += Button("History")
                 this += Button("Subscribe")

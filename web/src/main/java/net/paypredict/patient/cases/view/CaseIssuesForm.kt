@@ -39,7 +39,7 @@ class CaseIssuesForm : Composite<Div>() {
                 update(new)
             }
     var onValueChange: ((CaseStatus?) -> Unit)? = null
-    var onSolved: ((CaseStatus, statusValue: String?) -> Unit)? = null
+    var onResolved: ((CaseStatus, statusValue: String?) -> Unit)? = null
 
     private fun update(new: CaseStatus?) {
         accession.value = new?.accession ?: ""
@@ -60,7 +60,7 @@ class CaseIssuesForm : Composite<Div>() {
         issuesExpert.value = caseIssues?.expert
 
         issueActions.isVisible = new != null
-        issueSolved.value = new?.statusValue == "SOLVED"
+        issueResolved.value = new?.statusValue == "RESOLVED"
     }
 
     private val payerName = TextField("Payer Name").apply { isReadOnly = true }
@@ -78,22 +78,22 @@ class CaseIssuesForm : Composite<Div>() {
     private val issuesAddress = IssuesFormGrid(IssueAddress) { openAddressDialog(it) }
     private val issuesExpert = IssuesFormNote(IssueExpert)
 
-    private val issueSolved = Checkbox("Issue Solved").also { checkbox ->
+    private val issueResolved = Checkbox("Issue resolved").also { checkbox ->
         checkbox.addValueChangeListener { event ->
             if (event.isFromClient) {
                 value?.let { caseStatus ->
                     val statusValue = when (event.value) {
-                        true -> "SOLVED"
+                        true -> "RESOLVED"
                         false -> null
                     }
                     caseStatus.statusValue = statusValue
-                    onSolved?.invoke(caseStatus, statusValue)
+                    onResolved?.invoke(caseStatus, statusValue)
                 }
             }
         }
     }
 
-    private val issueActions = HorizontalLayout(issueSolved).apply {
+    private val issueActions = HorizontalLayout(issueResolved).apply {
         isVisible = false
         isPadding = false
     }
