@@ -150,10 +150,10 @@ data class Insurance(
     @DataView("Payer Name")
     var payerName: String? = null,
 
-    @DataView("ZirMed Payer ID")
+    @DataView("Cortex Payer ID")
     var zmPayerId: String? = null,
 
-    @DataView("ZirMed Payer Name")
+    @DataView("Cortex Payer Name")
     var zmPayerName: String? = null
 )
 

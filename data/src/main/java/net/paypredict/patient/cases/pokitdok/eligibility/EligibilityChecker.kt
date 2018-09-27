@@ -100,7 +100,7 @@ sealed class EligibilityCheckRes {
             fun subscriberFieldRequired(field: String) = Error("subscriber field $field is required")
             fun insuranceFieldRequired(field: String) = Error("insurance field $field is required")
             fun insuranceZirMedPayerIdNotFoundInPP(zmPayerId: String) =
-                Error("ZirMed payer id $zmPayerId not found in ppPayers")
+                Error("Cortex Payer id $zmPayerId not found in ppPayers")
 
             fun apiCallError(x: Throwable) =
                 Error(

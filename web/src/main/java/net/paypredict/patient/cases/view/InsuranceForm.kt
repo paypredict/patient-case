@@ -33,7 +33,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
 
     private val payerName = Span()
 
-    private val zmPayerId: ComboBox<InsuranceItem?> = ComboBox<InsuranceItem?>("ZirMed Payer").apply {
+    private val zmPayerId: ComboBox<InsuranceItem?> = ComboBox<InsuranceItem?>("Cortex Payer").apply {
         width = "100%"
         isRequired = true
         isAllowCustomValue = false
@@ -76,7 +76,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                         field.setPokitDokPayer(value?.toTradingPartner())
                     } else {
                         zmPayerId.focus()
-                        field.prefixComponent = errorLabel("ZirMed Payer Required")
+                        field.prefixComponent = errorLabel("Cortex Payer Required")
                     }
                 }
             }
@@ -86,7 +86,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                         selectPokitDokPayer()
                     } else {
                         zmPayerId.focus()
-                        field.prefixComponent = errorLabel("ZirMed Payer Required")
+                        field.prefixComponent = errorLabel("Cortex Payer Required")
                     }
                 }
             }

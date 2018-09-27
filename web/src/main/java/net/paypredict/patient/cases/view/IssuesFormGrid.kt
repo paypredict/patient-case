@@ -40,13 +40,13 @@ class IssuesFormGrid<T : IssuesStatus>(
                                     <span title="Type">[[$itemName.${Insurance::typeCode.name}]]</span>
                                     <span title="Payer ID">[[$itemName.${Insurance::payerId.name}]]</span>
                                     <span title="Plan Code">[[$itemName.${Insurance::planCode.name}]]</span>
-                                    <span style="font-weight: bold"  title="ZirMed Payer ID">[[$itemName.${Insurance::zmPayerId.name}]]</span>
+                                    <span style="font-weight: bold"  title="Cortex Payer ID">[[$itemName.${Insurance::zmPayerId.name}]]</span>
                                 </div>
                                 <div class='overflow-ellipsis'>
                                     <span title="Payer Name">[[$itemName.${Insurance::payerName.name}]]</span>
                                 </div>
                                 <div class='overflow-ellipsis'>
-                                    <span style="font-weight: bold" title="ZirMed Payer Name">[[$itemName.${Insurance::zmPayerName.name}]]</span>
+                                    <span style="font-weight: bold" title="Cortex Payer Name">[[$itemName.${Insurance::zmPayerName.name}]]</span>
                                 </div>
                                 """
                             IssueEligibility::subscriber -> """
