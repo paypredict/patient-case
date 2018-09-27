@@ -3,8 +3,10 @@ package net.paypredict.patient.cases.view
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
+import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.html.H2
+import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
@@ -20,7 +22,6 @@ import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.worklist.IssueAddress
 import net.paypredict.patient.cases.html.ImgPanZoom
-import kotlin.properties.Delegates
 
 /**
  * <p>
@@ -29,11 +30,20 @@ import kotlin.properties.Delegates
 @Route("address")
 class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
     private var binder: Binder<IssueAddress> = Binder()
-    var value: IssueAddress?
-            by Delegates.observable(null) { _, _: IssueAddress?, new: IssueAddress? ->
-                updateFootnotes(new?.footNoteSet ?: emptySet())
-                binder.readBean(new)
-            }
+    var value: IssueAddress? = null
+        get() {
+            if (field == null) field = IssueAddress()
+            binder.writeBeanIfValid(field)
+            return field
+        }
+        set(new) {
+            binder.readBean(new)
+            updateFootnotes(new?.footNoteSet ?: emptySet())
+            field = new
+        }
+
+    val isValid: Boolean
+        get() = binder.validate().isOk
 
     var caseId: String? = null
         set(value) {
@@ -166,8 +176,13 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
                     }
                     this += Button("Check Address").apply {
                         element.setAttribute("theme", "primary")
-                        isEnabled = false
-                        addClickListener { value?.run { checkPatientAddress?.invoke(this) } }
+                        addClickListener {
+                            val validationStatus = binder.validate()
+                            if (validationStatus.isOk)
+                                value?.run { checkPatientAddress?.invoke(this) }
+                            else
+                                Dialog().apply { this += H3("Check fields errors") }.open()
+                        }
                     }
                 }
             }
@@ -186,8 +201,8 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
                 isPadding = false
                 width = "100%"
                 this += H2("Patient Address Check")
-                this += footnotes
                 this += form
+                this += footnotes
             }
             this += requisitionFormList
         }

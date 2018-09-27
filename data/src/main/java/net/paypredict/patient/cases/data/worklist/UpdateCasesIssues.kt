@@ -28,26 +28,95 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     val smartyStreets = ClientBuilder(smartyStreetsApiCredentials)
         .buildUsStreetApiClient()
     for (case in casesRaw.find(filter)) {
-        IssuesChecker(casesRaw, casesIssues, smartyStreets, case).check()
+        IssueCheckerAuto(smartyStreets, casesRaw, casesIssues, case).check()
         if (isInterrupted()) break
     }
 }
 
-private class IssuesChecker(
+class CheckingException(override val message: String, var status: String = "ERROR") : Exception()
+
+open class IssueChecker(
+    open val smartyStreets: Client = ClientBuilder(smartyStreetsApiCredentials)
+        .buildUsStreetApiClient()
+) {
+    var statusProblems = 0
+    val statusValues = mutableMapOf<String, Any>()
+
+    fun checkIssueAddress(issue: IssueAddress): Boolean {
+        issue.status = null
+        issue.footnotes = null
+
+        val lookup = Lookup().apply {
+            match = MatchType.RANGE
+            street = issue.address1
+            street2 = issue.address2
+            city = issue.city
+            state = issue.state
+            zipCode = issue.zip
+        }
+
+        try {
+            smartyStreets.send(lookup)
+        } catch (e: BadRequestException) {
+        }
+        val notFoundInRangeMode = lookup.result.isEmpty()
+        if (notFoundInRangeMode) {
+            lookup.match = MatchType.INVALID
+            smartyStreets.send(lookup)
+        }
+        val candidate = lookup.result.firstOrNull()
+            ?: throw throw CheckingException("Address not found by smartyStreets api")
+
+        issue.footnotes = candidate.analysis.footnotes
+
+        issue.address1 = candidate.deliveryLine1
+        issue.address2 = candidate.deliveryLine2
+        val components = candidate.components
+            ?: throw CheckingException("candidate.components not found in smartyStreets api response")
+        issue.city = components.cityName
+        issue.state = components.state
+        issue.zip = components.zipCode + components.plus4Code.let {
+            when {
+                it.isNullOrBlank() -> ""
+                else -> "-$it"
+            }
+        }
+
+        val maxFootNote = candidate.analysis.footNoteSet.asSequence().maxBy { it.level }
+        return when (maxFootNote?.level) {
+            null -> true
+            FootNote.Level.ERROR,
+            FootNote.Level.WARNING -> {
+                issue.status = maxFootNote.level.name
+                statusValues["status.values.address"] =
+                        Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
+                statusProblems += 1
+                false
+            }
+            FootNote.Level.INFO -> {
+                issue.status = maxFootNote.level.name
+                statusValues["status.values.address"] =
+                        Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
+                false
+            }
+        }
+    }
+}
+
+
+private class IssueCheckerAuto(
+    override val smartyStreets: Client = ClientBuilder(smartyStreetsApiCredentials)
+        .buildUsStreetApiClient(),
     val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
     val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
-    val smartyStreets: Client = ClientBuilder(smartyStreetsApiCredentials)
-        .buildUsStreetApiClient(),
     val case: Document
-) {
+) : IssueChecker() {
 
     val caseId = case["_id"] as String
     val caseIdFilter = doc { doc["_id"] = caseId }
     val issue: Document? = casesIssues.find(caseIdFilter).firstOrNull()
 
     lateinit var caseIssue: CaseIssue
-    var statusProblems = 0
-    val statusValues = mutableMapOf<String, Any>()
 
     fun check() {
         if (issue != null) return
@@ -73,8 +142,6 @@ private class IssuesChecker(
             }
         })
     }
-
-    private class CheckingException(override val message: String, var status: String = "ERROR") : Exception()
 
     private fun checkNPI() {
         val provider = case<Document>("case", "Case", "OrderingProvider", "Provider")
@@ -183,57 +250,8 @@ private class IssuesChecker(
 
             original = issue.copy()
 
-            val lookup = Lookup().apply {
-                match = MatchType.RANGE
-                street = issue.address1
-                street2 = issue.address2
-                city = issue.city
-                state = issue.state
-                zipCode = issue.zip
-            }
-
-            try {
-                smartyStreets.send(lookup)
-            } catch (e: BadRequestException) {
-            }
-            val notFoundInRangeMode = lookup.result.isEmpty()
-            if (notFoundInRangeMode) {
-                lookup.match = MatchType.INVALID
-                smartyStreets.send(lookup)
-            }
-            val candidate = lookup.result.firstOrNull()
-                ?: throw throw CheckingException("Address not found by smartyStreets api")
-
-            issue.footnotes = candidate.analysis.footnotes
-
-            issue.address1 = candidate.deliveryLine1
-            issue.address2 = candidate.deliveryLine2
-            val components = candidate.components
-                ?: throw CheckingException("candidate.components not found in smartyStreets api response")
-            issue.city = components.cityName
-            issue.state = components.state
-            issue.zip = components.zipCode + components.plus4Code.let {
-                when {
-                    it.isNullOrBlank() -> ""
-                    else -> "-$it"
-                }
-            }
-
-            val maxFootNote = candidate.analysis.footNoteSet.asSequence().maxBy { it.level }
-            when (maxFootNote?.level) {
-                FootNote.Level.ERROR,
-                FootNote.Level.WARNING -> {
-                    issue.status = maxFootNote.level.name
-                    statusValues["status.values.address"] = Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
-                    statusProblems += 1
-                }
-                FootNote.Level.INFO -> {
-                    issue.status = maxFootNote.level.name
-                    statusValues["status.values.address"] = Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
-                }
-                null ->
-                    original = null
-            }
+            if (checkIssueAddress(issue))
+                original = null
 
         } catch (x: Throwable) {
             val e = when (x) {
@@ -243,7 +261,6 @@ private class IssuesChecker(
             }
             issue.status = e.status
             issue.error = e.message
-            issue.original = original
             statusProblems += 1
             statusValues["status.values.address"] = Status(e.status, e.message).toDocument()
         }
@@ -288,7 +305,6 @@ private class IssuesChecker(
     }
 
 }
-
 
 private fun Document?.casePatient(): Person? =
     this<Document>("case", "Case", "Patient")

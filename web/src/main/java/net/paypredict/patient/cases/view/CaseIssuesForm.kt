@@ -1,9 +1,6 @@
 package net.paypredict.patient.cases.view
 
-import com.pipl.api.data.containers.Person
-import com.pipl.api.data.fields.*
 import com.pipl.api.search.SearchAPIError
-import com.pipl.api.search.SearchAPIRequest
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.datepicker.DatePicker
@@ -17,15 +14,12 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
-import net.paypredict.patient.cases.apis.pipl.piplApiSearchConfiguration
 import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.`$set`
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import org.bson.Document
-import java.time.ZoneOffset
-import java.util.*
 import kotlin.properties.Delegates
 
 
@@ -190,7 +184,6 @@ class CaseIssuesForm : Composite<Div>() {
         value?.eligibility = status
     }
 
-
     private fun CaseStatus.openAddressDialog(address: IssueAddress) {
         Dialog().also { dialog ->
             dialog.width = "90vw"
@@ -203,7 +196,6 @@ class CaseIssuesForm : Composite<Div>() {
                 checkPatientAddress = { issue: IssueAddress ->
                     try {
                         checkAddress(issue)
-                        dialog.close()
                     } catch (e: Throwable) {
                         showError(
                             when (e) {
@@ -223,49 +215,34 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private fun checkAddress(issue: IssueAddress) {
-        val apiRequest = SearchAPIRequest(Person(
-            mutableListOf<Field>().also { fields ->
-                fields += Address.Builder()
-                    .country("US")
-                    .state(issue.state)
-                    .city(issue.city)
-                    .zipCode(issue.zip)
-                    .street(issue.address1)
-                    .build()
-                issue.person?.also { person ->
-                    fields += Name.Builder()
-                        .apply {
-                            person.firstName?.also { first(it) }
-                            person.lastName?.also { last(it) }
-                            person.mi?.also { middle(it) }
-                        }
-                        .build()
-                    person.dobAsLocalDate?.also { dob ->
-                        fields += DOB(DateRange().apply {
-                            start = Date.from(
-                                dob
-                                    .withMonth(1)
-                                    .withDayOfMonth(1)
-                                    .atStartOfDay(ZoneOffset.UTC)
-                                    .toInstant()
-                            )
-                            end = Date.from(
-                                dob
-                                    .withMonth(12)
-                                    .withDayOfMonth(31)
-                                    .atStartOfDay(ZoneOffset.UTC)
-                                    .toInstant()
-                            )
-                        })
-                    }
+    private fun AddressForm.checkAddress(issue: IssueAddress) {
+        val issueCopy = issue.copy()
+        try {
+            IssueChecker().checkIssueAddress(issueCopy)
+            value = issueCopy
+            this@CaseIssuesForm.value?.addAddressIssue(issueCopy, issueCopy.status)
+        } catch (e: CheckingException) {
+            showError(e.message)
+            this@CaseIssuesForm.value?.addAddressIssue(issueCopy, "ERROR")
+        }
+    }
+
+    private fun CaseStatus.addAddressIssue(issue: IssueAddress, statusValue: String?) {
+        val casesIssuesCollection = DBS.Collections.casesIssues()
+        val byId = Document("_id", _id)
+        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
+        caseIssues.address += issue.copy(status = statusValue)
+        casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
+        val status = Status(value = statusValue)
+        DBS.Collections.casesRaw().updateOne(byId,
+            doc {
+                doc[`$set`] = doc {
+                    doc["status.values.address"] = status.toDocument()
                 }
-            }
-        ),
-            piplApiSearchConfiguration
-        )
-        val response = apiRequest.send()
-        println(response.json)
+            })
+        issuesAddress.value = caseIssues.address
+        value?.address = status
+        onValueChange?.invoke(value)
     }
 
     private fun showError(error: String?) {

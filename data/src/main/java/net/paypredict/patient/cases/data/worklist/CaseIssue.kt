@@ -273,10 +273,7 @@ data class IssueAddress(
     @DataView("Footnotes code", order = 200, isVisible = false)
     var footnotes: String? = null,
 
-    @DataView("Original", order = 201, isVisible = false)
-    var original: IssueAddress? = null,
-
-    @DataView("Error", order = 202, isVisible = false)
+    @DataView("Error", order = 201, isVisible = false)
     var error: String? = null
 
 ) : IssuesStatus {
