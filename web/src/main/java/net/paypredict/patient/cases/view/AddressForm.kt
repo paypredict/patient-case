@@ -5,6 +5,8 @@ import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.html.H2
+import com.vaadin.flow.component.html.Span
+import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
@@ -14,6 +16,8 @@ import com.vaadin.flow.data.binder.Binder
 import com.vaadin.flow.data.binder.ValidationResult
 import com.vaadin.flow.data.binder.ValueContext
 import com.vaadin.flow.router.Route
+import net.paypredict.patient.cases.apis.smartystreets.FootNote
+import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.worklist.IssueAddress
 import net.paypredict.patient.cases.html.ImgPanZoom
 import kotlin.properties.Delegates
@@ -27,6 +31,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
     private var binder: Binder<IssueAddress> = Binder()
     var value: IssueAddress?
             by Delegates.observable(null) { _, _: IssueAddress?, new: IssueAddress? ->
+                updateFootnotes(new?.footNoteSet ?: emptySet())
                 binder.readBean(new)
             }
 
@@ -35,6 +40,37 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
             requisitionFormList.caseId = value
             field = value
         }
+
+    private val footnotes = VerticalLayout().apply {
+        isPadding = false
+        isSpacing = false
+    }
+
+    private fun updateFootnotes(footNoteSet: FootNoteSet) {
+        footnotes.removeAll()
+        for (footNote in footNoteSet) {
+            footnotes += HorizontalLayout().apply {
+                isPadding = false
+                defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
+                this += when (footNote.level) {
+                    FootNote.Level.INFO -> VaadinIcon.CHECK.create().apply { color = "#1e8e3e" }
+                    FootNote.Level.WARNING -> VaadinIcon.WARNING.create().apply { color = "#f4b400" }
+                    FootNote.Level.ERROR -> VaadinIcon.EXCLAMATION_CIRCLE.create().apply { color = "#d23f31" }
+                }.apply {
+                    style["width"] = "1em"
+                    style["height"] = "1em"
+                }
+                this += Span(footNote.label).apply {
+                    style["font-weight"] = "500"
+                }
+            }
+            footnotes += HorizontalLayout().apply {
+                isPadding = false
+                this += Span(footNote.note).apply { style["padding-left"] = "2em" }
+            }
+        }
+    }
+
 
     private val requisitionLayout = VerticalLayout().apply {
         isPadding = false
@@ -69,6 +105,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
             }
             this += TextField("Address line 1").apply {
                 isRequired = true
+                element.setAttribute("colspan", "3")
                 binder
                     .forField(this)
                     .withValidator(fieldIsRequired)
@@ -78,6 +115,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
                     )
             }
             this += TextField("Address line 2").apply {
+                element.setAttribute("colspan", "3")
                 binder
                     .forField(this)
                     .bind(
@@ -118,7 +156,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
 
             this += VerticalLayout().apply {
                 isPadding = false
-                element.setAttribute("colspan", "5")
+                element.setAttribute("colspan", "3")
                 defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
                 this += HorizontalLayout().apply {
                     isPadding = false
@@ -137,9 +175,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
             setResponsiveSteps(
                 FormLayout.ResponsiveStep("10em", 1),
                 FormLayout.ResponsiveStep("20em", 2),
-                FormLayout.ResponsiveStep("30em", 3),
-                FormLayout.ResponsiveStep("40em", 4),
-                FormLayout.ResponsiveStep("50em", 5)
+                FormLayout.ResponsiveStep("30em", 3)
             )
         }
 
@@ -150,6 +186,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
                 isPadding = false
                 width = "100%"
                 this += H2("Patient Address Check")
+                this += footnotes
                 this += form
             }
             this += requisitionFormList
