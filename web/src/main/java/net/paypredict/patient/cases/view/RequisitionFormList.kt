@@ -30,6 +30,8 @@ class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>
         }
     }
 
+    var isAutoSelect: Boolean = false
+
     private val grid: Grid<RequisitionForm> = Grid<RequisitionForm>().apply {
         addSelectionListener {
             onRequisitionsSelected(it.firstSelectedItem.orElseGet { null })
@@ -59,8 +61,11 @@ class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>
             grid.isHeightByRows = true
         } else {
             grid.isHeightByRows = false
-            grid.width = "100%"
+            grid.width = "120px"
             grid.height = "180px"
+        }
+        if (isAutoSelect && requisitionFormList.isNotEmpty()) {
+            grid.select(requisitionFormList.first())
         }
     }
 
@@ -84,6 +89,7 @@ class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>
 
     init {
         content.width = "120px"
+        content.height = null
         content.isMargin = false
         content.isPadding = false
         if (header != null) content += header

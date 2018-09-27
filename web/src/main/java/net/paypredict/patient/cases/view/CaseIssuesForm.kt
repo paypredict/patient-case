@@ -75,7 +75,9 @@ class CaseIssuesForm : Composite<Div>() {
     private val issuesEligibility = IssuesFormGrid(IssueEligibility) {
         value?.openEligibilityDialog(it)
     }
-    private val issuesAddress = IssuesFormGrid(IssueAddress) { openAddressDialog(it) }
+    private val issuesAddress = IssuesFormGrid(IssueAddress) {
+        value?.openAddressDialog(it)
+    }
     private val issuesExpert = IssuesFormNote(IssueExpert)
 
     private val issueResolved = Checkbox("Issue resolved").also { checkbox ->
@@ -189,17 +191,19 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
 
-    private fun openAddressDialog(address: IssueAddress) {
-        Dialog().apply {
-            width = "70vw"
-            this += AddressForm().apply {
+    private fun CaseStatus.openAddressDialog(address: IssueAddress) {
+        Dialog().also { dialog ->
+            dialog.width = "90vw"
+            dialog.height = "90vh"
+            dialog += AddressForm().apply {
                 setSizeFull()
                 isPadding = false
                 value = address
+                caseId = _id
                 checkPatientAddress = { issue: IssueAddress ->
                     try {
                         checkAddress(issue)
-                        close()
+                        dialog.close()
                     } catch (e: Throwable) {
                         showError(
                             when (e) {
@@ -212,8 +216,10 @@ class CaseIssuesForm : Composite<Div>() {
                         )
                     }
                 }
+                onClose = { dialog.close() }
             }
-            open()
+            dialog.isCloseOnOutsideClick = false
+            dialog.open()
         }
     }
 
