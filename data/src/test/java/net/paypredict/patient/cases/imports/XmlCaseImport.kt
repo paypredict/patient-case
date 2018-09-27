@@ -160,7 +160,6 @@ object XmlCaseImport {
         "Case.ReportingProvider",
         "Case.ServiceProvider",
         "Case.SuperBillDetails",
-        "Case.SuperBillDetails.SuperBill",
         "Case.SuperBillDetails.ServiceProvider.Location",
         "Case.SuperBillDetails.RenderingProvider.Provider",
         "Case.SuperBillDetails.RenderingProvider.Location"
