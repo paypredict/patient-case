@@ -1,16 +1,15 @@
 package net.paypredict.patient.cases.data.worklist
 
 import com.mongodb.client.MongoCollection
-import com.smartystreets.api.ClientBuilder
 import com.smartystreets.api.exceptions.BadRequestException
-import com.smartystreets.api.us_street.Client
+import com.smartystreets.api.exceptions.SmartyException
 import com.smartystreets.api.us_street.Lookup
 import com.smartystreets.api.us_street.MatchType
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistry
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
+import net.paypredict.patient.cases.apis.smartystreets.UsStreet
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
-import net.paypredict.patient.cases.apis.smartystreets.smartyStreetsApiCredentials
 import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 
@@ -25,10 +24,10 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     val filter = doc {
         doc["status.problems"] = doc { doc[`$exists`] = false }
     }
-    val smartyStreets = ClientBuilder(smartyStreetsApiCredentials)
-        .buildUsStreetApiClient()
+    val usStreet = UsStreet()
     for (case in casesRaw.find(filter)) {
-        IssueCheckerAuto(smartyStreets, casesRaw, casesIssues, case).check()
+        IssueCheckerAuto(usStreet, casesRaw, casesIssues, case)
+            .check()
         if (isInterrupted()) break
     }
 }
@@ -36,8 +35,7 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
 class CheckingException(override val message: String, var status: String = "ERROR") : Exception()
 
 open class IssueChecker(
-    open val smartyStreets: Client = ClientBuilder(smartyStreetsApiCredentials)
-        .buildUsStreetApiClient()
+    open val usStreet: UsStreet = UsStreet()
 ) {
     var statusProblems = 0
     val statusValues = mutableMapOf<String, Any>()
@@ -56,14 +54,20 @@ open class IssueChecker(
         }
 
         try {
-            smartyStreets.send(lookup)
-        } catch (e: BadRequestException) {
+            usStreet.send(lookup)
+        } catch (x: Throwable) {
+            when (x) {
+                is SmartyException ->
+                    throw CheckingException("smartyStreets api error: " + x.message, "ERROR")
+                else -> {
+                    x.printStackTrace()
+                    throw CheckingException("smartyStreets api processing error "
+                            + x.javaClass.name + ": "
+                            + x.message, "ERROR")
+                }
+            }
         }
-        val notFoundInRangeMode = lookup.result.isEmpty()
-        if (notFoundInRangeMode) {
-            lookup.match = MatchType.INVALID
-            smartyStreets.send(lookup)
-        }
+
         val candidate = lookup.result.firstOrNull()
             ?: throw throw CheckingException("Address not found by smartyStreets api")
 
@@ -105,8 +109,7 @@ open class IssueChecker(
 
 
 private class IssueCheckerAuto(
-    override val smartyStreets: Client = ClientBuilder(smartyStreetsApiCredentials)
-        .buildUsStreetApiClient(),
+    override val usStreet: UsStreet = UsStreet(),
     val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
     val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
     val case: Document

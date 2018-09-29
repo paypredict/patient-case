@@ -48,6 +48,9 @@ object DBS {
         fun npiRegistry(): MongoCollection<Document> =
             nppes().getCollection("npiRegistry")
 
+        fun usStreet(): MongoCollection<Document> =
+            smartyStreets().getCollection("usStreet")
+
         object PPPayers {
             fun lookupPkd(): MongoCollection<Document> =
                 ppPayers().getCollection("lookupPkd")
