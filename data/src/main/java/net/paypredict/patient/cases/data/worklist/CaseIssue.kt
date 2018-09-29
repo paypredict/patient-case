@@ -111,13 +111,16 @@ data class IssueEligibility(
     @DataView("Status", order = 10, flexGrow = 1)
     override var status: String? = null,
 
-    @DataView("Insurance", order = 20, flexGrow = 5)
+    @DataView("Responsibility", order = 20, flexGrow = 1)
+    var responsibility: String? = null,
+
+    @DataView("Insurance", order = 30, flexGrow = 5)
     var insurance: Insurance? = null,
 
-    @DataView("Subscriber", order = 30, flexGrow = 2)
+    @DataView("Subscriber", order = 40, flexGrow = 2)
     var subscriber: Subscriber? = null,
 
-    @DataView("eligibility._id", order = 40, isVisible = false)
+    @DataView("eligibility._id", order = 50, isVisible = false)
     var eligibility: String? = null
 
 ) : IssuesStatus {
@@ -401,6 +404,7 @@ fun IssueNPI.Taxonomy.toDocument(): Document = doc {
 private fun Document.toIssueEligibility(): IssueEligibility =
     IssueEligibility(
         status = opt("status"),
+        responsibility = opt("responsibility"),
         insurance = opt<Document>("insurance")?.toInsurance(),
         subscriber = opt<Document>("subscriber")?.toSubscriber(),
         eligibility = opt<String>("eligibility")
@@ -408,6 +412,7 @@ private fun Document.toIssueEligibility(): IssueEligibility =
 
 fun IssueEligibility.toDocument(): Document = doc {
     doc["status"] = status
+    doc["responsibility"] = responsibility
     doc["insurance"] = insurance?.toDocument()
     doc["subscriber"] = subscriber?.toDocument()
     doc["eligibility"] = eligibility

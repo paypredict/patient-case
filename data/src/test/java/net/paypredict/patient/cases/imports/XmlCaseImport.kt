@@ -232,35 +232,36 @@ object XmlCaseImport {
     private fun Array<String>.testIssuesOption(_id: String) {
         if (contains("--test-issues")) {
             val case = DBS.Collections.casesRaw().find(Document("_id", _id)).first()
-            fun eligibility(): List<Document> = mutableListOf<Document>().also { list ->
+            fun eligibility(): List<Document> =
                 case<List<*>>("case", "Case", "SubscriberDetails", "Subscriber")
+                    ?.asSequence()
                     ?.filterIsInstance<Document>()
-                    ?.firstOrNull { it<String>("responsibilityCode") == "Primary" }
-                    ?.let { primarySubscriber ->
-                        list += IssueEligibility(
-                            status = "Failed",
+                    ?.map { subscriber ->
+                        IssueEligibility(
+                            responsibility = subscriber("responsibilityCode"),
                             insurance = Insurance(
-                                typeCode = primarySubscriber("insuranceTypeCode"),
-                                payerId = primarySubscriber("payerId"),
-                                planCode = primarySubscriber("planCode"),
-                                payerName = primarySubscriber("payerName"),
-                                zmPayerId = primarySubscriber("zmPayerId"),
-                                zmPayerName = primarySubscriber("zmPayerName")
+                                typeCode = subscriber("insuranceTypeCode"),
+                                payerId = subscriber("payerId"),
+                                planCode = subscriber("planCode"),
+                                payerName = subscriber("payerName"),
+                                zmPayerId = subscriber("zmPayerId"),
+                                zmPayerName = subscriber("zmPayerName")
                             ),
                             subscriber = Subscriber(
-                                firstName = primarySubscriber("firstName"),
-                                lastName = primarySubscriber("organizationNameOrLastName"),
-                                mi = primarySubscriber("middleInitial"),
-                                gender = primarySubscriber("gender"),
-                                dob = primarySubscriber("dob"),
-                                groupName = primarySubscriber("groupOrPlanName"),
-                                groupId = primarySubscriber("groupOrPlanNumber"),
-                                relationshipCode = primarySubscriber("relationshipCode"),
-                                policyNumber = primarySubscriber("subscriberPolicyNumber")
+                                firstName = subscriber("firstName"),
+                                lastName = subscriber("organizationNameOrLastName"),
+                                mi = subscriber("middleInitial"),
+                                gender = subscriber("gender"),
+                                dob = subscriber("dob"),
+                                groupName = subscriber("groupOrPlanName"),
+                                groupId = subscriber("groupOrPlanNumber"),
+                                relationshipCode = subscriber("relationshipCode"),
+                                policyNumber = subscriber("subscriberPolicyNumber")
                             )
                         ).toDocument()
                     }
-            }
+                    ?.toList()
+                    ?: emptyList()
 
             fun expert(): List<Document> =
                 listOf(IssueExpert(text = LoremIpsum().words).toDocument())

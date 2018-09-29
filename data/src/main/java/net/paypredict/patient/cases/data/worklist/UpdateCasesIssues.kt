@@ -206,26 +206,23 @@ private class IssueCheckerAuto(
     }
 
     private fun checkSubscriber() {
-        val subscriber = case.findSubscriber()
-        if (subscriber != null) {
-            caseIssue = caseIssue.copy(
-                eligibility = listOf(
-                    IssueEligibility(
-                        insurance = subscriber.toInsurance(),
-                        subscriber = subscriber.toSubscriber()
-                    )
-                )
+        val issueEligibilityList = case.toSubscriberList().map {
+            IssueEligibility(
+                responsibility = it<String>("responsibilityCode"),
+                insurance = it.toInsurance(),
+                subscriber = it.toSubscriber()
             )
+        }
+        if (issueEligibilityList.isNotEmpty()) {
+            caseIssue = caseIssue.copy(eligibility = issueEligibilityList)
+            // TODO check Subscribers in issueEligibilityList
         } else {
-            caseIssue = caseIssue.copy(
-                eligibility = listOf(IssueEligibility(status = "NOT_FOUND"))
-            )
+            caseIssue = caseIssue.copy(eligibility = listOf(IssueEligibility(status = "NOT_FOUND")))
             statusProblems += 1
             statusValues["status.values.eligibility"] =
-                    Status("WARNING", "Primary Subscriber not found").toDocument()
+                    Status("WARNING", "No Subscribers found").toDocument()
         }
     }
-
 
     private fun checkAddress() {
         val person = case.findSubscriber() ?: case.findPatient()
@@ -268,13 +265,17 @@ private class IssueCheckerAuto(
     }
 
     companion object {
-        private fun Document.findSubscriber(): Document? {
-            val subscribers = opt<List<*>>("case", "Case", "SubscriberDetails", "Subscriber")
+        private fun Document.toSubscriberList(): List<Document> =
+            opt<List<*>>("case", "Case", "SubscriberDetails", "Subscriber")
+                ?.asSequence()
                 ?.filterIsInstance<Document>()
-            return subscribers
-                ?.firstOrNull { it<String>("responsibilityCode") == "Primary" }
-                ?: subscribers?.firstOrNull()
-        }
+                ?.toList()
+                ?: emptyList()
+
+        private fun Document.findSubscriber(): Document? =
+            toSubscriberList().run {
+                firstOrNull { it<String>("responsibilityCode") == "Primary" } ?: firstOrNull()
+            }
 
         private fun Document.findPatient(): Document? {
             return opt<Document>("case", "Case", "Patient")
