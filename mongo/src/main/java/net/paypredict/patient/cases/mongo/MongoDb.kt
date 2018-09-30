@@ -22,6 +22,7 @@ object DBS {
     fun pipl(): MongoDatabase = mongoClient.getDatabase("pipl")
     fun ppPayers(): MongoDatabase = mongoClient.getDatabase("ppPayers")
     fun smartyStreets(): MongoDatabase = mongoClient.getDatabase("smartyStreets")
+    fun ptn(): MongoDatabase = mongoClient.getDatabase("ptn")
 
     object Collections {
         fun cases(): MongoCollection<Document> =
