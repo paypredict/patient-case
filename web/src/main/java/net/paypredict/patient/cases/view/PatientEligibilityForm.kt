@@ -30,13 +30,12 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     private val insuranceForm =
         InsuranceForm(sectionHeader("Insurance Payer")).apply { width = "100%" }
     private val requisitionDiv = Div().apply {
-        style["padding-left"] = "1em"
         setSizeFull()
         isVisible = false
     }
     private val requisitionFormList =
-        RequisitionFormList(sectionHeader("Requisition Forms")).apply {
-            setSizeUndefined()
+        RequisitionFormList().apply {
+            height = "100%"
             onRequisitionsSelected = { requisitionForm ->
                 if (requisitionForm == null) {
                     requisitionDiv.isVisible = false
@@ -124,7 +123,6 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                 width = "100%"
                                 defaultVerticalComponentAlignment = FlexComponent.Alignment.START
                                 this += insuranceForm
-                                this += requisitionFormList
                                 setFlexGrow(3.0, insuranceForm)
                             }
                             this += sectionHeader("Subscriber")
@@ -179,13 +177,23 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             }
         }
 
+        val requisitions = HorizontalLayout().apply {
+            isPadding = false
+            style["padding-left"] = "1em"
+            setSizeFull()
+
+            this += requisitionFormList
+            this += requisitionDiv
+        }
+
         content.isPadding = false
         content.isSpacing = false
 
         content += main
-        content += requisitionDiv
+        content += requisitions
+
         content.setFlexGrow(1.0, main)
-        content.setFlexGrow(0.7, requisitionDiv)
+        content.setFlexGrow(1.0, requisitions)
     }
 
     enum class Order {

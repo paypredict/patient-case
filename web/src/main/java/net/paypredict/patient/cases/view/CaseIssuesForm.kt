@@ -128,7 +128,7 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private fun CaseStatus.openEligibilityDialog(eligibility: IssueEligibility) {
+    private fun CaseStatus.openEligibilityDialog(selected: IssueEligibility) {
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
@@ -137,7 +137,7 @@ class CaseIssuesForm : Composite<Div>() {
                 form.width = "100%"
                 form.height = "100%"
                 form.caseId = _id
-                form.value = eligibility
+                form.value = selected
                 form.onCancel = { dialog.close() }
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
