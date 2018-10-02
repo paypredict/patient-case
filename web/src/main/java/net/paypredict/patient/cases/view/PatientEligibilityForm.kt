@@ -18,6 +18,9 @@ import com.vaadin.flow.router.Route
 import com.vaadin.flow.shared.Registration
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
 import net.paypredict.patient.cases.html.ImgPanZoom
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo._id
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 
@@ -59,12 +62,14 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         isPadding = false
         width = "100%"
     }
+    private val caseHeader = CaseHeader()
 
     var caseId: String? = null
         set(value) {
             insuranceForm.caseId = value
             requisitionFormList.caseId = value
             subscriberForm.caseId = value
+            caseHeader.caseId = value
             field = value
         }
 
@@ -292,23 +297,29 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             }
         }
 
-        val requisitions = HorizontalLayout().apply {
-            isPadding = false
+        val right = HorizontalLayout().apply {
             style["padding-left"] = "1em"
+            isPadding = false
             setSizeFull()
 
             this += requisitionFormList
-            this += requisitionDiv
+            this += VerticalLayout().apply {
+                isPadding = false
+                setSizeFull()
+                defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
+                this += caseHeader
+                this += requisitionDiv
+            }
         }
 
         content.isPadding = false
         content.isSpacing = false
 
         content += main
-        content += requisitions
+        content += right
 
         content.setFlexGrow(1.0, main)
-        content.setFlexGrow(1.0, requisitions)
+        content.setFlexGrow(1.0, right)
     }
 
     enum class ResponsibilityOrder {
@@ -317,10 +328,35 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         Septenary, Octonary, Nonary, Denary
     }
 
-    inner class ResponsibilityTab(
+    class ResponsibilityTab(
         val order: ResponsibilityOrder,
         var value: IssueEligibility = IssueEligibility()
     ) : Tab(order.name + " Subscriber")
+
+    class CaseHeader : Composite<HorizontalLayout>() {
+        var caseId: String? = null
+            set(value) {
+                field = value
+                updateUI()
+            }
+
+        private fun updateUI() {
+            val case = caseId?.let { DBS.Collections.casesRaw().find(it._id()).firstOrNull() }
+            accession.text = case?.opt<String>("case", "Case", "accessionNumber") ?: ""
+        }
+
+        private val accession = Div().apply {
+            style["background-color"] = "white"
+            style["height"] = "1em"
+            style["padding"] = "0.5em"
+            style["z-index"] = "100"
+        }
+
+        init {
+            content.isPadding = false
+            content += accession
+        }
+    }
 
     companion object {
         private fun Map<Tab, Component>.showTab(tab: Tab) =
