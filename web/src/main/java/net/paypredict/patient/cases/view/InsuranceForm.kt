@@ -101,7 +101,6 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         }
         set(new) {
             payerName.text = new?.payerName ?: ""
-            zmPayerId.setItems(InsuranceItem.all)
             pokitDokPayer.setPokitDokPayer(new?.toTradingPartner())
             binder.readBean(new)
             field = new
@@ -109,6 +108,26 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
 
     val isValid: Boolean
         get() = binder.validate().isOk
+
+    data class InsuranceItem(val zmPayerId: String, val displayName: String) {
+        companion object
+    }
+
+    private fun InsuranceItem.toTradingPartner(): PayersData.TradingPartner? =
+        payersData.tradingPartners[payersData.findPkdPayerId(zmPayerId)]
+
+    private fun Insurance.toTradingPartner(): PayersData.TradingPartner? =
+        payersData.tradingPartners[payersData.findPkdPayerId(zmPayerId)]
+
+    private val InsuranceItem.Companion.all: List<InsuranceItem> by lazy {
+        payersData.zirmedPayers.values.mapNotNull { InsuranceItem[it] }
+    }
+
+    private operator fun InsuranceItem.Companion.get(zmPayerId: String?): InsuranceItem? =
+        InsuranceItem[payersData.zirmedPayers[zmPayerId]]
+
+    private operator fun InsuranceItem.Companion.get(zirMedPayer: PayersData.ZirMedPayer?): InsuranceItem? =
+        zirMedPayer?.run { InsuranceItem(_id, displayName) }
 
     init {
         content.isPadding = false
@@ -143,31 +162,10 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                 )
             }
         }
+        zmPayerId.setItems(InsuranceItem.all)
         content += zmPayerId
         content += pokitDokPayer
     }
-
-
-    data class InsuranceItem(val zmPayerId: String, val displayName: String) {
-        companion object
-    }
-
-    private fun InsuranceItem.toTradingPartner(): PayersData.TradingPartner? =
-        payersData.tradingPartners[payersData.findPkdPayerId(zmPayerId)]
-
-    private fun Insurance.toTradingPartner(): PayersData.TradingPartner? =
-        payersData.tradingPartners[payersData.findPkdPayerId(zmPayerId)]
-
-    private val InsuranceItem.Companion.all: List<InsuranceItem> by lazy {
-        payersData.zirmedPayers.values.mapNotNull { InsuranceItem[it] }
-    }
-
-    private operator fun InsuranceItem.Companion.get(zmPayerId: String?): InsuranceItem? =
-        InsuranceItem[payersData.zirmedPayers[zmPayerId]]
-
-    private operator fun InsuranceItem.Companion.get(zirMedPayer: PayersData.ZirMedPayer?): InsuranceItem? =
-        zirMedPayer?.run { InsuranceItem(_id, displayName) }
-
 
     private fun selectPokitDokPayer() {
         Dialog().also { dialog ->
