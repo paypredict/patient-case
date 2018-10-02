@@ -2,10 +2,12 @@ package net.paypredict.patient.cases.view
 
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.HasComponents
+import com.vaadin.flow.component.HasOrderedComponents
 import com.vaadin.flow.component.UI
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.data.renderer.Renderer
 import com.vaadin.flow.data.renderer.TemplateRenderer
+import kotlin.coroutines.experimental.buildSequence
 
 /**
  * <p>
@@ -15,6 +17,13 @@ import com.vaadin.flow.data.renderer.TemplateRenderer
 operator fun HasComponents.plusAssign(value: Component) {
     add(value)
 }
+
+val HasOrderedComponents<*>.components: Sequence<Component>
+    get() = buildSequence {
+        for (i in 0 until componentCount) {
+            yield(getComponentAt(i))
+        }
+    }
 
 inline fun <reified T> String.template(build: TemplateRenderer<T>.() -> Unit): Renderer<T> =
     TemplateRenderer.of<T>(this).apply { build() }

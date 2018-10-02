@@ -4,6 +4,7 @@ import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
+import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.icon.VaadinIcon
@@ -14,11 +15,11 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
+import com.vaadin.flow.shared.Registration
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
 import net.paypredict.patient.cases.html.ImgPanZoom
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
-import kotlin.properties.Delegates
 
 /**
  * <p>
@@ -26,6 +27,8 @@ import kotlin.properties.Delegates
  */
 @Route("eligibility")
 class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
+    private val responsibilityTabs: Tabs = Tabs()
+    private var responsibilityTabsSelectedRegistration: Registration? = null
     private val subscriberTabs: Tabs = Tabs()
     private val insuranceForm =
         InsuranceForm(sectionHeader("Insurance Payer")).apply { width = "100%" }
@@ -65,17 +68,86 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             field = value
         }
 
-    var value: IssueEligibility?
-            by Delegates.observable(null) { _, _: IssueEligibility?, new: IssueEligibility? ->
-                insuranceForm.value = new?.insurance
-                subscriberForm.value = new?.subscriber
-                eligibilityCheckResView.value = new?.eligibility
+    var selectedResponsibilityOrder: ResponsibilityOrder? = null
+    var selectedItem: IssueEligibility? = null
+    var items: List<IssueEligibility>? = null
+        set(new) {
+            field = new
+            updateItems(new)
+        }
+
+    private fun updateItems(newItems: List<IssueEligibility>?) {
+        responsibilityTabsSelectedRegistration?.remove()
+
+        val groupByResponsibility: Map<String, List<IssueEligibility>> =
+            newItems?.groupBy { it.responsibility ?: "" } ?: emptyMap()
+
+        val invalidResponsibility = mutableListOf<IssueEligibility?>()
+        responsibilityTabs.removeAll()
+
+        for (responsibility in groupByResponsibility) {
+            try {
+                responsibilityTabs += ResponsibilityTab(
+                    ResponsibilityOrder.valueOf(responsibility.key),
+                    responsibility.value.last()
+                )
+            } catch (e: IllegalArgumentException) {
+                invalidResponsibility += responsibility.value.lastOrNull()
             }
+        }
+        if (invalidResponsibility.isNotEmpty()) {
+            var nextResponsibility = responsibilityTabs
+                .respTabs
+                .map { it.order }
+                .max()
+                ?.ordinal
+                ?.plus(1)
+                ?: ResponsibilityOrder.Primary.ordinal
+
+            for (order in ResponsibilityOrder.values()) {
+                if (order.ordinal == nextResponsibility) {
+                    val eligibility = invalidResponsibility.firstOrNull() ?: continue
+                    invalidResponsibility.removeAt(0)
+                    responsibilityTabs += ResponsibilityTab(order, eligibility)
+                    nextResponsibility++
+                }
+            }
+        }
+
+        if (responsibilityTabs.respTabs.isEmpty()) {
+            responsibilityTabs += ResponsibilityTab(ResponsibilityOrder.Primary)
+        }
+
+        val respTabs = responsibilityTabs.respTabs
+        val firstTab = respTabs.first()
+        val selectedTab =
+            if (selectedResponsibilityOrder == null)
+                firstTab else
+                respTabs.firstOrNull { it.order == selectedResponsibilityOrder } ?: firstTab
+
+        responsibilityTabsSelectedRegistration =
+                responsibilityTabs.addSelectedChangeListener { event: Tabs.SelectedChangeEvent ->
+                    selectResponsibilityTab(event.source.selectedTab as? ResponsibilityTab)
+                }
+        responsibilityTabs.selectedTab = selectedTab
+        selectResponsibilityTab(selectedTab)
+    }
+
+    private fun selectResponsibilityTab(tab: ResponsibilityTab?) {
+        selectedResponsibilityOrder = tab?.order
+        val value = tab?.value
+        insuranceForm.value = value?.insurance
+        subscriberForm.value = value?.subscriber
+        eligibilityCheckResView.value = value?.eligibility
+
+        deleteResponsibility.isEnabled = selectedResponsibilityOrder != ResponsibilityOrder.Primary
+    }
 
     var onPatientEligibilityChecked: ((IssueEligibility, EligibilityCheckRes) -> Unit)? = null
     var onPatientEligibilitySave: ((IssueEligibility) -> Unit)? = null
-    var onCancel: (() -> Unit)? = null
-
+    var onInsert: ((IssueEligibility) -> Unit)? = null
+    var onRemove: (((IssueEligibility) -> Boolean) -> Unit)? = null
+    var onClose: (() -> Unit)? = null
 
     private infix fun VerticalLayout.withActions(actions: HorizontalLayout) {
         this += actions
@@ -89,10 +161,51 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             defaultVerticalComponentAlignment = FlexComponent.Alignment.END
             this += Button("Close").apply {
                 element.setAttribute("theme", "contrast tertiary")
-                addClickListener { onCancel?.invoke() }
+                addClickListener { onClose?.invoke() }
             }
             build()
         }
+
+
+    private val addResponsibility = Button(VaadinIcon.PLUS.create()).apply {
+        element.setAttribute("theme", "icon tertiary")
+        addClickListener { _ ->
+            val onInsert = onInsert
+            val next = responsibilityTabs.respTabs.last().order.next
+            if (onInsert != null && next != null) {
+                val old = responsibilityTabs.selectedRespTab.value
+                val new = old.copy(
+                    responsibility = next.name,
+                    insurance = null,
+                    subscriber = old.subscriber?.copy(policyNumber = null),
+                    eligibility = null
+                )
+                onInsert(new)
+                responsibilityTabs.selectedTab = responsibilityTabs.respTabs.last()
+            }
+        }
+    }
+
+    private val deleteResponsibility = Button(VaadinIcon.MINUS.create()).apply {
+        element.setAttribute("theme", "icon tertiary")
+        addClickListener { _ ->
+            val toDelete = responsibilityTabs.selectedRespTab.value
+            Dialog().also { dialog ->
+                dialog += VerticalLayout().apply {
+                    defaultHorizontalComponentAlignment = FlexComponent.Alignment.CENTER
+                    this += H3("Do you wish to delete ${responsibilityTabs.selectedTab.label} Information?")
+                    this += HorizontalLayout().apply {
+                        this += Button("Delete") { _ ->
+                            onRemove?.invoke { it == toDelete }
+                            dialog.close()
+                        }
+                        this += Button("Cancel") { dialog.close() }
+                    }
+                }
+                dialog.open()
+            }
+        }
+    }
 
     init {
         val main = VerticalLayout().apply {
@@ -100,12 +213,9 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             this += HorizontalLayout().apply {
                 isPadding = false
                 isSpacing = false
-                this += Tabs().apply {
-                    this += Tab(Order.Primary.name + " Subscriber")
-                }
-                this += Button(VaadinIcon.PLUS.create()).apply {
-                    element.setAttribute("theme", "icon tertiary")
-                }
+                this += responsibilityTabs
+                this += addResponsibility
+                this += deleteResponsibility
             }
             this += VerticalLayout().apply {
                 isPadding = false
@@ -134,9 +244,13 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                 addClickListener {
                                     if (insuranceForm.isValid && subscriberForm.isValid)
                                         onPatientEligibilitySave?.invoke(
-                                            (value ?: IssueEligibility())
-                                                .copy(insurance = insuranceForm.value)
-                                                .copy(subscriber = subscriberForm.value)
+                                            responsibilityTabs.selectedRespTab.value
+                                                .copy(
+                                                    responsibility = selectedResponsibilityOrder?.name,
+                                                    insurance = insuranceForm.value,
+                                                    subscriber = subscriberForm.value,
+                                                    eligibility = null
+                                                )
                                         )
                                 }
                             }
@@ -145,6 +259,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                 addClickListener {
                                     if (insuranceForm.isValid && subscriberForm.isValid) {
                                         val issue = IssueEligibility(
+                                            responsibility = selectedResponsibilityOrder?.name,
                                             insurance = insuranceForm.value,
                                             subscriber = subscriberForm.value
                                         )
@@ -196,11 +311,16 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         content.setFlexGrow(1.0, requisitions)
     }
 
-    enum class Order {
+    enum class ResponsibilityOrder {
         Primary, Secondary, Tertiary,
         Quaternary, Quinary, Senary,
         Septenary, Octonary, Nonary, Denary
     }
+
+    inner class ResponsibilityTab(
+        val order: ResponsibilityOrder,
+        var value: IssueEligibility = IssueEligibility()
+    ) : Tab(order.name + " Subscriber")
 
     companion object {
         private fun Map<Tab, Component>.showTab(tab: Tab) =
@@ -216,6 +336,15 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
 
         private fun sectionHeader(text: String) =
             H3(text).apply { style["margin-bottom"] = "0" }
+
+        private val Tabs.respTabs: List<ResponsibilityTab>
+            get() = components.filterIsInstance<ResponsibilityTab>().toList()
+
+        private val Tabs.selectedRespTab: ResponsibilityTab
+            get() = selectedTab as ResponsibilityTab
+
+        private val ResponsibilityOrder?.next: ResponsibilityOrder?
+            get() = ResponsibilityOrder.values().getOrNull(this?.ordinal?.plus(1) ?: 0)
     }
 
 }

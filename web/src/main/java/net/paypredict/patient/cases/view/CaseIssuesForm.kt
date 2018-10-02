@@ -137,8 +137,9 @@ class CaseIssuesForm : Composite<Div>() {
                 form.width = "100%"
                 form.height = "100%"
                 form.caseId = _id
-                form.value = selected
-                form.onCancel = { dialog.close() }
+                form.items = issuesEligibility.value
+                form.selectedItem = selected
+                form.onClose = { dialog.close() }
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
                         is EligibilityCheckRes.Pass -> {
@@ -153,12 +154,21 @@ class CaseIssuesForm : Composite<Div>() {
                             showError(res.message)
                         }
                     }
-                    onValueChange?.invoke(value)
+                    onValueChange?.invoke(this)
+                    form.items = issuesEligibility.value
                 }
                 form.onPatientEligibilitySave = { issue ->
                     addEligibilityIssue(issue, "SAVED")
-                    onValueChange?.invoke(value)
-                    dialog.close()
+                    onValueChange?.invoke(this)
+                    form.items = issuesEligibility.value
+                }
+                form.onInsert = { responsibility ->
+                    addEligibilityIssue(responsibility)
+                    form.items = issuesEligibility.value
+                }
+                form.onRemove = { responsibility ->
+                    removeEligibilityIssue(responsibility)
+                    form.items = issuesEligibility.value
                 }
             }
             dialog.isCloseOnOutsideClick = false
@@ -167,11 +177,19 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
 
-    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: String) {
+    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: String? = null) {
         val casesIssuesCollection = DBS.Collections.casesIssues()
         val byId = Document("_id", _id)
         val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
-        caseIssues.eligibility += issue.copy(status = statusValue)
+        val new = issue.copy(status = statusValue)
+        if (new == caseIssues.eligibility.lastOrNull()) return
+
+        var newList = caseIssues.eligibility + new
+        if (newList.size > 1 && newList[0].isEmpty()) {
+            newList = newList.drop(1)
+        }
+        caseIssues.eligibility = newList
+
         casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
         val status = Status(value = statusValue)
         DBS.Collections.casesRaw().updateOne(byId,
@@ -182,6 +200,15 @@ class CaseIssuesForm : Composite<Div>() {
             })
         issuesEligibility.value = caseIssues.eligibility
         value?.eligibility = status
+    }
+
+    private fun CaseStatus.removeEligibilityIssue(predicate: (IssueEligibility) -> Boolean) {
+        val casesIssuesCollection = DBS.Collections.casesIssues()
+        val byId = Document("_id", _id)
+        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
+        caseIssues.eligibility = caseIssues.eligibility.filterNot(predicate)
+        casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
+        issuesEligibility.value = caseIssues.eligibility
     }
 
     private fun CaseStatus.openAddressDialog(address: IssueAddress) {

@@ -122,7 +122,6 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         }
         set(new) {
             relationshipCode.setItems(listOfNotNull(new?.relationshipCode))
-            gender.setItems((listOfNotNull(new?.gender) + genderItems).toSet())
             binder.readBean(new)
             field = new
         }

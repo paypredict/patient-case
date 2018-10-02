@@ -131,6 +131,9 @@ data class IssueEligibility(
     }
 }
 
+fun IssueEligibility.isEmpty(): Boolean =
+    responsibility.isNullOrBlank() && eligibility.isNullOrBlank() && insurance == null && subscriber == null
+
 /**
  * `Case.SubscriberDetails.Subscriber`
  *  * responsibilityCode == Primary
