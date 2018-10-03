@@ -10,14 +10,15 @@ import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.html.H4
+import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
-import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.data.worklist.*
+import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo.`$set`
+import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import org.bson.Document
 import kotlin.properties.Delegates
@@ -55,6 +56,12 @@ class CaseIssuesForm : Composite<Div>() {
 
         issueActions.isVisible = new != null
         issueResolved.value = new?.statusValue == "RESOLVED"
+
+        requisitionFormsNotFound.isVisible = new?.accession?.let { accession ->
+            DBS.Collections
+                .requisitionForms()
+                .count(doc { doc["barcode"] = accession }) == 0L
+        } ?: false
     }
 
     private val payerName = TextField("Payer Name").apply { isReadOnly = true }
@@ -94,6 +101,14 @@ class CaseIssuesForm : Composite<Div>() {
         isPadding = false
     }
 
+    private val requisitionFormsNotFound = VaadinIcon.FILE_REMOVE.create().apply {
+        color = "#d23f31"
+        style["min-width"] = "1.5em"
+        style["min-height"] = "1.5em"
+        element.setAttribute("title", "Scanned documents not available")
+        isVisible = false
+    }
+
     init {
         content.setSizeFull()
         content.style["overflow"] = "auto"
@@ -107,9 +122,14 @@ class CaseIssuesForm : Composite<Div>() {
                     FormLayout.ResponsiveStep("32em", 4)
                 )
 
-                this += H3("Case Issues").apply {
-                    style["margin-top"] = "0"
-                    style["white-space"] = "nowrap"
+                this += HorizontalLayout().apply {
+                    isPadding = false
+                    defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
+                    this += H3("Case Issues").apply {
+                        style["margin-top"] = "0"
+                        style["white-space"] = "nowrap"
+                    }
+                    this += requisitionFormsNotFound
                 }
                 this += payerName.apply { element.setAttribute("colspan", "2") }
                 this += accession
