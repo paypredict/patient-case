@@ -33,16 +33,23 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
             field = new
         }
 
+    class TabPage(val tab: Tab, val page: Component)
+
     private val tabs = Tabs().apply {
         addSelectedChangeListener { _ ->
             val tab = selectedTab
-            pageMap.entries.forEach { it.key.isVisible = it.value == tab }
+            pages.removeAll()
+            tabPageList.forEach {
+                if (it.tab === tab) {
+                    pages += it.page
+                }
+            }
         }
     }
     private val pages = VerticalLayout().apply {
         isPadding = false
     }
-    private val pageMap = mutableMapOf<Component, Tab>()
+    private val tabPageList = mutableListOf<TabPage>()
 
     private val warnPage = Div().apply {
         Tab("Warnings").page(this)
@@ -100,10 +107,8 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
     private val errPages: Set<Component> = setOf(errPage)
 
     private fun Tab.page(page: Component) {
-        pageMap[page] = this
-        page.isVisible = false
+        tabPageList += TabPage(this, page)
         tabs += this
-        pages += page
     }
 
     private fun showRes(value: String?) {
@@ -123,14 +128,8 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
     }
 
     private fun Set<Component>.showPages() {
-        pageMap.entries.forEach {
-            it.key.isVisible = false
-            it.value.isVisible = it.key in this
-        }
-        firstOrNull()?.let { firstPage ->
-            firstPage.isVisible = true
-            tabs.selectedTab = pageMap[firstPage]
-        }
+        tabPageList.forEach { it.tab.isVisible = it.page in this }
+        tabs.selectedTab = tabPageList.firstOrNull { it.tab.isVisible }?.tab
     }
 
     private fun showPass(res: EligibilityCheckRes.Pass) {
@@ -144,7 +143,6 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
         binder.readBean(res.result)
         warnPage.rawText = res.warnings.joinToString(separator = "\n") { it.message }
         jsonPage.rawText = res.result.toJson(JsonWriterSettings(JsonMode.SHELL, true))
-
     }
 
     private fun showError(res: EligibilityCheckRes.Error?) {
