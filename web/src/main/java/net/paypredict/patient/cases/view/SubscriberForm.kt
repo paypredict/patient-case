@@ -41,7 +41,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
     private val relationshipCode: ComboBox<String?> = ComboBox<String?>("Relation with patient").apply {
         isAllowCustomValue = false
         isPreventInvalidInput = true
-        setItems()
+        setItems(relationshipCodeItems)
         binder
             .forField(this)
             .bind(
@@ -49,7 +49,6 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                 Subscriber::relationshipCode.setter
             )
     }
-    private val genderItems = listOf("Male", "Female", "Unknown")
     private val firstName = TextField("First Name").apply {
         isRequired = true
         binder
@@ -121,7 +120,6 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             return field
         }
         set(new) {
-            relationshipCode.setItems(listOfNotNull(new?.relationshipCode))
             binder.readBean(new)
             field = new
         }
@@ -188,5 +186,10 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             }
             dialog.open()
         }
+    }
+
+    companion object {
+        private val relationshipCodeItems = listOf("UNK", "SEL")
+        private val genderItems = listOf("Male", "Female", "Unknown")
     }
 }
