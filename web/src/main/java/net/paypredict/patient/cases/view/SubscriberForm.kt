@@ -189,7 +189,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
     }
 
     companion object {
-        private val relationshipCodeItems = listOf("UNK", "SEL")
+        private val relationshipCodeItems = listOf("SEL", "UNK", "CHD", "SPO", "OTH", "PAR", "DOM")
         private val genderItems = listOf("Male", "Female", "Unknown")
     }
 }
