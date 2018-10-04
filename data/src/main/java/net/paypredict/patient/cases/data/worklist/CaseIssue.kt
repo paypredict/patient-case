@@ -111,17 +111,23 @@ data class IssueEligibility(
     @DataView("Status", order = 10, flexGrow = 1)
     override var status: String? = null,
 
-    @DataView("Responsibility", order = 20, flexGrow = 1)
+    @DataView("origin", order = 20, isVisible = false)
+    var origin: String? = null,
+
+    @DataView("Responsibility", order = 30, flexGrow = 1)
     var responsibility: String? = null,
 
-    @DataView("Insurance", order = 30, flexGrow = 5)
+    @DataView("Insurance", order = 40, flexGrow = 5)
     var insurance: Insurance? = null,
 
-    @DataView("Subscriber", order = 40, flexGrow = 2)
+    @DataView("Subscriber", order = 50, flexGrow = 2)
     var subscriber: Subscriber? = null,
 
-    @DataView("eligibility._id", order = 50, isVisible = false)
-    var eligibility: String? = null
+    @DataView("eligibility._id", isVisible = false)
+    var eligibility: String? = null,
+
+    @DataView("Subscriber Raw", isVisible = false)
+    var subscriberRaw: Map<String, String> = emptyMap()
 
 ) : IssuesStatus {
     companion object : IssuesClass<IssueEligibility> {
@@ -129,6 +135,12 @@ data class IssueEligibility(
         override val beanType = IssueEligibility::class.java
         override val metaData = metaDataMap<IssueEligibility>()
     }
+}
+
+enum class ResponsibilityOrder {
+    Primary, Secondary, Tertiary,
+    Quaternary, Quinary, Senary,
+    Septenary, Octonary, Nonary, Denary
 }
 
 fun IssueEligibility.isEmpty(): Boolean =
@@ -165,7 +177,6 @@ data class Insurance(
 
 /**
  * `Case.SubscriberDetails.Subscriber`
- *  * responsibilityCode == Primary
  */
 @VaadinBean
 data class Subscriber(
@@ -407,18 +418,22 @@ fun IssueNPI.Taxonomy.toDocument(): Document = doc {
 private fun Document.toIssueEligibility(): IssueEligibility =
     IssueEligibility(
         status = opt("status"),
+        origin = opt("origin"),
         responsibility = opt("responsibility"),
         insurance = opt<Document>("insurance")?.toInsurance(),
         subscriber = opt<Document>("subscriber")?.toSubscriber(),
-        eligibility = opt<String>("eligibility")
+        eligibility = opt<String>("eligibility"),
+        subscriberRaw = toSubscriberRaw()
     )
 
 fun IssueEligibility.toDocument(): Document = doc {
     doc["status"] = status
+    doc["origin"] = origin
     doc["responsibility"] = responsibility
     doc["insurance"] = insurance?.toDocument()
     doc["subscriber"] = subscriber?.toDocument()
     doc["eligibility"] = eligibility
+    doc["subscriberRaw"] = subscriberRaw.toSubscriberRawDocument()
 }
 
 private fun Insurance.toDocument(): Document = doc {
@@ -464,6 +479,18 @@ private fun Subscriber.toDocument(): Document = doc {
     opt("relationshipCode", relationshipCode)
     doc["policyNumber"] = policyNumber
 }
+
+fun Document.toSubscriberRaw(): Map<String, String> =
+    mutableMapOf<String, String>().also { map ->
+        entries.forEach { entry ->
+            val key = entry.key
+            (entry.value as? String)?.let { map[key] = it }
+        }
+    }
+
+fun Map<String, String>.toSubscriberRawDocument(): Document =
+    Document(this)
+
 
 fun Document.toPerson(): Person =
     Person(

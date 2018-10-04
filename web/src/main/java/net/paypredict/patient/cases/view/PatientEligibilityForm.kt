@@ -17,6 +17,7 @@ import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
 import com.vaadin.flow.shared.Registration
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
+import net.paypredict.patient.cases.data.worklist.ResponsibilityOrder
 import net.paypredict.patient.cases.html.ImgPanZoom
 import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo._id
@@ -145,7 +146,8 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         subscriberForm.value = value?.subscriber
         eligibilityCheckResView.value = value?.eligibility
 
-        deleteResponsibility.isEnabled = selectedResponsibilityOrder != ResponsibilityOrder.Primary
+        addResponsibility.isEnabled = items?.none { it.origin == "casesRaw" } ?: true
+        deleteResponsibility.isEnabled = value?.origin == null && items?.size ?: 0 > 1
     }
 
     var onPatientEligibilityChecked: ((IssueEligibility, EligibilityCheckRes) -> Unit)? = null
@@ -180,6 +182,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             if (onInsert != null && next != null) {
                 val old = responsibilityTabs.selectedRespTab.value
                 val new = old.copy(
+                    origin = null,
                     responsibility = next.name,
                     insurance = null,
                     subscriber = old.subscriber?.copy(policyNumber = null),
@@ -251,6 +254,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                         onPatientEligibilitySave?.invoke(
                                             responsibilityTabs.selectedRespTab.value
                                                 .copy(
+                                                    origin = null,
                                                     responsibility = selectedResponsibilityOrder?.name,
                                                     insurance = insuranceForm.value,
                                                     subscriber = subscriberForm.value,
@@ -263,11 +267,15 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                 element.setAttribute("theme", "primary")
                                 addClickListener {
                                     if (insuranceForm.isValid && subscriberForm.isValid) {
-                                        val issue = IssueEligibility(
-                                            responsibility = selectedResponsibilityOrder?.name,
-                                            insurance = insuranceForm.value,
-                                            subscriber = subscriberForm.value
-                                        )
+                                        val issue =
+                                            responsibilityTabs.selectedRespTab.value
+                                                .copy(
+                                                    origin = null,
+                                                    responsibility = selectedResponsibilityOrder?.name,
+                                                    insurance = insuranceForm.value,
+                                                    subscriber = subscriberForm.value,
+                                                    eligibility = null
+                                                )
                                         val res = EligibilityChecker(issue).check()
                                         val eligibilityRes = if (res is EligibilityCheckRes.HasResult) res.id else null
                                         issue.eligibility = eligibilityRes
@@ -320,12 +328,6 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
 
         content.setFlexGrow(1.0, main)
         content.setFlexGrow(1.0, right)
-    }
-
-    enum class ResponsibilityOrder {
-        Primary, Secondary, Tertiary,
-        Quaternary, Quinary, Senary,
-        Septenary, Octonary, Nonary, Denary
     }
 
     class ResponsibilityTab(

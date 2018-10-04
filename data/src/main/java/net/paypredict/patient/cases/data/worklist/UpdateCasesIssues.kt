@@ -211,16 +211,22 @@ private class IssueCheckerAuto(
     private fun checkSubscriber() {
         val issueEligibilityList = case.toSubscriberList().map {
             IssueEligibility(
+                origin = "casesRaw",
                 responsibility = it<String>("responsibilityCode"),
                 insurance = it.toInsurance(),
-                subscriber = it.toSubscriber()
+                subscriber = it.toSubscriber(),
+                subscriberRaw = it.toSubscriberRaw()
             )
         }
         if (issueEligibilityList.isNotEmpty()) {
             caseIssue = caseIssue.copy(eligibility = issueEligibilityList)
             // TODO check Subscribers in issueEligibilityList
         } else {
-            caseIssue = caseIssue.copy(eligibility = listOf(IssueEligibility(status = "NOT_FOUND")))
+            caseIssue = caseIssue.copy(eligibility = listOf(IssueEligibility(
+                origin = "checking",
+                responsibility = ResponsibilityOrder.Primary.name,
+                status = "NOT_FOUND"
+            )))
             statusProblems += 1
             statusValues["status.values.eligibility"] =
                     Status("WARNING", "No Subscribers found").toDocument()

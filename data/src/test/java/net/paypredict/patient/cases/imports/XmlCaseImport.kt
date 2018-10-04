@@ -238,6 +238,7 @@ object XmlCaseImport {
                     ?.filterIsInstance<Document>()
                     ?.map { subscriber ->
                         IssueEligibility(
+                            origin = "casesRaw",
                             responsibility = subscriber("responsibilityCode"),
                             insurance = Insurance(
                                 typeCode = subscriber("insuranceTypeCode"),
@@ -257,7 +258,8 @@ object XmlCaseImport {
                                 groupId = subscriber("groupOrPlanNumber"),
                                 relationshipCode = subscriber("relationshipCode"),
                                 policyNumber = subscriber("subscriberPolicyNumber")
-                            )
+                            ),
+                            subscriberRaw = subscriber.toSubscriberRaw()
                         ).toDocument()
                     }
                     ?.toList()
