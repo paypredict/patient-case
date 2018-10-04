@@ -234,7 +234,7 @@ private class IssueCheckerAuto(
     }
 
     private fun checkAddress() {
-        val person = case.findSubscriber() ?: case.findPatient()
+        val person = case.findPatient()
         var original: IssueAddress? = null
         val issue = IssueAddress()
         try {
@@ -280,11 +280,6 @@ private class IssueCheckerAuto(
                 ?.filterIsInstance<Document>()
                 ?.toList()
                 ?: emptyList()
-
-        private fun Document.findSubscriber(): Document? =
-            toSubscriberList().run {
-                firstOrNull { it<String>("responsibilityCode") == "Primary" } ?: firstOrNull()
-            }
 
         private fun Document.findPatient(): Document? {
             return opt<Document>("case", "Case", "Patient")
