@@ -189,15 +189,6 @@ object XmlCaseImport {
         }
     }
 
-    private val String.aName: String
-        get() = when {
-            all { it.isUpperCase() } -> toLowerCase()
-            else -> decapitalize()
-        }
-
-    private val String.eName: String
-        get() = capitalize()
-
     private fun File.digest(): String {
         val digest = MessageDigest.getInstance("SHA")
         inputStream().use { inputStream ->

@@ -2,19 +2,18 @@ package net.paypredict.patient.cases.view
 
 import com.pipl.api.search.SearchAPIError
 import com.vaadin.flow.component.Composite
+import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
-import com.vaadin.flow.component.html.Div
-import com.vaadin.flow.component.html.H2
-import com.vaadin.flow.component.html.H3
-import com.vaadin.flow.component.html.H4
+import com.vaadin.flow.component.html.*
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
+import com.vaadin.flow.server.VaadinSession
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo.`$set`
@@ -85,12 +84,19 @@ class CaseIssuesForm : Composite<Div>() {
         checkbox.addValueChangeListener { event ->
             if (event.isFromClient) {
                 value?.let { caseStatus ->
-                    val statusValue = when (event.value) {
-                        true -> "RESOLVED"
-                        false -> null
+                    when (caseStatus.statusValue) {
+                        "RESOLVED" -> checkbox.value = true
+                        else -> if (event.value) {
+                            confirmResolved(
+                                confirmed = {
+                                    caseStatus.createOutXml()
+                                    caseStatus.statusValue = "RESOLVED"
+                                    onResolved?.invoke(caseStatus, "RESOLVED")
+                                },
+                                canceled = { checkbox.value = true }
+                            )
+                        }
                     }
-                    caseStatus.statusValue = statusValue
-                    onResolved?.invoke(caseStatus, statusValue)
                 }
             }
         }
@@ -148,6 +154,52 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
+
+    private fun confirmResolved(confirmed: () -> Unit, canceled: () -> Unit) {
+        val autoConfirmResolvedSessionAttr = "autoConfirmResolved"
+        if (VaadinSession.getCurrent()?.getAttribute(autoConfirmResolvedSessionAttr) == true) {
+            confirmed()
+            return
+        }
+        Dialog().also { dialog ->
+            dialog += VerticalLayout().apply {
+                val doNotShowThisAgain = Checkbox("Do not show this again")
+
+                val buttons = HorizontalLayout().apply {
+                    this += Button("Mark issue resolved").apply {
+                        element.setAttribute("theme", "error primary")
+                        addClickListener {
+                            if (doNotShowThisAgain.value)
+                                VaadinSession.getCurrent()
+                                    ?.setAttribute(autoConfirmResolvedSessionAttr, true)
+                            confirmed()
+                            dialog.close()
+                        }
+                    }
+                    this += Button("Cancel").apply {
+                        addClickListener {
+                            canceled()
+                            dialog.close()
+                        }
+                    }
+                }
+
+                this += Span(
+                    """Attention! Once you mark issue resolved,
+                    the order will be sent to the billing system.
+                    You cannot undo this action."""
+                )
+                this += doNotShowThisAgain
+                this += buttons
+
+                setHorizontalComponentAlignment(FlexComponent.Alignment.CENTER, buttons)
+            }
+            dialog.isCloseOnOutsideClick = false
+            dialog.isCloseOnEsc = false
+            dialog.open()
+        }
+    }
+
     private fun CaseStatus.openEligibilityDialog(selected: IssueEligibility) {
         Dialog().also { dialog ->
             dialog.width = "90vw"
@@ -163,14 +215,18 @@ class CaseIssuesForm : Composite<Div>() {
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
                         is EligibilityCheckRes.Pass -> {
-                            addEligibilityIssue(issue, "PASS")
+                            addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
                         }
                         is EligibilityCheckRes.Warn -> {
-                            addEligibilityIssue(issue, "WARNING")
+                            addEligibilityIssue(issue, IssueEligibility.Status.Unchecked)
                             showWarnings(res.warnings)
                         }
                         is EligibilityCheckRes.Error -> {
-                            addEligibilityIssue(issue, "ERROR")
+                            addEligibilityIssue(
+                                issue, IssueEligibility.Status.Problem(
+                                    "Checking Error", res.message
+                                )
+                            )
                             showError(res.message)
                         }
                     }
@@ -178,7 +234,7 @@ class CaseIssuesForm : Composite<Div>() {
                     form.items = issuesEligibility.value
                 }
                 form.onPatientEligibilitySave = { issue ->
-                    addEligibilityIssue(issue, "SAVED")
+                    addEligibilityIssue(issue, IssueEligibility.Status.Unchecked)
                     onValueChange?.invoke(this)
                     form.items = issuesEligibility.value
                 }
@@ -197,7 +253,7 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
 
-    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: String? = null) {
+    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: IssueEligibility.Status? = null) {
         val casesIssuesCollection = DBS.Collections.casesIssues()
         val byId = Document("_id", _id)
         val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
@@ -211,7 +267,7 @@ class CaseIssuesForm : Composite<Div>() {
         caseIssues.eligibility = newList
 
         casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
-        val status = Status(value = statusValue)
+        val status = Status(value = statusValue?.name)
         DBS.Collections.casesRaw().updateOne(byId,
             doc {
                 doc[`$set`] = doc {
@@ -270,17 +326,22 @@ class CaseIssuesForm : Composite<Div>() {
             this@CaseIssuesForm.value?.addAddressIssue(issueCopy, issueCopy.status)
         } catch (e: CheckingException) {
             showError(e.message)
-            this@CaseIssuesForm.value?.addAddressIssue(issueCopy, "ERROR")
+            this@CaseIssuesForm.value?.addAddressIssue(
+                issueCopy, (e.status as? IssuesStatusError)
+                    ?.toDocument()
+                    ?.toIssueAddressStatus()
+                    ?: IssueAddress.Status.Error("Checking Error", e.message)
+            )
         }
     }
 
-    private fun CaseStatus.addAddressIssue(issue: IssueAddress, statusValue: String?) {
+    private fun CaseStatus.addAddressIssue(issue: IssueAddress, statusValue: IssueAddress.Status?) {
         val casesIssuesCollection = DBS.Collections.casesIssues()
         val byId = Document("_id", _id)
         val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
         caseIssues.address += issue.copy(status = statusValue)
         casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
-        val status = Status(value = statusValue)
+        val status = Status(value = statusValue?.name)
         DBS.Collections.casesRaw().updateOne(byId,
             doc {
                 doc[`$set`] = doc {

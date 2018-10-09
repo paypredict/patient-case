@@ -4,12 +4,9 @@ import com.vaadin.flow.templatemodel.Encode
 import net.paypredict.patient.cases.DataView
 import net.paypredict.patient.cases.MetaData
 import net.paypredict.patient.cases.VaadinBean
-import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
-import net.paypredict.patient.cases.mongo.doc
-import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.metaDataMap
-import net.paypredict.patient.cases.mongo.`$set`
+import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import java.util.*
 
@@ -125,3 +122,6 @@ var CaseStatus.statusValue: String?
         )
     }
 
+fun CaseStatus.createOutXml() {
+    DBS.Collections.casesIssues().find(_id._id()).firstOrNull()?.toCaseIssue()?.createOutXml()
+}

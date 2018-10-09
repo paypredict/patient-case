@@ -103,9 +103,9 @@ private val smartyStreetsApiCredentials: StaticCredentials by lazy {
 @VaadinBean
 class FootNote(
     val name: String,
-    @Suppress("unused") val label: String,
-    @Suppress("unused") val note: String,
-    @Suppress("unused") val level: Level = Level.WARNING
+    val label: String,
+    val note: String,
+    val level: Level = Level.WARNING
 ) {
 
     enum class Level : Comparable<Level> {

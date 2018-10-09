@@ -141,6 +141,7 @@
                         <!-- Each annotation is placed on its own line -->
                         <option>all-open:annotation=net.paypredict.patient.cases.VaadinBean</option>
                     </pluginOptions>
+                    <experimentalCoroutines>enable</experimentalCoroutines>
                 </configuration>
                 <executions>
                     <execution>

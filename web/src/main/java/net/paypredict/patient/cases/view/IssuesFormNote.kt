@@ -25,7 +25,7 @@ class IssuesFormNote<T: IssueExpert>(private val issuesClass: IssuesClass<T>) : 
             items.forEach { item ->
                 this += Div().apply {
                     style["font-weight"] = "bold"
-                    this += Text(item.status ?: issuesClass.caption)
+                    this += Text(item.status?.name ?: issuesClass.caption)
                 }
                 this += TextArea().apply {
                     style["margin-top"] = "0"

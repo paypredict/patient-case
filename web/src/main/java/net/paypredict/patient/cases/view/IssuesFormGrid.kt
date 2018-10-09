@@ -14,12 +14,12 @@ import org.intellij.lang.annotations.Language
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
-class IssuesFormGrid<T : IssuesStatus>(
+class IssuesFormGrid<T : IssueItem>(
     private val issuesClass: IssuesClass<T>,
     private val onClickViewForm: ((T) -> Unit)? = null
 ) : Composite<VerticalLayout>() {
 
-    private class IssuesLayout<T : IssuesStatus>(
+    private class IssuesLayout<T : IssueItem>(
         issuesClass: IssuesClass<T>,
         items: List<T>,
         onClickViewForm: ((T) -> Unit)? = null
@@ -35,6 +35,14 @@ class IssuesFormGrid<T : IssuesStatus>(
                     @Language("HTML")
                     val template =
                         when (metaData.prop) {
+                            IssueNPI::status,
+                            IssueEligibility::status,
+                            IssueAddress::status,
+                            IssueExpert::status -> """
+                                <div class='overflow-ellipsis'>
+                                    <span>[[$itemName.name]]</span>
+                                </div>
+                                """
                             IssueEligibility::insurance -> """
                                 <div class='overflow-ellipsis'>
                                     <span title="Type">[[$itemName.${Insurance::typeCode.name}]]</span>
@@ -93,7 +101,7 @@ class IssuesFormGrid<T : IssuesStatus>(
                                     </template>
                                 </dom-if>
                                 """
-                            IssueAddress::footNoteSet -> """
+                            IssueAddress::footNoteSet -> """<!--suppress HtmlUnknownAttribute -->
                                 <template is="dom-repeat" items="{{$itemName}}">
                                     <style>
                                         .INFO { color: #1e8e3e }

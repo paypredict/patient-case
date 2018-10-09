@@ -7,9 +7,9 @@ import net.paypredict.patient.cases.VaadinBean
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
+import net.paypredict.patient.cases.metaDataMap
 import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.mongo.opt
-import net.paypredict.patient.cases.metaDataMap
 import org.bson.Document
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -46,20 +46,37 @@ data class CaseIssue(
     var expert: List<IssueExpert> = emptyList()
 )
 
-interface IssuesStatus {
-    var status: String?
-}
+interface IssueItem
 
-interface IssuesClass<T : IssuesStatus> {
+interface IssuesClass<T : IssueItem> {
     val caption: String
     val beanType: Class<T>
     val metaData: Map<String, MetaData<T>>
 }
 
+interface IssuesStatus {
+    val name: String
+    val ok: Boolean
+}
+
+interface IssuesStatusError : IssuesStatus {
+    val error: String?
+    val message: String?
+}
+
+fun IssuesStatus.toDocument(): Document = doc {
+    val status = this@toDocument
+    doc["name"] = name
+    if (status is IssuesStatusError) {
+        doc["error"] = status.error
+        doc["message"] = status.message
+    }
+}
+
 @VaadinBean
 data class IssueNPI(
     @DataView("Status", flexGrow = 1, order = 10)
-    override var status: String? = null,
+    var status: Status? = null,
 
     @DataView("NPI", flexGrow = 1, order = 20)
     var npi: String? = null,
@@ -76,7 +93,20 @@ data class IssueNPI(
     @DataView("Error", order = 202, isVisible = false)
     var error: String? = null
 
-) : IssuesStatus {
+) : IssueItem {
+
+    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+        object Unchecked : Status("Unchecked", true)
+        object Corrected : Status("Corrected", true)
+        class Error(
+            override val error: String? = null,
+            override val message: String? = null
+        ) : Status("Error", false), IssuesStatusError
+
+        override fun toString(): String = name
+
+        companion object
+    }
 
     @DataView("Taxonomy", flexGrow = 3, order = 40)
     val primaryTaxonomy: Taxonomy?
@@ -98,6 +128,17 @@ data class IssueNPI(
     }
 }
 
+fun Document.toIssueNPIStatus(): IssueNPI.Status? =
+    when (opt<String>("name")) {
+        IssueNPI.Status.Unchecked.name -> IssueNPI.Status.Unchecked
+        IssueNPI.Status.Corrected.name -> IssueNPI.Status.Corrected
+        IssueNPI.Status.Error::class.java.simpleName -> IssueNPI.Status.Error(
+            error = opt<String>("error"),
+            message = opt<String>("message")
+        )
+        else -> null
+    }
+
 fun IssueNPI.nameEquals(other: IssueNPI, ignoreCase: Boolean = true, compareMI: Boolean = true): Boolean {
     if (!(name?.firstName ?: "").equals(other.name?.firstName ?: "", ignoreCase = ignoreCase)) return false
     if (!(name?.lastName ?: "").equals(other.name?.lastName ?: "", ignoreCase = ignoreCase)) return false
@@ -108,8 +149,9 @@ fun IssueNPI.nameEquals(other: IssueNPI, ignoreCase: Boolean = true, compareMI: 
 
 @VaadinBean
 data class IssueEligibility(
+//    @get:Encode(IssuesStatusToStatusBeanEncoder::class)
     @DataView("Status", order = 10, flexGrow = 1)
-    override var status: String? = null,
+    var status: Status? = null,
 
     @DataView("origin", order = 20, isVisible = false)
     var origin: String? = null,
@@ -129,13 +171,40 @@ data class IssueEligibility(
     @DataView("Subscriber Raw", isVisible = false)
     var subscriberRaw: Map<String, String> = emptyMap()
 
-) : IssuesStatus {
+) : IssueItem {
+
+    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+        object Missing : Status("Missing", false)
+        object Unchecked : Status("Unchecked", true)
+        object Confirmed : Status("Confirmed", true)
+        class Problem(
+            override val error: String? = null,
+            override val message: String? = null
+        ) : Status("Problem", false), IssuesStatusError
+
+        override fun toString(): String = name
+
+        companion object
+    }
+
     companion object : IssuesClass<IssueEligibility> {
         override val caption = "Patient Eligibility"
         override val beanType = IssueEligibility::class.java
         override val metaData = metaDataMap<IssueEligibility>()
     }
 }
+
+fun Document.toIssueEligibilityStatus(): IssueEligibility.Status? =
+    when (opt<String>("name")) {
+        IssueEligibility.Status.Missing.name -> IssueEligibility.Status.Missing
+        IssueEligibility.Status.Unchecked.name -> IssueEligibility.Status.Unchecked
+        IssueEligibility.Status.Confirmed.name -> IssueEligibility.Status.Confirmed
+        IssueEligibility.Status.Problem::class.java.simpleName -> IssueEligibility.Status.Problem(
+            error = opt<String>("error"),
+            message = opt<String>("message")
+        )
+        else -> null
+    }
 
 enum class ResponsibilityOrder {
     Primary, Secondary, Tertiary,
@@ -267,7 +336,7 @@ infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
 @VaadinBean
 data class IssueAddress(
     @DataView("Status", flexGrow = 0, order = 10)
-    override var status: String? = null,
+    var status: Status? = null,
 
     @DataView("Address 1", order = 20)
     var address1: String? = null,
@@ -293,7 +362,22 @@ data class IssueAddress(
     @DataView("Error", order = 201, isVisible = false)
     var error: String? = null
 
-) : IssuesStatus {
+) : IssueItem {
+
+    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+        object Missing : Status("Missing", false)
+        object Unchecked : Status("Unchecked", true)
+        object Corrected : Status("Corrected", true)
+        object Warning : Status("Warning", true)
+        class Error(
+            override val error: String? = null,
+            override val message: String? = null
+        ) : Status("Error", false), IssuesStatusError
+
+        override fun toString(): String = name
+
+        companion object
+    }
 
     @DataView("Footnotes", flexGrow = 3, order = 70)
     var footNoteSet: FootNoteSet = emptySet()
@@ -310,10 +394,23 @@ data class IssueAddress(
     }
 }
 
+fun Document.toIssueAddressStatus(): IssueAddress.Status? =
+    when (opt<String>("name")) {
+        IssueAddress.Status.Missing.name -> IssueAddress.Status.Missing
+        IssueAddress.Status.Unchecked.name -> IssueAddress.Status.Unchecked
+        IssueAddress.Status.Corrected.name -> IssueAddress.Status.Corrected
+        IssueAddress.Status.Warning.name -> IssueAddress.Status.Warning
+        IssueAddress.Status.Error::class.java.simpleName -> IssueAddress.Status.Error(
+            error = opt<String>("error"),
+            message = opt<String>("message")
+        )
+        else -> null
+    }
+
 @VaadinBean
 data class IssueExpert(
     @DataView("Status", order = 10)
-    override var status: String? = null,
+    var status: Status? = null,
 
     @DataView("Subject", order = 20)
     var subject: String? = null,
@@ -321,13 +418,34 @@ data class IssueExpert(
     @DataView("Text", order = 30)
     var text: String? = null
 
-) : IssuesStatus {
+) : IssueItem {
+
+    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+        class Problem(
+            override val error: String? = null,
+            override val message: String? = null
+        ) : Status("Problem", false), IssuesStatusError
+
+        override fun toString(): String = name
+
+        companion object
+    }
+
     companion object : IssuesClass<IssueExpert> {
         override val caption = "Expert Advice"
         override val beanType = IssueExpert::class.java
         override val metaData = metaDataMap<IssueExpert>()
     }
 }
+
+fun Document.toIssueExpertStatus(): IssueExpert.Status? =
+    when (opt<String>("name")) {
+        IssueExpert.Status.Problem::class.java.simpleName -> IssueExpert.Status.Problem(
+            error = opt<String>("error"),
+            message = opt<String>("message")
+        )
+        else -> null
+    }
 
 fun Document.toCaseIssue(): CaseIssue =
     CaseIssue(
@@ -374,7 +492,7 @@ fun CaseIssue.toDocument(): Document = doc {
 
 fun Document.toIssueNPI(): IssueNPI =
     IssueNPI(
-        status = opt("status"),
+        status = opt<Document>("status")?.toIssueNPIStatus(),
         npi = opt("npi"),
         name = opt<Document>("name")?.toPerson(),
         original = opt<Document>("original")?.toIssueNPI(),
@@ -388,7 +506,7 @@ fun Document.toIssueNPI(): IssueNPI =
     )
 
 fun IssueNPI.toDocument(): Document = doc {
-    opt("status", status)
+    doc["status"] = status?.toDocument()
     doc["npi"] = npi
     doc["name"] = name?.toDocument()
     opt("original", original?.toDocument())
@@ -417,7 +535,7 @@ fun IssueNPI.Taxonomy.toDocument(): Document = doc {
 
 private fun Document.toIssueEligibility(): IssueEligibility =
     IssueEligibility(
-        status = opt("status"),
+        status = opt<Document>("status")?.toIssueEligibilityStatus(),
         origin = opt("origin"),
         responsibility = opt("responsibility"),
         insurance = opt<Document>("insurance")?.toInsurance(),
@@ -427,7 +545,7 @@ private fun Document.toIssueEligibility(): IssueEligibility =
     )
 
 fun IssueEligibility.toDocument(): Document = doc {
-    doc["status"] = status
+    doc["status"] = status?.toDocument()
     doc["origin"] = origin
     doc["responsibility"] = responsibility
     doc["insurance"] = insurance?.toDocument()
@@ -511,7 +629,7 @@ fun Person.toDocument(): Document = doc {
 
 private fun Document.toIssueAddress(): IssueAddress =
     IssueAddress(
-        status = opt("status"),
+        status = opt<Document>("status")?.toIssueAddressStatus(),
         address1 = opt("address1"),
         address2 = opt("address2"),
         zip = opt("zip"),
@@ -522,7 +640,7 @@ private fun Document.toIssueAddress(): IssueAddress =
     )
 
 private fun IssueAddress.toDocument(): Document = doc {
-    doc["status"] = status
+    doc["status"] = status?.toDocument()
     doc["address1"] = address1
     doc["address2"] = address2
     doc["zip"] = zip
@@ -534,13 +652,13 @@ private fun IssueAddress.toDocument(): Document = doc {
 
 internal fun Document.toIssueExpert(): IssueExpert =
     IssueExpert(
-        status = opt("status"),
+        status = opt<Document>("status")?.toIssueExpertStatus(),
         subject = opt("subject"),
         text = opt("text")
     )
 
 internal fun IssueExpert.toDocument(): Document = doc {
-    doc["status"] = status
+    doc["status"] = status?.toDocument()
     doc["subject"] = subject
     doc["text"] = text
 }

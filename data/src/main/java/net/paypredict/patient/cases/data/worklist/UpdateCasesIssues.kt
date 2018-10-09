@@ -32,7 +32,7 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     }
 }
 
-class CheckingException(override val message: String, var status: String = "ERROR") : Exception()
+class CheckingException(override val message: String, var status: IssuesStatus? = null) : Exception()
 
 open class IssueChecker(
     open val usStreet: UsStreet = UsStreet()
@@ -41,7 +41,7 @@ open class IssueChecker(
     val statusValues = mutableMapOf<String, Any>()
 
     fun checkIssueAddress(issue: IssueAddress): Boolean {
-        issue.status = null
+        issue.status = IssueAddress.Status.Unchecked
         issue.footnotes = null
 
         val lookup = Lookup().apply {
@@ -58,12 +58,14 @@ open class IssueChecker(
         } catch (x: Throwable) {
             when (x) {
                 is SmartyException ->
-                    throw CheckingException("smartyStreets api error: " + x.message, "ERROR")
+                    throw CheckingException("smartyStreets api error: " + x.message)
                 else -> {
                     x.printStackTrace()
-                    throw CheckingException("smartyStreets api processing error "
-                            + x.javaClass.name + ": "
-                            + x.message, "ERROR")
+                    throw CheckingException(
+                        "smartyStreets api processing error "
+                                + x.javaClass.name + ": "
+                                + x.message
+                    )
                 }
             }
         }
@@ -88,17 +90,26 @@ open class IssueChecker(
 
         val maxFootNote = candidate.analysis.footNoteSet.asSequence().maxBy { it.level }
         return when (maxFootNote?.level) {
-            null -> true
-            FootNote.Level.ERROR,
+            null -> {
+                issue.status = IssueAddress.Status.Unchecked
+                true
+            }
+            FootNote.Level.ERROR -> {
+                issue.status = IssueAddress.Status.Error(maxFootNote.label, maxFootNote.note)
+                statusValues["status.values.address"] =
+                        Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
+                statusProblems += 1
+                false
+            }
             FootNote.Level.WARNING -> {
-                issue.status = maxFootNote.level.name
+                issue.status = IssueAddress.Status.Warning
                 statusValues["status.values.address"] =
                         Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
                 statusProblems += 1
                 false
             }
             FootNote.Level.INFO -> {
-                issue.status = maxFootNote.level.name
+                issue.status = IssueAddress.Status.Corrected
                 statusValues["status.values.address"] =
                         Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
                 false
@@ -149,7 +160,7 @@ private class IssueCheckerAuto(
     private fun checkNPI() {
         val provider = case<Document>("case", "Case", "OrderingProvider", "Provider")
         if (provider == null) {
-            caseIssue = caseIssue.copy(npi = listOf(IssueNPI(status = "NOT_FOUND")))
+            caseIssue = caseIssue.copy(npi = listOf(IssueNPI(status = IssueNPI.Status.Unchecked)))
             statusProblems += 1
             statusValues["status.values.npi"] = Status("ERROR", "NPI not found").toDocument()
         } else {
@@ -195,14 +206,19 @@ private class IssueCheckerAuto(
                         ?: emptyList()
 
                 if (!apiNPI.nameEquals(originalNPI))
-                    throw CheckingException("apiNPI != providerNPI", status = "Name Updated")
+                    throw CheckingException(
+                        "apiNPI != providerNPI",
+                        status = IssueNPI.Status.Error("NPI Missing")
+                    )
 
             } catch (e: CheckingException) {
-                apiNPI.status = e.status
+                val status = (e.status as? IssueNPI.Status
+                    ?: IssueNPI.Status.Error("Checking Error", e.message))
+                apiNPI.status = status
                 apiNPI.error = e.message
                 apiNPI.original = originalNPI
                 statusProblems += 1
-                statusValues["status.values.npi"] = Status(e.status, e.message).toDocument()
+                statusValues["status.values.npi"] = Status(status.name, e.message).toDocument()
             }
             caseIssue = caseIssue.copy(npi = listOf(apiNPI))
         }
@@ -211,6 +227,7 @@ private class IssueCheckerAuto(
     private fun checkSubscriber() {
         val issueEligibilityList = case.toSubscriberList().map {
             IssueEligibility(
+                status = IssueEligibility.Status.Unchecked,
                 origin = "casesRaw",
                 responsibility = it<String>("responsibilityCode"),
                 insurance = it.toInsurance(),
@@ -222,11 +239,15 @@ private class IssueCheckerAuto(
             caseIssue = caseIssue.copy(eligibility = issueEligibilityList)
             // TODO check Subscribers in issueEligibilityList
         } else {
-            caseIssue = caseIssue.copy(eligibility = listOf(IssueEligibility(
-                origin = "checking",
-                responsibility = ResponsibilityOrder.Primary.name,
-                status = "NOT_FOUND"
-            )))
+            caseIssue = caseIssue.copy(
+                eligibility = listOf(
+                    IssueEligibility(
+                        status = IssueEligibility.Status.Missing,
+                        origin = "checking",
+                        responsibility = ResponsibilityOrder.Primary.name
+                    )
+                )
+            )
             statusProblems += 1
             statusValues["status.values.eligibility"] =
                     Status("WARNING", "No Subscribers found").toDocument()
@@ -236,7 +257,7 @@ private class IssueCheckerAuto(
     private fun checkAddress() {
         val person = case.findPatient()
         var original: IssueAddress? = null
-        val issue = IssueAddress()
+        val issue = IssueAddress(status = IssueAddress.Status.Unchecked)
         try {
             if (person == null) throw CheckingException("Case Subscriber and Patient is null")
             issue.person = Person(
@@ -261,14 +282,17 @@ private class IssueCheckerAuto(
 
         } catch (x: Throwable) {
             val e = when (x) {
-                is BadRequestException -> CheckingException("BadRequest: " + x.message, "ERROR")
+                is BadRequestException -> CheckingException("BadRequest: " + x.message)
                 is CheckingException -> x
                 else -> throw x
             }
-            issue.status = e.status
+            val status = (e.status as? IssueAddress.Status
+                ?: IssueAddress.Status.Error("Checking Error", e.message))
+
+            issue.status = status
             issue.error = e.message
             statusProblems += 1
-            statusValues["status.values.address"] = Status(e.status, e.message).toDocument()
+            statusValues["status.values.address"] = Status(status.name, e.message).toDocument()
         }
         caseIssue = caseIssue.copy(address = listOfNotNull(original, issue))
     }
