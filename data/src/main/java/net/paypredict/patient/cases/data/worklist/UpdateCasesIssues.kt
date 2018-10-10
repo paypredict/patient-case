@@ -227,7 +227,7 @@ private class IssueCheckerAuto(
     private fun checkSubscriber() {
         val issueEligibilityList = case.toSubscriberList().map {
             IssueEligibility(
-                status = IssueEligibility.Status.Unchecked,
+                status = IssueEligibility.Status.Original,
                 origin = "casesRaw",
                 responsibility = it<String>("responsibilityCode"),
                 insurance = it.toInsurance(),
