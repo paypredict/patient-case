@@ -373,9 +373,10 @@ data class IssueAddress(
 
     sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         object Missing : Status("Missing", false)
+        object Original : Status("Original", false)
         object Unchecked : Status("Unchecked", true)
         object Corrected : Status("Corrected", true)
-        object Warning : Status("Warning", true)
+        object Confirmed : Status("Confirmed", true)
         class Error(
             override val error: String? = null,
             override val message: String? = null
@@ -404,9 +405,10 @@ data class IssueAddress(
 fun Document.toIssueAddressStatus(): IssueAddress.Status? =
     when (opt<String>("name")) {
         IssueAddress.Status.Missing.name -> IssueAddress.Status.Missing
+        IssueAddress.Status.Original.name -> IssueAddress.Status.Original
         IssueAddress.Status.Unchecked.name -> IssueAddress.Status.Unchecked
         IssueAddress.Status.Corrected.name -> IssueAddress.Status.Corrected
-        IssueAddress.Status.Warning.name -> IssueAddress.Status.Warning
+        IssueAddress.Status.Confirmed.name -> IssueAddress.Status.Confirmed
         IssueAddress.Status.Error::class.java.simpleName -> IssueAddress.Status.Error(
             error = opt<String>("error"),
             message = opt<String>("message")

@@ -91,7 +91,7 @@ open class IssueChecker(
         val maxFootNote = candidate.analysis.footNoteSet.asSequence().maxBy { it.level }
         return when (maxFootNote?.level) {
             null -> {
-                issue.status = IssueAddress.Status.Unchecked
+                issue.status = IssueAddress.Status.Confirmed
                 true
             }
             FootNote.Level.ERROR -> {
@@ -102,14 +102,14 @@ open class IssueChecker(
                 false
             }
             FootNote.Level.WARNING -> {
-                issue.status = IssueAddress.Status.Warning
+                issue.status = IssueAddress.Status.Corrected
                 statusValues["status.values.address"] =
                         Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
                 statusProblems += 1
                 false
             }
             FootNote.Level.INFO -> {
-                issue.status = IssueAddress.Status.Corrected
+                issue.status = IssueAddress.Status.Confirmed
                 statusValues["status.values.address"] =
                         Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
                 false
@@ -275,10 +275,9 @@ private class IssueCheckerAuto(
 
             if (issue.address1.isNullOrBlank()) throw CheckingException("Address not found")
 
-            original = issue.copy()
+            original = issue.copy(status = IssueAddress.Status.Original)
 
-            if (checkIssueAddress(issue))
-                original = null
+            checkIssueAddress(issue)
 
         } catch (x: Throwable) {
             val e = when (x) {
