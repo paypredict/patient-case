@@ -21,7 +21,6 @@ import javax.xml.transform.TransformerFactory
 import javax.xml.transform.stream.StreamResult
 import javax.xml.transform.dom.DOMSource
 
-
 /**
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 10/7/2018.
@@ -58,103 +57,198 @@ fun CaseIssue.createOutXml() {
     val dom: DomDocument = documentBuilderFactory.newDocumentBuilder()
         .parse(srcFile.toInputSource())
 
-    val domSubscribersByResponsibilityCode = dom
-        .getElementsByTagName("Subscriber")
-        .toSequence()
-        .filterIsInstance<Element>()
-        .groupBy {
-            val value = it.getAttribute("ResponsibilityCode")
-            try {
-                ResponsibilityOrder.valueOf(value)
-            } catch (e: IllegalArgumentException) {
-                throw CaseDataException("Invalid Subscriber/ResponsibilityCode ($value) in source XML file $fileName")
+    updateSubscribers(dom, fileName)
+
+    outFile.writer().use { writer ->
+        writer.write(XML_PREFIX)
+
+        transformerFactory
+            .newTransformer()
+            .apply {
+                setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
             }
-        }
-        .mapValues {
-            if (it.value.size != 1)
-                throw CaseDataException("Invalid Subscriber/ResponsibilityCode in source XML file $fileName")
-            it.value.first()
-        }
+            .transform(
+                DOMSource(dom),
+                StreamResult(writer)
+            )
+    }
+}
+
+private fun CaseIssue.updateSubscribers(domDocument: DomDocument, fileName: String) {
+    val domSubscribersByResponsibilityCode =
+        domDocument
+            .getElementsByTagName("Subscriber")
+            .toSequence()
+            .filterIsInstance<Element>()
+            .groupBy {
+                val value = it.getAttribute("ResponsibilityCode")
+                try {
+                    ResponsibilityOrder.valueOf(value)
+                } catch (e: IllegalArgumentException) {
+                    throw CaseDataException("Invalid Subscriber/ResponsibilityCode ($value) in source XML file $fileName")
+                }
+            }
+            .mapValues {
+                if (it.value.size != 1)
+                    throw CaseDataException("Invalid Subscriber/ResponsibilityCode in source XML file $fileName")
+                it.value.first()
+            }
 
     val eligibilityCollection: MongoCollection<Document> by lazy { DBS.Collections.eligibility() }
 
     domSubscribersByResponsibilityCode.forEach { responsibility, out: Element ->
         val issue: IssueEligibility? = eligibility
-            .lastOrNull { it.responsibility == responsibility.name && it.status?.ok == true }
+            .filter { it.responsibility == responsibility.name }
+            .findPassed()
         if (issue != null) {
             when (issue.status) {
                 IssueEligibility.Status.Unchecked -> {
-                    out.updateSaved(issue)
+                    out.updateSubscriber(issue)
                 }
                 IssueEligibility.Status.Confirmed -> {
-                    eligibilityCollection.toEligibilityCheckResPass(issue)?.result?.let { res ->
-                        out.updateChecked(res) {
-                            issue.subscriberRaw[it.aName]
-                        }
-                    }
+                    val eligibilityRes =
+                        eligibilityCollection.toEligibilityCheckResPass(issue)?.result
+                    if (eligibilityRes != null)
+                        out.updateSubscriber(eligibilityRes)
                 }
             }
-
         }
     }
 
-    transformerFactory
-        .newTransformer()
-        .apply {
-            setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
+
+    if (domSubscribersByResponsibilityCode.isEmpty()) {
+        val eligibilityList =
+            eligibility.asSequence()
+                .filter { it.responsibility != null }
+                .groupBy { ResponsibilityOrder.valueOf(it.responsibility!!) }
+                .mapValues { it.value.findPassed() }
+                .values
+                .filterNotNull()
+
+        val domSubscriberDetails: Element =
+            domDocument
+                .getElementsByTagName("SubscriberDetails")
+                .toSequence()
+                .filterIsInstance<Element>()
+                .firstOrNull()
+                ?: domDocument.createElement("SubscriberDetails")
+                    .also { domDocument.documentElement.firstChild.appendChild(it) }
+
+        eligibilityList.forEach { issue ->
+            val subscriber: Element = domDocument.createElement("Subscriber")
+            subscriber[SubscriberAttr.RelationshipCode] = issue.responsibility
+            subscriber.fillSubscriber(issue, eligibilityCollection)
+            domSubscriberDetails.appendChild(subscriber)
         }
-        .transform(
-            DOMSource(dom),
-            outFile.toStreamResult()
-        )
+    }
 }
 
-private fun Element.updateSaved(doc: IssueEligibility) {
+private fun Element.fillSubscriber(
+    issue: IssueEligibility,
+    eligibilityCollection: MongoCollection<Document>
+) {
+    val eligibilityRes: Document? =
+        if (issue.status is IssueEligibility.Status.Confirmed)
+            eligibilityCollection.toEligibilityCheckResPass(issue)?.result else
+            null
 
+    if (eligibilityRes != null)
+        updateSubscriber(eligibilityRes) else
+        updateSubscriber(issue)
+
+
+    SubscriberAttr.values()
+        .filterNot { hasAttribute(it.name) }
+        .forEach { this[it] = it.default }
 }
 
-private fun Element.updateChecked(doc: Document, def: (String) -> String?) =
-    update(
-        doc, def,
-        "EffectiveDate" to "data.coverage.policy_effective_date",
-        "PlanCode" to "data.coverage.insurance_type",
-        "PayerId" to "data.payer.id",
-        "GroupOrPlanNumber" to "data.coverage.group_number",
-        "GroupOrPlanName" to "data.coverage.plan_description",
-        "SubscriberPolicyNumber" to "data.subscriber.id",
-        "OrganizationNameOrLastName" to "data.subscriber.last_name",
-        "FirstName" to "data.subscriber.first_name",
-        "MiddleInitial" to "data.subscriber.middle_name",
-        "Zip" to "data.benefit_related_entities.address.zipcode",
-        "Gender" to "data.subscriber.gender",
-        "DOB" to "data.subscriber.birth_date",
-        "Address1" to "data.benefit_related_entities.address.address_lines.[0]",
-        "Address2" to "data.benefit_related_entities.address.address_lines.[1]",
-        "City" to "data.benefit_related_entities.address.city",
-        "State" to "data.benefit_related_entities.address.state",
-        "SubscriberAddress1" to "data.subscriber.address.address_lines.[0]",
-        "SubscriberAddress2" to "data.subscriber.address.address_lines.[1]",
-        "SubscriberCity" to "data.subscriber.address.city",
-        "SubscriberState" to "data.subscriber.address.state",
-        "SubscriberZIP" to "data.subscriber.address.zipcode"
-    )
+private fun Element.updateSubscriber(issue: IssueEligibility) {
+    issue.insurance?.let { insurance ->
+        setIfNotNull(SubscriberAttr.PayerId, insurance.zmPayerId)
+        setIfNotNull(SubscriberAttr.PayerName, insurance.zmPayerName)
+    }
+    issue.subscriber?.let { subscriber ->
+        setIfNotNull(SubscriberAttr.RelationshipCode, subscriber.relationshipCode)
+        setIfNotNull(SubscriberAttr.FirstName, subscriber.firstName)
+        setIfNotNull(SubscriberAttr.MiddleInitial, subscriber.mi)
+        setIfNotNull(SubscriberAttr.OrganizationNameOrLastName, subscriber.lastName)
+        setIfNotNull(SubscriberAttr.Gender, subscriber.gender)
+        setIfNotNull(SubscriberAttr.DOB, subscriber.dob)
+        setIfNotNull(SubscriberAttr.SubscriberPolicyNumber, subscriber.policyNumber)
+    }
+}
 
-private fun Element.update(doc: Document, def: (String) -> String?, vararg rules: Pair<String, String>) {
+private fun Element.setIfNotNull(attr: SubscriberAttr, value: String?) {
+    if (value != null)
+        setAttribute(attr.name, value)
+}
+
+private operator fun Element.set(attr: SubscriberAttr, value: String?) {
+    setAttribute(attr.name, value ?: attr.default)
+}
+
+private fun Element.updateSubscriber(eligibilityRes: Document) {
+    val rules = SubscriberAttr.values()
+        .filter { it.eligibilityPath.isNotEmpty() }
+        .map { it.name to it.eligibilityPath }
+    update(eligibilityRes, rules)
+    if (eligibilityRes.opt<Boolean>("data", "coverage", "active") == true)
+        this[SubscriberAttr.IsElectronicPayer] = "Yes"
+}
+
+private fun Element.update(
+    document: Document,
+    rules: List<Pair<String, String>>
+) {
     for (rule in rules) {
         val keys = rule.second.split('.')
         val lastKey = keys.last()
         val value =
             (if (lastKey.endsWith("]")) {
                 val index = lastKey.removeSurrounding("[", "]").toInt()
-                doc.opt<List<*>>(*keys.dropLast(1).toTypedArray())?.getOrNull(index) as? String
+                document.opt<List<*>>(*keys.dropLast(1).toTypedArray())?.getOrNull(index) as? String
             } else {
-                doc.opt<String>(*keys.toTypedArray())
+                document.opt<String>(*keys.toTypedArray())
             })
-                ?: def(rule.first)
 
         if (value != null)
             setAttribute(rule.first, value)
     }
+}
+
+private enum class SubscriberAttr(val eligibilityPath: String = "", val default: String = "") {
+    HolderEmp,
+    EffectiveDate("data.coverage.policy_effective_date"),
+    CarrierCode,
+    PlanCode("data.coverage.insurance_type"),
+    BillingPrecedence,
+    InsuranceType,
+    IsElectronicPayer,
+    RelationshipCode,
+    PayerId("data.payer.id"),
+    GroupOrPlanNumber("data.coverage.group_number"),
+    GroupOrPlanName("data.coverage.plan_description"),
+    SubscriberPolicyNumber("data.subscriber.id"),
+    OrganizationNameOrLastName("data.subscriber.last_name"),
+    FirstName("data.subscriber.first_name"),
+    MiddleInitial("data.subscriber.middle_name"),
+    Zip("data.benefit_related_entities.address.zipcode"),
+    Gender("data.subscriber.gender"),
+    DOB("data.subscriber.birth_date"),
+    Address1("data.benefit_related_entities.address.address_lines.[0]"),
+    Address2("data.benefit_related_entities.address.address_lines.[1]"),
+    City("data.benefit_related_entities.address.city"),
+    State("data.benefit_related_entities.address.state"),
+    InsuranceTypeCode,
+    ResponsibilityCode,
+    ClaimFilingIndicatorCode,
+    PayerName("data.payer.name"),
+    BillingType,
+    SubscriberAddress1("data.subscriber.address.address_lines.[0]"),
+    SubscriberAddress2("data.subscriber.address.address_lines.[1]"),
+    SubscriberCity("data.subscriber.address.city"),
+    SubscriberState("data.subscriber.address.state"),
+    SubscriberZIP("data.subscriber.address.zipcode")
 }
 
 private fun MongoCollection<Document>.toEligibilityCheckRes(issue: IssueEligibility): EligibilityCheckRes? =
@@ -178,9 +272,6 @@ private const val XML_PREFIX = """<?xml version="1.0" encoding="utf-16" standalo
 
 private fun File.toInputSource(): InputSource =
     InputSource(readText().removePrefix(XML_PREFIX).reader())
-
-private fun File.toStreamResult() =
-    StreamResult(writer().also { it.write(XML_PREFIX) })
 
 internal val String.aName: String
     get() = when {

@@ -14,12 +14,12 @@ import org.intellij.lang.annotations.Language
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
-class IssuesFormGrid<T : IssueItem>(
+class IssuesFormGrid<T : IssueItem<*>>(
     private val issuesClass: IssuesClass<T>,
     private val onClickViewForm: ((T) -> Unit)? = null
 ) : Composite<VerticalLayout>() {
 
-    private class IssuesLayout<T : IssueItem>(
+    private class IssuesLayout<T : IssueItem<*>>(
         issuesClass: IssuesClass<T>,
         items: List<T>,
         onClickViewForm: ((T) -> Unit)? = null

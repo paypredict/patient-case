@@ -46,9 +46,11 @@ data class CaseIssue(
     var expert: List<IssueExpert> = emptyList()
 )
 
-interface IssueItem
+interface IssueItem<S: IssuesStatus> {
+    var status: S?
+}
 
-interface IssuesClass<T : IssueItem> {
+interface IssuesClass<T : IssueItem<*>> {
     val caption: String
     val beanType: Class<T>
     val metaData: Map<String, MetaData<T>>
@@ -56,7 +58,7 @@ interface IssuesClass<T : IssueItem> {
 
 interface IssuesStatus {
     val name: String
-    val ok: Boolean
+    val passed: Boolean
 }
 
 interface IssuesStatusError : IssuesStatus {
@@ -73,10 +75,13 @@ fun IssuesStatus.toDocument(): Document = doc {
     }
 }
 
+fun <T: IssueItem<S>, S : IssuesStatus> List<T>.findPassed(): T? =
+    reversed().firstOrNull { it.status?.passed == true }
+
 @VaadinBean
 data class IssueNPI(
     @DataView("Status", flexGrow = 1, order = 10)
-    var status: Status? = null,
+    override var status: Status? = null,
 
     @DataView("NPI", flexGrow = 1, order = 20)
     var npi: String? = null,
@@ -93,9 +98,9 @@ data class IssueNPI(
     @DataView("Error", order = 202, isVisible = false)
     var error: String? = null
 
-) : IssueItem {
+) : IssueItem<IssueNPI.Status> {
 
-    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         object Unchecked : Status("Unchecked", true)
         object Corrected : Status("Corrected", true)
         class Error(
@@ -151,7 +156,7 @@ fun IssueNPI.nameEquals(other: IssueNPI, ignoreCase: Boolean = true, compareMI: 
 data class IssueEligibility(
 //    @get:Encode(IssuesStatusToStatusBeanEncoder::class)
     @DataView("Status", order = 10, flexGrow = 1)
-    var status: Status? = null,
+    override var status: Status? = null,
 
     @DataView("origin", order = 20, isVisible = false)
     var origin: String? = null,
@@ -171,9 +176,9 @@ data class IssueEligibility(
     @DataView("Subscriber Raw", isVisible = false)
     var subscriberRaw: Map<String, String> = emptyMap()
 
-) : IssueItem {
+) : IssueItem<IssueEligibility.Status> {
 
-    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         object Missing : Status("Missing", false)
         object Unchecked : Status("Unchecked", true)
         object Confirmed : Status("Confirmed", true)
@@ -336,7 +341,7 @@ infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
 @VaadinBean
 data class IssueAddress(
     @DataView("Status", flexGrow = 0, order = 10)
-    var status: Status? = null,
+    override var status: Status? = null,
 
     @DataView("Address 1", order = 20)
     var address1: String? = null,
@@ -362,9 +367,9 @@ data class IssueAddress(
     @DataView("Error", order = 201, isVisible = false)
     var error: String? = null
 
-) : IssueItem {
+) : IssueItem<IssueAddress.Status> {
 
-    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         object Missing : Status("Missing", false)
         object Unchecked : Status("Unchecked", true)
         object Corrected : Status("Corrected", true)
@@ -410,7 +415,7 @@ fun Document.toIssueAddressStatus(): IssueAddress.Status? =
 @VaadinBean
 data class IssueExpert(
     @DataView("Status", order = 10)
-    var status: Status? = null,
+    override var status: Status? = null,
 
     @DataView("Subject", order = 20)
     var subject: String? = null,
@@ -418,9 +423,9 @@ data class IssueExpert(
     @DataView("Text", order = 30)
     var text: String? = null
 
-) : IssueItem {
+) : IssueItem<IssueExpert.Status> {
 
-    sealed class Status(override val name: String, override val ok: Boolean) : IssuesStatus {
+    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         class Problem(
             override val error: String? = null,
             override val message: String? = null
