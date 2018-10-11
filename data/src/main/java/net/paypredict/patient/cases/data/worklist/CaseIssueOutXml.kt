@@ -79,6 +79,14 @@ fun CaseIssue.createOutXml() {
 }
 
 private fun CaseIssue.updateSubscribers(domDocument: DomDocument, fileName: String) {
+    val caseElement =
+        domDocument
+            .getElementsByTagName("Case")
+            .toSequence()
+            .filterIsInstance<Element>()
+            .firstOrNull()
+            ?: throw CaseDataException("Element <Case> not found in source XML file $fileName")
+
     val domSubscribersByResponsibilityCode =
         domDocument
             .getElementsByTagName("Subscriber")
@@ -136,7 +144,7 @@ private fun CaseIssue.updateSubscribers(domDocument: DomDocument, fileName: Stri
                 .filterIsInstance<Element>()
                 .firstOrNull()
                 ?: domDocument.createElement("SubscriberDetails")
-                    .also { domDocument.documentElement.firstChild.appendChild(it) }
+                    .also { caseElement.appendChild(it) }
 
         eligibilityList.forEach { issue ->
             val subscriber: Element = domDocument.createElement("Subscriber")
