@@ -47,7 +47,7 @@ class EligibilityChecker(private val issue: IssueEligibility) {
 
         val collection = DBS.Collections.eligibility()
         val resFound = collection.find(doc { doc["_id"] = digest }).firstOrNull()
-        if (resFound != null) return EligibilityCheckRes.Pass(digest, resFound)
+        if (resFound != null) return resFound.toEligibilityCheckRes()
 
         val res: Document = try {
             query.query { Document.parse(it.readText()) }
@@ -129,7 +129,7 @@ sealed class EligibilityCheckRes {
     class Warning(val message: String)
 }
 
-fun Document.toEligibilityCheckRes(): EligibilityCheckRes? =
+fun Document.toEligibilityCheckRes(): EligibilityCheckRes =
     when (opt<String>("status")) {
         null,
         "pass" -> EligibilityCheckRes.Pass(get("_id") as String, this)

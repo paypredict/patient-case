@@ -218,7 +218,12 @@ class CaseIssuesForm : Composite<Div>() {
                             addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
                         }
                         is EligibilityCheckRes.Warn -> {
-                            addEligibilityIssue(issue, IssueEligibility.Status.Unchecked)
+                            addEligibilityIssue(
+                                issue, IssueEligibility.Status.Problem(
+                                    "Problem With Eligibility",
+                                    res.warnings.joinToString { it.message }
+                                )
+                            )
                             showWarnings(res.warnings)
                         }
                         is EligibilityCheckRes.Error -> {
