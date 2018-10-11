@@ -95,7 +95,7 @@ data class IssueNPI(
 ) : IssueItem<IssueNPI.Status> {
 
     sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
-        object Original : Status("Original", true)
+        object Original : Status("Original", false)
         object Unchecked : Status("Unchecked", true)
         object Confirmed : Status("Confirmed", true)
         object Corrected : Status("Corrected", true)

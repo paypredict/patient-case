@@ -61,6 +61,8 @@ fun CaseIssue.createOutXml() {
 
     updatePatient(domDocument)
 
+    updateProvider(domDocument)
+
     outFile.writer().use { writer ->
         writer.write(XML_PREFIX)
 
@@ -252,6 +254,53 @@ private enum class SubscriberAttr(val eligibilityPath: String = "", val default:
     SubscriberState("data.subscriber.address.state"),
     SubscriberZIP("data.subscriber.address.zipcode")
 }
+
+private fun CaseIssue.updateProvider(domDocument: DomDocument) {
+    val element: Element =
+        domDocument
+            .getElementsByTagName("Provider")
+            .toSequence()
+            .filter { (it.parentNode as? Element)?.tagName == "OrderingProvider" }
+            .firstOrNull() as? Element
+            ?: return
+
+    val issue: IssueNPI = npi.findPassed() ?: return
+
+    element.setIfNotNullOrBlank(ProviderAttr.FirstName, issue.name?.firstName)
+    element.setIfNotNullOrBlank(ProviderAttr.MiddleInitials, issue.name?.mi)
+    element.setIfNotNullOrBlank(ProviderAttr.LastName, issue.name?.lastName)
+
+    ProviderAttr.values().forEach { attr ->
+        if (!element.hasAttribute(attr.name)) element[attr] = attr.default
+    }
+}
+
+private enum class ProviderAttr(val default: String = "") {
+    Address1,
+    Address2,
+    City,
+    State,
+    Zip,
+    DisplayName,
+    Title,
+    FirstName,
+    MiddleInitials,
+    LastName,
+    NPI,
+    Phone,
+    RoleName,
+    UPIN,
+}
+
+private fun Element.setIfNotNullOrBlank(attr: ProviderAttr, value: String?) {
+    if (!value.isNullOrBlank())
+        setAttribute(attr.name, value)
+}
+
+private operator fun Element.set(attr: ProviderAttr, value: String?) {
+    setAttribute(attr.name, value ?: attr.default)
+}
+
 
 private fun CaseIssue.updatePatient(domDocument: DomDocument) {
     val domPatient: Element =
