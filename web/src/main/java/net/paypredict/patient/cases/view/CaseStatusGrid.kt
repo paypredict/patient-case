@@ -38,7 +38,12 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
     private var filter = doc { }
 
     init {
-        content.setColumns(*CASE_STATUS_META_DATA_MAP.entries.sortedBy { it.value.view.order }.map { it.key }.toTypedArray())
+        content.setColumns(*CASE_STATUS_META_DATA_MAP.entries
+            .asSequence()
+            .sortedBy { it.value.view.order }
+            .map { it.key }
+            .toList()
+            .toTypedArray())
         for (column in content.columns) {
             val meta = CASE_STATUS_META_DATA_MAP[column.key] ?: continue
             column.isVisible = meta.view.isVisible
@@ -66,12 +71,14 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
                             {
                                 when ((meta.prop.get(it) as? Status)?.value?.toUpperCase()) {
                                     "SAVED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
+                                    "CORRECTED",
                                     "INFO" -> Icon(VaadinIcon.CHECK).apply { color = "#1e8e3e" }
                                     "WARNING" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
                                     "ERROR" -> Icon(VaadinIcon.EXCLAMATION_CIRCLE).apply { color = "#d23f31" }
                                     "NAME UPDATED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
                                     "AUTO FIXED" -> Icon(VaadinIcon.WARNING).apply { color = "#f4b400" }
                                     "PASS" -> Icon(VaadinIcon.CHECK_CIRCLE).apply { color = "#1e8e3e" }
+                                    "CONFIRMED",
                                     null -> Icon(VaadinIcon.BAN).apply { isVisible = false }
                                     else -> Icon(VaadinIcon.BAN).apply { color = "#d23f31" }
                                 }.apply {
@@ -172,7 +179,7 @@ class CaseStatusGrid : Composite<Grid<CaseStatus>>(), ThemableLayout {
             val sortOrders =
                 if (sortOrders.isNotEmpty())
                     sortOrders else
-                    listOf(QuerySortOrder("date", SortDirection.DESCENDING))
+                    listOf(QuerySortOrder("date", SortDirection.ASCENDING))
             return doc {
                 sortOrders.forEach { sortOrder: QuerySortOrder ->
                     CASE_STATUS_META_DATA_MAP[sortOrder.sorted]?.view?.ifSortable { sortKey ->
