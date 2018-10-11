@@ -42,6 +42,14 @@ class IssuesFormGrid<T : IssueItem<*>>(
                                 <div class='overflow-ellipsis'>
                                     <span>[[$itemName.name]]</span>
                                 </div>
+                                <dom-if if="{{$itemName.error}}">
+                                    <template>
+                                        <div class='overflow-ellipsis'>
+                                            <span style="color: red" title="[[$itemName.message]]"
+                                            >[[$itemName.error]]</span>
+                                        </div>
+                                    </template>
+                                </dom-if>
                                 """
                             IssueEligibility::insurance -> """
                                 <div class='overflow-ellipsis'>
@@ -86,17 +94,6 @@ class IssuesFormGrid<T : IssueItem<*>>(
                                             <span>[[$itemName.${IssueNPI.Taxonomy::code.name}]]</span>
                                             <span> - </span>
                                             <span>[[$itemName.${IssueNPI.Taxonomy::desc.name}]]</span>
-                                        </div>
-                                    </template>
-                                </dom-if>
-                                """
-                            IssueAddress::status -> """
-                                <div class='overflow-ellipsis'>[[$itemName]]</div>
-                                <dom-if if="{{item.${IssueAddress::error.name}}}">
-                                    <template>
-                                        <div class='overflow-ellipsis'>
-                                            <span title="[[item.${IssueAddress::error.name}]]" style="color: red"
-                                                        >[[item.${IssueAddress::error.name}]]</span>
                                         </div>
                                     </template>
                                 </dom-if>
