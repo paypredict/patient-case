@@ -54,10 +54,12 @@ fun CaseIssue.createOutXml() {
         if (it.exists()) throw CaseDataException("Orders out XML file $it already exists")
     }
 
-    val dom: DomDocument = documentBuilderFactory.newDocumentBuilder()
+    val domDocument: DomDocument = documentBuilderFactory.newDocumentBuilder()
         .parse(srcFile.toInputSource())
 
-    updateSubscribers(dom, fileName)
+    updateSubscribers(domDocument, fileName)
+
+    updatePatient(domDocument)
 
     outFile.writer().use { writer ->
         writer.write(XML_PREFIX)
@@ -68,7 +70,7 @@ fun CaseIssue.createOutXml() {
                 setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
             }
             .transform(
-                DOMSource(dom),
+                DOMSource(domDocument),
                 StreamResult(writer)
             )
     }
@@ -250,6 +252,71 @@ private enum class SubscriberAttr(val eligibilityPath: String = "", val default:
     SubscriberState("data.subscriber.address.state"),
     SubscriberZIP("data.subscriber.address.zipcode")
 }
+
+private fun CaseIssue.updatePatient(domDocument: DomDocument) {
+    val domPatient: Element =
+        domDocument
+            .getElementsByTagName("Patient")
+            .toSequence()
+            .firstOrNull() as? Element
+            ?: return
+
+    val issue: IssueAddress = address.findPassed() ?: return
+
+    domPatient.setIfNotNullOrBlank(PatientAttr.Address1, issue.address1)
+    domPatient.setIfNotNullOrBlank(PatientAttr.Address2, issue.address2)
+    domPatient.setIfNotNullOrBlank(PatientAttr.Zip, issue.zip)
+    domPatient.setIfNotNullOrBlank(PatientAttr.City, issue.city)
+    domPatient.setIfNotNullOrBlank(PatientAttr.State, issue.state)
+
+    PatientAttr.values().forEach { attr ->
+        if (!domPatient.hasAttribute(attr.name)) domPatient[attr] = attr.default
+    }
+}
+
+private enum class PatientAttr(val default: String = "") {
+    Address1,
+    Address2,
+    City,
+    DateOfBirth,
+    FirstName,
+    Gender,
+    GuarantorAddress1,
+    GuarantorAddress2,
+    GuarantorCity,
+    GuarantorFirstName,
+    GuarantorGender,
+    GuarantorHomePhone,
+    GuarantorLastName,
+    GuarantorMedicalRecNo,
+    GuarantorMiddleInitials,
+    GuarantorName,
+    GuarantorRelationship,
+    GuarantorSSN,
+    GuarantorState,
+    GuarantorWorkPhone,
+    GuarantorZip,
+    HomePhone,
+    LastName,
+    MedicalRecNo,
+    MiddleInitials,
+    Name,
+    PMS,
+    SSN,
+    State,
+    WorkPhone,
+    Zip,
+}
+
+private fun Element.setIfNotNullOrBlank(attr: PatientAttr, value: String?) {
+    if (!value.isNullOrBlank())
+        setAttribute(attr.name, value)
+}
+
+private operator fun Element.set(attr: PatientAttr, value: String?) {
+    setAttribute(attr.name, value ?: attr.default)
+}
+
 
 private fun MongoCollection<Document>.toEligibilityCheckRes(issue: IssueEligibility): EligibilityCheckRes? =
     issue.eligibility?.let {
