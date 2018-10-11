@@ -166,6 +166,7 @@ private class IssueCheckerAuto(
         } else {
             val npi = provider<String>("npi")
             val originalNPI = IssueNPI(
+                status = IssueNPI.Status.Original,
                 npi = npi,
                 name = Person(
                     firstName = provider<String>("firstName"),
@@ -173,7 +174,9 @@ private class IssueCheckerAuto(
                     mi = provider<String>("middleInitials")
                 )
             )
-            val apiNPI = IssueNPI(npi = npi)
+            val apiNPI = originalNPI.copy(
+                status = IssueNPI.Status.Unchecked
+            )
             try {
                 if (npi == null) throw CheckingException("Case Provider npi is null")
 
@@ -205,22 +208,22 @@ private class IssueCheckerAuto(
                     ?.toList()
                         ?: emptyList()
 
-                if (!apiNPI.nameEquals(originalNPI))
-                    throw CheckingException(
-                        "apiNPI != providerNPI",
-                        status = IssueNPI.Status.Error("NPI Missing")
-                    )
+                val status = when (apiNPI.nameEquals(originalNPI)) {
+                    true -> IssueNPI.Status.Confirmed
+                    false -> IssueNPI.Status.Corrected
+                }
+                apiNPI.status = status
+                statusValues["status.values.npi"] = Status(status.name).toDocument()
 
             } catch (e: CheckingException) {
-                val status = (e.status as? IssueNPI.Status
-                    ?: IssueNPI.Status.Error("Checking Error", e.message))
+                val status =
+                    e.status as? IssueNPI.Status
+                        ?: IssueNPI.Status.Error("Checking Error", e.message)
                 apiNPI.status = status
-                apiNPI.error = e.message
-                apiNPI.original = originalNPI
                 statusProblems += 1
                 statusValues["status.values.npi"] = Status(status.name, e.message).toDocument()
             }
-            caseIssue = caseIssue.copy(npi = listOf(apiNPI))
+            caseIssue = caseIssue.copy(npi = listOf(originalNPI, apiNPI))
         }
     }
 

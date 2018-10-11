@@ -90,18 +90,14 @@ data class IssueNPI(
     var name: Person? = null,
 
     @DataView("Taxonomies", order = 200, isVisible = false)
-    var taxonomies: List<Taxonomy> = emptyList(),
-
-    @DataView("Original", order = 201, isVisible = false)
-    var original: IssueNPI? = null,
-
-    @DataView("Error", order = 202, isVisible = false)
-    var error: String? = null
+    var taxonomies: List<Taxonomy> = emptyList()
 
 ) : IssueItem<IssueNPI.Status> {
 
     sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
+        object Original : Status("Original", true)
         object Unchecked : Status("Unchecked", true)
+        object Confirmed : Status("Confirmed", true)
         object Corrected : Status("Corrected", true)
         class Error(
             override val error: String? = null,
@@ -135,7 +131,9 @@ data class IssueNPI(
 
 fun Document.toIssueNPIStatus(): IssueNPI.Status? =
     when (opt<String>("name")) {
+        IssueNPI.Status.Original.name -> IssueNPI.Status.Original
         IssueNPI.Status.Unchecked.name -> IssueNPI.Status.Unchecked
+        IssueNPI.Status.Confirmed.name -> IssueNPI.Status.Confirmed
         IssueNPI.Status.Corrected.name -> IssueNPI.Status.Corrected
         IssueNPI.Status.Error::class.java.simpleName -> IssueNPI.Status.Error(
             error = opt<String>("error"),
@@ -504,23 +502,19 @@ fun Document.toIssueNPI(): IssueNPI =
         status = opt<Document>("status")?.toIssueNPIStatus(),
         npi = opt("npi"),
         name = opt<Document>("name")?.toPerson(),
-        original = opt<Document>("original")?.toIssueNPI(),
         taxonomies = opt<List<*>>("taxonomies")
             ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toTaxonomy() }
             ?.toList()
-            ?: emptyList(),
-        error = opt("error")
+            ?: emptyList()
     )
 
 fun IssueNPI.toDocument(): Document = doc {
     doc["status"] = status?.toDocument()
     doc["npi"] = npi
     doc["name"] = name?.toDocument()
-    opt("original", original?.toDocument())
     opt("taxonomies", taxonomies.map { it.toDocument() })
-    opt("error", error)
 }
 
 
