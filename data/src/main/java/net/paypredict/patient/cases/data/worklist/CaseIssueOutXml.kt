@@ -76,7 +76,24 @@ fun CaseIssue.createOutXml() {
                 StreamResult(writer)
             )
     }
+
+    makeFixedCopies(fileName)
 }
+
+val fixedSrcDir: File by lazy {
+    ordersDir.resolve("src-fixed").apply { mkdir() }
+}
+val fixedOutDir: File by lazy {
+    ordersDir.resolve("out-fixed").apply { mkdir() }
+}
+
+private fun makeFixedCopies(fileName: String) {
+    srcDir.resolve(fileName).makeFixedCopy(fixedSrcDir.resolve(fileName))
+    outDir.resolve(fileName).makeFixedCopy(fixedOutDir.resolve(fileName))
+}
+
+private fun File.makeFixedCopy(dst: File) =
+    dst.writeText(readText().removePrefix(XML_PREFIX))
 
 private fun CaseIssue.updateSubscribers(domDocument: DomDocument, fileName: String) {
     val caseElement =
