@@ -78,12 +78,13 @@ fun CaseIssue.createOutXml() {
     }
 
     makeFixedCopies(fileName)
+    makeTestCopy(fileName)
 }
 
-val fixedSrcDir: File by lazy {
+private val fixedSrcDir: File by lazy {
     ordersDir.resolve("src-fixed").apply { mkdir() }
 }
-val fixedOutDir: File by lazy {
+private val fixedOutDir: File by lazy {
     ordersDir.resolve("out-fixed").apply { mkdir() }
 }
 
@@ -94,6 +95,42 @@ private fun makeFixedCopies(fileName: String) {
 
 private fun File.makeFixedCopy(dst: File) =
     dst.writeText(readText().removePrefix(XML_PREFIX))
+
+private val testOutDir: File by lazy {
+    ordersDir.resolve("out-test").apply { mkdir() }
+}
+
+private fun makeTestCopy(fileName: String) {
+    val domDocument: DomDocument = documentBuilderFactory.newDocumentBuilder()
+        .parse(fixedOutDir.resolve(fileName))
+    domDocument.getElementsByTagName("Patient")
+        .toSequence()
+        .filterIsInstance<Element>()
+        .forEach {
+            it.setIfNotNullOrBlank(PatientAttr.Name, "DONOT BILL")
+            it.setIfNotNullOrBlank(PatientAttr.FirstName, "DONOT")
+            it.setIfNotNullOrBlank(PatientAttr.LastName, "BILL")
+            it.setIfNotNullOrBlank(PatientAttr.MiddleInitials, "")
+        }
+    domDocument.getElementsByTagName("Subscriber")
+        .toSequence()
+        .filterIsInstance<Element>()
+        .forEach {
+            it.setIfNotNullOrBlank(SubscriberAttr.FirstName, "DONOT")
+            it.setIfNotNullOrBlank(SubscriberAttr.OrganizationNameOrLastName, "BILL")
+            it.setIfNotNullOrBlank(SubscriberAttr.MiddleInitial, "")
+        }
+
+    transformerFactory
+        .newTransformer()
+        .apply {
+            setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
+        }
+        .transform(
+            DOMSource(domDocument),
+            StreamResult(testOutDir.resolve(fileName))
+        )
+}
 
 private fun CaseIssue.updateSubscribers(domDocument: DomDocument, fileName: String) {
     val caseElement =
@@ -193,22 +230,22 @@ private fun Element.fillSubscriber(
 
 private fun Element.updateSubscriber(issue: IssueEligibility) {
     issue.insurance?.let { insurance ->
-        setIfNotNull(SubscriberAttr.PayerId, insurance.zmPayerId)
-        setIfNotNull(SubscriberAttr.PayerName, insurance.zmPayerName)
+        setIfNotNullOrBlank(SubscriberAttr.PayerId, insurance.zmPayerId)
+        setIfNotNullOrBlank(SubscriberAttr.PayerName, insurance.zmPayerName)
     }
     issue.subscriber?.let { subscriber ->
-        setIfNotNull(SubscriberAttr.RelationshipCode, subscriber.relationshipCode)
-        setIfNotNull(SubscriberAttr.FirstName, subscriber.firstName)
-        setIfNotNull(SubscriberAttr.MiddleInitial, subscriber.mi)
-        setIfNotNull(SubscriberAttr.OrganizationNameOrLastName, subscriber.lastName)
-        setIfNotNull(SubscriberAttr.Gender, subscriber.gender)
-        setIfNotNull(SubscriberAttr.DOB, subscriber.dob)
-        setIfNotNull(SubscriberAttr.SubscriberPolicyNumber, subscriber.policyNumber)
+        setIfNotNullOrBlank(SubscriberAttr.RelationshipCode, subscriber.relationshipCode)
+        setIfNotNullOrBlank(SubscriberAttr.FirstName, subscriber.firstName)
+        setIfNotNullOrBlank(SubscriberAttr.MiddleInitial, subscriber.mi)
+        setIfNotNullOrBlank(SubscriberAttr.OrganizationNameOrLastName, subscriber.lastName)
+        setIfNotNullOrBlank(SubscriberAttr.Gender, subscriber.gender)
+        setIfNotNullOrBlank(SubscriberAttr.DOB, subscriber.dob)
+        setIfNotNullOrBlank(SubscriberAttr.SubscriberPolicyNumber, subscriber.policyNumber)
     }
 }
 
-private fun Element.setIfNotNull(attr: SubscriberAttr, value: String?) {
-    if (value != null)
+private fun Element.setIfNotNullOrBlank(attr: SubscriberAttr, value: String?) {
+    if (!value.isNullOrBlank())
         setAttribute(attr.name, value)
 }
 
