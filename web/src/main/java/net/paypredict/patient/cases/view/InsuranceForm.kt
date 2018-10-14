@@ -6,7 +6,6 @@ import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.dialog.Dialog
-import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H2
 import com.vaadin.flow.component.html.Label
 import com.vaadin.flow.component.html.Span
@@ -18,8 +17,10 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.binder.Binder
 import net.paypredict.patient.cases.data.worklist.Insurance
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo._id
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.PayersData
-import kotlin.reflect.KMutableProperty1
 
 /**
  * <p>
@@ -140,31 +141,23 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         content += HorizontalLayout().apply {
             isPadding = false
             style["flex-wrap"] = "wrap"
+            width = "100%"
             defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
             if (header != null) this += header
             this += payerName
+            this += Button("Find").apply {
+                addClickListener {
+                    val found = DBS.Collections.PPPayers.find_zmPayerId()
+                        .find(payerName.text.toLowerCase()._id())
+                        .firstOrNull()
+                        ?.opt<String>("zmPayerId")
+
+                    zmPayerId.value = InsuranceItem[found]
+                }
+            }
+            setFlexGrow(1.0, payerName)
         }
 
-        if (false) {
-            content += Div().apply {
-                width = "100%"
-                style["display"] = "inline-flex"
-                style["flex-wrap"] = "wrap"
-                fun KMutableProperty1<Insurance, String?>.bindTextView(label: String, marginRight: String? = "1em") =
-                    TextField(label).apply {
-                        binder.forField(this).bind(getter, setter)
-                        isReadOnly = true
-                        style["max-width"] = "100%"
-                        style["margin-right"] = marginRight
-                    }
-                add(
-                    Insurance::payerName.bindTextView("Payer Name").apply { style["flex-grow"] = "100" },
-                    Insurance::typeCode.bindTextView("Type"),
-                    Insurance::payerId.bindTextView("Payer ID"),
-                    Insurance::planCode.bindTextView("Plan Code", marginRight = null)
-                )
-            }
-        }
         zmPayerId.setItems(InsuranceItem.all)
         content += zmPayerId
         content += pokitDokPayer

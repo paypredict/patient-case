@@ -53,8 +53,9 @@ object DBS {
             smartyStreets().getCollection("usStreet")
 
         object PPPayers {
-            fun lookupPkd(): MongoCollection<Document> =
-                ppPayers().getCollection("lookupPkd")
+            @Suppress("FunctionName")
+            fun find_zmPayerId(): MongoCollection<Document> =
+                ppPayers().getCollection("find_zmPayerId")
 
             fun zirmedPayers(): MongoCollection<Document> =
                 ppPayers().getCollection("zirmedPayers")
