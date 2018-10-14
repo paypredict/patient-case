@@ -76,6 +76,11 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
 
     var selectedResponsibilityOrder: ResponsibilityOrder? = null
     var selectedItem: IssueEligibility? = null
+        set(new) {
+            field = new
+            selectedResponsibilityOrder = new?.responsibility?.let { ResponsibilityOrder.valueOf(it) }
+        }
+
     var items: List<IssueEligibility>? = null
         set(new) {
             field = new

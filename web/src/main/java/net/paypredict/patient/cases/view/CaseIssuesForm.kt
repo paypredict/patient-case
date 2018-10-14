@@ -209,8 +209,8 @@ class CaseIssuesForm : Composite<Div>() {
                 form.width = "100%"
                 form.height = "100%"
                 form.caseId = _id
-                form.items = issuesEligibility.value
                 form.selectedItem = selected
+                form.items = issuesEligibility.value
                 form.onClose = { dialog.close() }
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
