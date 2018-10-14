@@ -8,6 +8,7 @@ import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
 import com.vaadin.flow.component.html.H3
+import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
@@ -18,12 +19,11 @@ import com.vaadin.flow.data.binder.Binder
 import com.vaadin.flow.data.binder.ValidationResult
 import com.vaadin.flow.data.binder.ValueContext
 import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.data.worklist.Person
 import net.paypredict.patient.cases.data.worklist.Subscriber
-import net.paypredict.patient.cases.data.worklist.asLocalDateOrNull
 import net.paypredict.patient.cases.data.worklist.formatAs
+import net.paypredict.patient.cases.mongo._id
 import org.bson.Document
 import java.time.LocalDate
 
@@ -112,7 +112,14 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             )
     }
 
+    private val casePatient = Span()
+
     var caseId: String? = null
+        set(new) {
+            field = new
+            casePatient.text = new?.findCasePatient()?.toString() ?: ""
+        }
+
     var value: Subscriber? = null
         get() {
             if (field == null) field = Subscriber()
@@ -128,9 +135,9 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         get() = binder.validate().isOk
 
     init {
-        content += relationshipCode
         content += HorizontalLayout().apply {
-            element.setAttribute("colspan", "4")
+            width = "100%"
+            element.setAttribute("colspan", "5")
             isPadding = false
             defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
             this += Button("Copy from Patient").apply {
@@ -139,13 +146,16 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                     showCopyFromPatientDialog()
                 }
             }
+            this += casePatient
         }
+
         content += firstName
         content += lastName
         content += mi
         content += gender
         content += dob
         content += policyNumber
+        content += relationshipCode
 
         content.setResponsiveSteps(
             FormLayout.ResponsiveStep("10em", 1),
@@ -156,11 +166,24 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         )
     }
 
+    private fun String.findCasePatient(): Person? =
+        DBS.Collections.casesRaw()
+            .find(_id())
+            .mapNotNull { case ->
+                case.opt<Document>("case", "Case", "Patient")?.let { patient ->
+                    Person(
+                        firstName = patient.opt("firstName"),
+                        mi = patient.opt("middleInitials"),
+                        lastName = patient.opt("lastName"),
+                        gender = patient.opt("gender"),
+                        dob = patient.opt("dateOfBirth")
+                    )
+                }
+            }
+            .firstOrNull()
+
     private fun showCopyFromPatientDialog() {
-        val case = DBS.Collections.casesRaw().find(doc {
-            doc["_id"] = caseId
-        }).firstOrNull()
-        val patient = case?.opt<Document>("case", "Case", "Patient")
+        val patient = caseId?.findCasePatient()
         if (patient == null) {
             Notification.show("Patient data not found")
             return
@@ -174,11 +197,11 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                     this += Button("Override").apply {
                         element.setAttribute("theme", "error primary")
                         addClickListener { _ ->
-                            firstName.value = patient.opt("firstName") ?: ""
-                            lastName.value = patient.opt("lastName") ?: ""
-                            mi.value = patient.opt("middleInitials") ?: ""
-                            gender.value = patient.opt("gender") ?: ""
-                            dob.value = patient.opt<String>("dateOfBirth") asLocalDateOrNull  Person.dateFormat
+                            firstName.value = patient.firstName ?: ""
+                            lastName.value = patient.lastName ?: ""
+                            mi.value = patient.mi ?: ""
+                            gender.value = patient.gender ?: ""
+                            dob.value = patient.dobAsLocalDate
                             dialog.close()
                         }
                     }

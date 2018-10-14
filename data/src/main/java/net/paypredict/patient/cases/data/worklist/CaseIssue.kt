@@ -46,7 +46,7 @@ data class CaseIssue(
     var expert: List<IssueExpert> = emptyList()
 )
 
-interface IssueItem<S: IssuesStatus> {
+interface IssueItem<S : IssuesStatus> {
     var status: S?
 }
 
@@ -75,7 +75,7 @@ fun IssuesStatus.toDocument(): Document = doc {
     }
 }
 
-fun <T: IssueItem<S>, S : IssuesStatus> List<T>.findPassed(): T? =
+fun <T : IssueItem<S>, S : IssuesStatus> List<T>.findPassed(): T? =
     reversed().firstOrNull { it.status?.passed == true }
 
 @VaadinBean
@@ -318,6 +318,9 @@ data class Person(
     @DataView("DOB")
     val dob: String? = null
 ) {
+    override fun toString(): String =
+        listOfNotNull(lastName, mi, firstName, gender, dob).joinToString()
+
     companion object {
         val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
     }
