@@ -148,6 +148,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
 
         addResponsibility.isEnabled = items?.none { it.origin == "casesRaw" } ?: true
         deleteResponsibility.isEnabled = value?.origin == null && items?.size ?: 0 > 1
+        subscriberTabs.selectedIndex = 0
     }
 
     var onPatientEligibilityChecked: ((IssueEligibility, EligibilityCheckRes) -> Unit)? = null
