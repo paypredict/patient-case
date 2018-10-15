@@ -11,6 +11,8 @@ import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.UsStreet
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
 import net.paypredict.patient.cases.mongo.*
+import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
+import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import org.bson.Document
 
 /**
@@ -25,8 +27,15 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
         doc["status.problems"] = doc { doc[`$exists`] = false }
     }
     val usStreet = UsStreet()
+    val find_zmPayerId: MongoCollection<Document> = DBS.Collections.PPPayers.find_zmPayerId()
     for (case in casesRaw.find(filter)) {
-        IssueCheckerAuto(usStreet, casesRaw, casesIssues, case)
+        IssueCheckerAuto(
+            usStreet = usStreet,
+            find_zmPayerId = find_zmPayerId,
+            casesRaw = casesRaw,
+            casesIssues = casesIssues,
+            case = case
+        )
             .check()
         if (isInterrupted()) break
     }
@@ -121,6 +130,7 @@ open class IssueChecker(
 
 private class IssueCheckerAuto(
     override val usStreet: UsStreet = UsStreet(),
+    val find_zmPayerId: MongoCollection<Document> = DBS.Collections.PPPayers.find_zmPayerId(),
     val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
     val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
     val case: Document
@@ -239,8 +249,13 @@ private class IssueCheckerAuto(
             )
         }
         if (issueEligibilityList.isNotEmpty()) {
-            caseIssue = caseIssue.copy(eligibility = issueEligibilityList)
-            // TODO check Subscribers in issueEligibilityList
+            val checkedEligibility = issueEligibilityList.map { it.checkEligibility() }
+            caseIssue = caseIssue.copy(eligibility = issueEligibilityList + checkedEligibility)
+            if (checkedEligibility.any { it.status?.passed == false }) {
+                statusProblems += 1
+                statusValues["status.values.eligibility"] =
+                        Status("WARNING").toDocument()
+            }
         } else {
             caseIssue = caseIssue.copy(
                 eligibility = listOf(
@@ -256,6 +271,29 @@ private class IssueCheckerAuto(
                     Status("WARNING", "No Subscribers found").toDocument()
         }
     }
+
+    private fun IssueEligibility.checkEligibility(): IssueEligibility =
+        copy().apply {
+            insurance = insurance?.copy()?.apply {
+                zmPayerId = payerName?.let {
+                    find_zmPayerId
+                        .find(it.toLowerCase()._id())
+                        .firstOrNull()
+                        ?.opt<String>("zmPayerId")
+                }
+            }
+            val checkRes = EligibilityChecker(this).check()
+            eligibility = if (checkRes is EligibilityCheckRes.HasResult) checkRes.id else null
+            status = when (checkRes) {
+                is EligibilityCheckRes.Pass -> IssueEligibility.Status.Confirmed
+                is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
+                    "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
+                )
+                is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(
+                    "Checking Error", checkRes.message
+                )
+            }
+        }
 
     private fun checkAddress() {
         val person = case.findPatient()
