@@ -251,7 +251,7 @@ private class IssueCheckerAuto(
         if (issueEligibilityList.isNotEmpty()) {
             val checkedEligibility = issueEligibilityList.map { it.checkEligibility() }
             caseIssue = caseIssue.copy(eligibility = issueEligibilityList + checkedEligibility)
-            if (checkedEligibility.any { it.status?.passed == false }) {
+            if (checkedEligibility.any { it.status != IssueEligibility.Status.Confirmed }) {
                 statusProblems += 1
                 statusValues["status.values.eligibility"] =
                         Status("WARNING").toDocument()
@@ -273,25 +273,32 @@ private class IssueCheckerAuto(
     }
 
     private fun IssueEligibility.checkEligibility(): IssueEligibility =
-        copy().apply {
-            insurance = insurance?.copy()?.apply {
-                zmPayerId = payerName?.let {
-                    find_zmPayerId
-                        .find(it.toLowerCase()._id())
-                        .firstOrNull()
-                        ?.opt<String>("zmPayerId")
+        deepCopy().apply {
+            val checkable = insurance?.run {
+                val found =
+                    payerName?.let {
+                        find_zmPayerId
+                            .find(it.toLowerCase()._id())
+                            .firstOrNull()
+                    }
+                zmPayerId = found?.opt<String>("zmPayerId")
+                found?.opt<Int>("try")
+            } == 1
+            status = when {
+                checkable -> {
+                    val checkRes = EligibilityChecker(this).check()
+                    eligibility = if (checkRes is EligibilityCheckRes.HasResult) checkRes.id else null
+                    when (checkRes) {
+                        is EligibilityCheckRes.Pass -> IssueEligibility.Status.Confirmed
+                        is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
+                            "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
+                        )
+                        is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(
+                            "Checking Error", checkRes.message
+                        )
+                    }
                 }
-            }
-            val checkRes = EligibilityChecker(this).check()
-            eligibility = if (checkRes is EligibilityCheckRes.HasResult) checkRes.id else null
-            status = when (checkRes) {
-                is EligibilityCheckRes.Pass -> IssueEligibility.Status.Confirmed
-                is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
-                    "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
-                )
-                is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(
-                    "Checking Error", checkRes.message
-                )
+                else -> IssueEligibility.Status.Unchecked
             }
         }
 

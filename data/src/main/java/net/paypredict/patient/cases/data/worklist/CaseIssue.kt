@@ -96,9 +96,9 @@ data class IssueNPI(
 
     sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         object Original : Status("Original", false)
-        object Unchecked : Status("Unchecked", true)
-        object Confirmed : Status("Confirmed", true)
+        object Unchecked : Status("Unchecked", false)
         object Corrected : Status("Corrected", true)
+        object Confirmed : Status("Confirmed", true)
         class Error(
             override val error: String? = null,
             override val message: String? = null
@@ -133,8 +133,8 @@ fun Document.toIssueNPIStatus(): IssueNPI.Status? =
     when (opt<String>("name")) {
         IssueNPI.Status.Original.name -> IssueNPI.Status.Original
         IssueNPI.Status.Unchecked.name -> IssueNPI.Status.Unchecked
-        IssueNPI.Status.Confirmed.name -> IssueNPI.Status.Confirmed
         IssueNPI.Status.Corrected.name -> IssueNPI.Status.Corrected
+        IssueNPI.Status.Confirmed.name -> IssueNPI.Status.Confirmed
         IssueNPI.Status.Error::class.java.simpleName -> IssueNPI.Status.Error(
             error = opt<String>("error"),
             message = opt<String>("message")
@@ -179,7 +179,8 @@ data class IssueEligibility(
     sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         object Missing : Status("Missing", false)
         object Original : Status("Original", false)
-        object Unchecked : Status("Unchecked", true)
+        object Unchecked : Status("Unchecked", false)
+        object Corrected : Status("Corrected", true)
         object Confirmed : Status("Confirmed", true)
         class Problem(
             override val error: String? = null,
@@ -198,11 +199,17 @@ data class IssueEligibility(
     }
 }
 
+fun IssueEligibility.deepCopy(): IssueEligibility = copy(
+    insurance = insurance?.copy(),
+    subscriber = subscriber?.copy()
+)
+
 fun Document.toIssueEligibilityStatus(): IssueEligibility.Status? =
     when (opt<String>("name")) {
         IssueEligibility.Status.Missing.name -> IssueEligibility.Status.Missing
         IssueEligibility.Status.Original.name -> IssueEligibility.Status.Original
         IssueEligibility.Status.Unchecked.name -> IssueEligibility.Status.Unchecked
+        IssueEligibility.Status.Corrected.name -> IssueEligibility.Status.Corrected
         IssueEligibility.Status.Confirmed.name -> IssueEligibility.Status.Confirmed
         IssueEligibility.Status.Problem::class.java.simpleName -> IssueEligibility.Status.Problem(
             error = opt<String>("error"),
@@ -375,7 +382,7 @@ data class IssueAddress(
     sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
         object Missing : Status("Missing", false)
         object Original : Status("Original", false)
-        object Unchecked : Status("Unchecked", true)
+        object Unchecked : Status("Unchecked", false)
         object Corrected : Status("Corrected", true)
         object Confirmed : Status("Confirmed", true)
         class Error(
