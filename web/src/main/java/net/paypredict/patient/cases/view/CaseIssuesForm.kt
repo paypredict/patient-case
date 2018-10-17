@@ -226,7 +226,6 @@ class CaseIssuesForm : Composite<Div>() {
                                     res.warnings.joinToString { it.message }
                                 )
                             )
-                            showWarnings(res.warnings)
                         }
                         is EligibilityCheckRes.Error -> {
                             addEligibilityIssue(
@@ -365,18 +364,6 @@ class CaseIssuesForm : Composite<Div>() {
             this += VerticalLayout().apply {
                 this += H2("API Call Error")
                 this += H3(error)
-            }
-            open()
-        }
-    }
-
-    private fun showWarnings(warnings: List<EligibilityCheckRes.Warning>) {
-        Dialog().apply {
-            this += VerticalLayout().apply {
-                this += H2("WARNING")
-                warnings.forEach {
-                    this += H4(it.message)
-                }
             }
             open()
         }

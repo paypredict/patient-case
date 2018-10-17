@@ -152,9 +152,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         val value = tab?.value
         insuranceForm.value = value?.insurance
         subscriberForm.value = value?.subscriber
-        val eligibilityCheckRes = value?.eligibility?.findEligibilityCheckRes()
-        eligibilityCheckResView.value = eligibilityCheckRes
-        checkResSum.value = eligibilityCheckRes
+        applyEligibilityCheckRes(value?.eligibility?.findEligibilityCheckRes())
 
         addResponsibility.isEnabled = items?.none { it.origin == "casesRaw" } ?: true
         deleteResponsibility.isEnabled = value?.origin == null && items?.size ?: 0 > 1
@@ -228,7 +226,60 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     }
 
     private val checkResSum = EligibilityCheckResSum()
+
     private val payersRecheck = PayersRecheck()
+
+    private val saveWithNoVerificationButton = Button("Save with no verification").apply {
+        element.setAttribute("theme", "tertiary")
+        addClickListener {
+            val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
+            if (insuranceForm.isValid && subscriberForm.isValid) {
+                val insurance = insuranceForm.value
+                onPatientEligibilitySave?.invoke(
+                    responsibilityTabs.selectedRespTab.value
+                        .copy(
+                            origin = null,
+                            responsibility = selectedResponsibilityOrder?.name,
+                            insurance = insurance,
+                            subscriber = subscriberForm.value,
+                            eligibility = null
+                        )
+                )
+                insurance?.updatePayerLookups(pokitDokPayerUpdated)
+            }
+        }
+    }
+
+    private val verifyEligibilityButton = Button("Verify Eligibility").apply {
+        element.setAttribute("theme", "primary")
+        addClickListener {
+            val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
+            if (insuranceForm.isValid && subscriberForm.isValid) {
+                val insurance = insuranceForm.value
+                val issue =
+                    responsibilityTabs.selectedRespTab.value
+                        .copy(
+                            origin = null,
+                            responsibility = selectedResponsibilityOrder?.name,
+                            insurance = insurance,
+                            subscriber = subscriberForm.value,
+                            eligibility = null
+                        )
+                val res = EligibilityChecker(issue).check()
+                issue.eligibility = (res as? EligibilityCheckRes.HasResult)?.id
+                applyEligibilityCheckRes(res)
+                onPatientEligibilityChecked?.invoke(issue, res)
+                insurance?.updatePayerLookups(pokitDokPayerUpdated)
+            }
+        }
+    }
+
+    private fun applyEligibilityCheckRes(res: EligibilityCheckRes?) {
+        eligibilityCheckResView.value = res
+        checkResSum.value = res
+        saveWithNoVerificationButton.isEnabled = res !is EligibilityCheckRes.Pass
+        verifyEligibilityButton.isEnabled = res !is EligibilityCheckRes.Pass
+    }
 
     init {
         val main = VerticalLayout().apply {
@@ -272,50 +323,8 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                 this += checkResSum
                                 this += payersRecheck
                                 this += actions {
-                                    this += Button("Save with no verification").apply {
-                                        element.setAttribute("theme", "tertiary")
-                                        addClickListener {
-                                            val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
-                                            if (insuranceForm.isValid && subscriberForm.isValid) {
-                                                val insurance = insuranceForm.value
-                                                onPatientEligibilitySave?.invoke(
-                                                    responsibilityTabs.selectedRespTab.value
-                                                        .copy(
-                                                            origin = null,
-                                                            responsibility = selectedResponsibilityOrder?.name,
-                                                            insurance = insurance,
-                                                            subscriber = subscriberForm.value,
-                                                            eligibility = null
-                                                        )
-                                                )
-                                                insurance?.updatePayerLookups(pokitDokPayerUpdated)
-                                            }
-                                        }
-                                    }
-                                    this += Button("Verify Eligibility").apply {
-                                        element.setAttribute("theme", "primary")
-                                        addClickListener {
-                                            val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
-                                            if (insuranceForm.isValid && subscriberForm.isValid) {
-                                                val insurance = insuranceForm.value
-                                                val issue =
-                                                    responsibilityTabs.selectedRespTab.value
-                                                        .copy(
-                                                            origin = null,
-                                                            responsibility = selectedResponsibilityOrder?.name,
-                                                            insurance = insurance,
-                                                            subscriber = subscriberForm.value,
-                                                            eligibility = null
-                                                        )
-                                                val res = EligibilityChecker(issue).check()
-                                                issue.eligibility = (res as? EligibilityCheckRes.HasResult)?.id
-                                                eligibilityCheckResView.value = res
-                                                checkResSum.value = res
-                                                onPatientEligibilityChecked?.invoke(issue, res)
-                                                insurance?.updatePayerLookups(pokitDokPayerUpdated)
-                                            }
-                                        }
-                                    }
+                                    this += saveWithNoVerificationButton
+                                    this += verifyEligibilityButton
                                 }
                             }
                         }
