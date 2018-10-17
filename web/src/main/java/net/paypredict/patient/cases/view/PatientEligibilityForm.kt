@@ -27,6 +27,7 @@ import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import net.paypredict.patient.cases.pokitdok.eligibility.toEligibilityCheckRes
+import net.paypredict.patient.cases.toTitleCase
 
 /**
  * <p>
@@ -225,7 +226,9 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         }
     }
 
-    private val checkResSum = EligibilityCheckResSum()
+    private val checkResSum = EligibilityCheckResSum().apply {
+        style["padding-top"] = "0.5em"
+    }
 
     private val payersRecheck = PayersRecheck()
 
@@ -277,6 +280,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     private fun applyEligibilityCheckRes(res: EligibilityCheckRes?) {
         eligibilityCheckResView.value = res
         checkResSum.value = res
+        subscriberForm.banner = checkResSum.banner
         saveWithNoVerificationButton.isEnabled = res !is EligibilityCheckRes.Pass
         verifyEligibilityButton.isEnabled = res !is EligibilityCheckRes.Pass
     }
@@ -311,6 +315,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                             }
                             this += sectionHeader("Subscriber")
                             this += subscriberForm
+                            this += checkResSum
                         }
                         this expand HorizontalLayout().apply {
                             isPadding = false
@@ -320,7 +325,6 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                 isPadding = false
                                 width = "100%"
                                 defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
-                                this += checkResSum
                                 this += payersRecheck
                                 this += actions {
                                     this += saveWithNoVerificationButton
@@ -455,44 +459,60 @@ private class EligibilityCheckResSum : VerticalLayout() {
             updateUI(new)
         }
 
+    var banner: Component? = null
+
     init {
         isPadding = false
         setSizeUndefined()
-        defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
     }
 
     private fun updateUI(value: EligibilityCheckRes?) {
         removeAll()
+        banner = null
         value ?: return
-        when (value) {
-            is EligibilityCheckRes.Pass -> this += PassBanner("Coverage active")
+
+        banner = when (value) {
+            is EligibilityCheckRes.Pass -> PassBanner("Coverage active")
             is EligibilityCheckRes.Warn -> {
                 val validRequest = value.result.opt<Boolean>("data", "valid_request") == true
-                this +=
-                        if (validRequest) {
-                            val coverageActive = value.result.opt<Boolean>("data", "coverage", "active")
-                            when (coverageActive) {
-                                false -> ErrorBanner("Coverage not active")
-                                else -> WarnBanner("Coverage unknown")
-                            }
-                        } else
-                            ErrorBanner("Request not valid")
-                listOfNotNull(
-                    value.result.opt<String>("data", "reject_reason")?.toText(),
-                    value.result.opt<String>("data", "follow_up_action")?.toText()
-                ).forEach {
-                    this += Div(Text(it))
-                }
+                if (validRequest) {
+                    val coverageActive = value.result.opt<Boolean>("data", "coverage", "active")
+                    when (coverageActive) {
+                        false -> ErrorBanner("Coverage not active")
+                        else -> WarnBanner("Coverage unknown")
+                    }
+                } else
+                    ErrorBanner("Request not valid")
             }
-            is EligibilityCheckRes.Error -> this += ErrorBanner(value.message)
+            is EligibilityCheckRes.Error -> ErrorBanner(value.message)
+        }
+
+        when (value) {
+            is EligibilityCheckRes.Pass -> listOfNotNull(
+                value.result.opt<String>("data", "coverage", "insurance_type")?.toTitleCase()
+                    ?.let { "Insurance Type: $it" },
+                value.result.opt<String>("data", "coverage", "plan_description")?.toTitleCase()
+                    ?.let { "Plan Description: $it" }
+            )
+            is EligibilityCheckRes.Warn -> listOfNotNull(
+                value.result.opt<String>("data", "reject_reason")?.toTitleCase(),
+                value.result.opt<String>("data", "follow_up_action")?.toTitleCase()
+            )
+            else -> emptyList()
+        }.forEach {
+            this += Div(Text(it))
         }
     }
 
     companion object {
-        private abstract class Banner(label: String, icon: VaadinIcon, backgroundColor: String, color: String = "white") :
-            Div() {
+        private abstract class Banner(
+            label: String,
+            icon: VaadinIcon,
+            backgroundColor: String,
+            color: String = "white"
+        ) : Div() {
             init {
-                style["padding"] = "0.5em"
+                style["padding"] = "0.3em"
                 style["color"] = color
                 style["background-color"] = backgroundColor
                 this += icon.create().apply { style["padding-right"] = "0.5em" }
@@ -503,9 +523,6 @@ private class EligibilityCheckResSum : VerticalLayout() {
         private class PassBanner(label: String) : Banner(label, VaadinIcon.CHECK, "#1e8e3e")
         private class WarnBanner(label: String) : Banner(label, VaadinIcon.WARNING, "#f4b400")
         private class ErrorBanner(label: String) : Banner(label, VaadinIcon.EXCLAMATION_CIRCLE, "#d23f31")
-
-        private fun String.toText() =
-            replace('_', ' ').capitalize()
     }
 }
 

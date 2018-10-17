@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.view
 
+import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
 import com.vaadin.flow.component.button.Button
@@ -7,6 +8,7 @@ import com.vaadin.flow.component.combobox.ComboBox
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
+import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H3
 import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.notification.Notification
@@ -134,6 +136,17 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
     val isValid: Boolean
         get() = binder.validate().isOk
 
+    private val bannerContainer = Div().apply {
+        element.setAttribute("colspan", "2")
+    }
+
+    var banner: Component? = null
+        set(new) {
+            field = new
+            bannerContainer.removeAll()
+            if (new != null) bannerContainer += new
+        }
+
     init {
         content += HorizontalLayout().apply {
             width = "100%"
@@ -156,6 +169,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         content += dob
         content += policyNumber
         content += relationshipCode
+        content += bannerContainer
 
         content.setResponsiveSteps(
             FormLayout.ResponsiveStep("10em", 1),
