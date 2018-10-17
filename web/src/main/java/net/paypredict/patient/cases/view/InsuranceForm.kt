@@ -77,6 +77,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                         zmPayerId.focus()
                         field.prefixComponent = errorLabel("Cortex Payer Required")
                     }
+                    isPokitDokPayerUpdated = true
                 }
             }
             this += Button(VaadinIcon.EDIT.create()).withStyle().apply {
@@ -106,10 +107,16 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
             pokitDokPayer.setPokitDokPayer(new?.toTradingPartner())
             binder.readBean(new)
             field = new
+            isPokitDokPayerUpdated = false
         }
 
     val isValid: Boolean
         get() = binder.validate().isOk
+
+    var isPokitDokPayerUpdated: Boolean = false
+        private set(value) {
+            field = value
+        }
 
     data class InsuranceItem(val zmPayerId: String, val displayName: String) {
         companion object
@@ -181,6 +188,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                                     pkdPayerId = selected?._id
                                 )
                                 pokitDokPayer.setPokitDokPayer(value?.toTradingPartner())
+                                isPokitDokPayerUpdated = true
                                 dialog.close()
                             }
                         }

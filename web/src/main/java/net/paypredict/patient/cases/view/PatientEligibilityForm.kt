@@ -25,7 +25,6 @@ import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
-import net.paypredict.patient.cases.pokitdok.eligibility.PayersData
 
 /**
  * <p>
@@ -270,6 +269,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                     this += Button("Save with no verification").apply {
                                         element.setAttribute("theme", "tertiary")
                                         addClickListener {
+                                            val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
                                             if (insuranceForm.isValid && subscriberForm.isValid) {
                                                 val insurance = insuranceForm.value
                                                 onPatientEligibilitySave?.invoke(
@@ -282,17 +282,14 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                                             eligibility = null
                                                         )
                                                 )
-                                                insurance?.updatePayerLookups(
-                                                    insuranceForm.tradingPartnerOf(
-                                                        insurance
-                                                    )
-                                                )
+                                                insurance?.updatePayerLookups(pokitDokPayerUpdated)
                                             }
                                         }
                                     }
                                     this += Button("Verify Eligibility").apply {
                                         element.setAttribute("theme", "primary")
                                         addClickListener {
+                                            val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
                                             if (insuranceForm.isValid && subscriberForm.isValid) {
                                                 val insurance = insuranceForm.value
                                                 val issue =
@@ -310,11 +307,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                                 issue.eligibility = eligibilityRes
                                                 eligibilityCheckResView.value = eligibilityRes
                                                 onPatientEligibilityChecked?.invoke(issue, res)
-                                                insurance?.updatePayerLookups(
-                                                    insuranceForm.tradingPartnerOf(
-                                                        insurance
-                                                    )
-                                                )
+                                                insurance?.updatePayerLookups(pokitDokPayerUpdated)
                                             }
                                         }
                                     }
@@ -365,14 +358,13 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         content.setFlexGrow(1.0, right)
     }
 
-    private fun Insurance.updatePayerLookups(tradingPartner: PayersData.TradingPartner?) {
-        tradingPartner ?: return
+    private fun Insurance.updatePayerLookups(pokitDokPayerUpdated: Boolean) {
         val caseId = caseId ?: return
         val payerName = payerName ?: return
         val payerLookup = PayerLookup()
         val oldPayerLookupId = payerLookup[payerName]?.id
         payerLookup[payerName] = zmPayerId
-        if (zmPayerId != oldPayerLookupId) {
+        if (pokitDokPayerUpdated || zmPayerId != oldPayerLookupId) {
             payersRecheck.show(caseId, payerName, zmPayerId, onCasesUpdated)
         }
     }
@@ -478,8 +470,8 @@ private class PayersRecheck : HorizontalLayout() {
         onRecheckFinished = onCasesUpdated
         toRecheck = buildToRecheck(caseId, payerName, zmPayerId)
         isVisible = toRecheck.isNotEmpty()
-        note.text = "TODO"
-        button.text = "Recheck ${toRecheck.size} issues"
+        note.text = "Payer has been changed."
+        button.text = "Recheck ${toRecheck.size} related issues"
     }
 
     private fun buildToRecheck(caseId: String, payerName: String, zmPayerId: String): List<Item> {
