@@ -3,6 +3,7 @@ package net.paypredict.patient.cases.view
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.HasSize
+import com.vaadin.flow.component.Text
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
@@ -25,6 +26,7 @@ import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
+import net.paypredict.patient.cases.pokitdok.eligibility.toEligibilityCheckRes
 
 /**
  * <p>
@@ -150,7 +152,9 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         val value = tab?.value
         insuranceForm.value = value?.insurance
         subscriberForm.value = value?.subscriber
-        eligibilityCheckResView.value = value?.eligibility
+        val eligibilityCheckRes = value?.eligibility?.findEligibilityCheckRes()
+        eligibilityCheckResView.value = eligibilityCheckRes
+        checkResSum.value = eligibilityCheckRes
 
         addResponsibility.isEnabled = items?.none { it.origin == "casesRaw" } ?: true
         deleteResponsibility.isEnabled = value?.origin == null && items?.size ?: 0 > 1
@@ -223,6 +227,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         }
     }
 
+    private val checkResSum = EligibilityCheckResSum()
     private val payersRecheck = PayersRecheck()
 
     init {
@@ -264,6 +269,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                 isPadding = false
                                 width = "100%"
                                 defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
+                                this += checkResSum
                                 this += payersRecheck
                                 this += actions {
                                     this += Button("Save with no verification").apply {
@@ -302,10 +308,9 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                                                             eligibility = null
                                                         )
                                                 val res = EligibilityChecker(issue).check()
-                                                val eligibilityRes =
-                                                    if (res is EligibilityCheckRes.HasResult) res.id else null
-                                                issue.eligibility = eligibilityRes
-                                                eligibilityCheckResView.value = eligibilityRes
+                                                issue.eligibility = (res as? EligibilityCheckRes.HasResult)?.id
+                                                eligibilityCheckResView.value = res
+                                                checkResSum.value = res
                                                 onPatientEligibilityChecked?.invoke(issue, res)
                                                 insurance?.updatePayerLookups(pokitDokPayerUpdated)
                                             }
@@ -424,6 +429,75 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             get() = ResponsibilityOrder.values().getOrNull(this?.ordinal?.plus(1) ?: 0)
     }
 
+}
+
+private fun String.findEligibilityCheckRes(): EligibilityCheckRes? =
+    DBS.Collections
+        .eligibility()
+        .find(_id())
+        .firstOrNull()
+        ?.toEligibilityCheckRes()
+
+
+private class EligibilityCheckResSum : VerticalLayout() {
+    var value: EligibilityCheckRes? = null
+        set(new) {
+            field = new
+            updateUI(new)
+        }
+
+    init {
+        isPadding = false
+        setSizeUndefined()
+        defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
+    }
+
+    private fun updateUI(value: EligibilityCheckRes?) {
+        removeAll()
+        value ?: return
+        when (value) {
+            is EligibilityCheckRes.Pass -> this += PassBanner("Coverage active")
+            is EligibilityCheckRes.Warn -> {
+                val validRequest = value.result.opt<Boolean>("data", "valid_request") == true
+                this +=
+                        if (validRequest) {
+                            val coverageActive = value.result.opt<Boolean>("data", "coverage", "active")
+                            when (coverageActive) {
+                                false -> ErrorBanner("Coverage not active")
+                                else -> WarnBanner("Coverage unknown")
+                            }
+                        } else
+                            ErrorBanner("Request not valid")
+                listOfNotNull(
+                    value.result.opt<String>("data", "reject_reason")?.toText(),
+                    value.result.opt<String>("data", "follow_up_action")?.toText()
+                ).forEach {
+                    this += Div(Text(it))
+                }
+            }
+            is EligibilityCheckRes.Error -> this += ErrorBanner(value.message)
+        }
+    }
+
+    companion object {
+        private abstract class Banner(label: String, icon: VaadinIcon, backgroundColor: String, color: String = "white") :
+            Div() {
+            init {
+                style["padding"] = "0.5em"
+                style["color"] = color
+                style["background-color"] = backgroundColor
+                this += icon.create().apply { style["padding-right"] = "0.5em" }
+                this += Span(label)
+            }
+        }
+
+        private class PassBanner(label: String) : Banner(label, VaadinIcon.CHECK, "#1e8e3e")
+        private class WarnBanner(label: String) : Banner(label, VaadinIcon.WARNING, "#f4b400")
+        private class ErrorBanner(label: String) : Banner(label, VaadinIcon.EXCLAMATION_CIRCLE, "#d23f31")
+
+        private fun String.toText() =
+            replace('_', ' ').capitalize()
+    }
 }
 
 private class PayersRecheck : HorizontalLayout() {

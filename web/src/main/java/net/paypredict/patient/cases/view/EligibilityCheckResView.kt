@@ -11,11 +11,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.data.binder.Binder
-import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
-import net.paypredict.patient.cases.pokitdok.eligibility.toEligibilityCheckRes
 import org.bson.Document
 import org.bson.json.JsonMode
 import org.bson.json.JsonWriterSettings
@@ -27,10 +24,10 @@ import org.bson.json.JsonWriterSettings
 class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLayout {
     private var binder: Binder<Document?> = Binder()
 
-    var value: String? = null
+    var value: EligibilityCheckRes? = null
         set(new) {
-            showRes(new)
             field = new
+            new.showRes()
         }
 
     class TabPage(val tab: Tab, val page: Component)
@@ -111,18 +108,11 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
         tabs += this
     }
 
-    private fun showRes(value: String?) {
-        val checkRes: EligibilityCheckRes? = if (value == null) null else
-            DBS.Collections
-                .eligibility()
-                .find(doc { doc["_id"] = value })
-                .firstOrNull()
-                ?.toEligibilityCheckRes()
-
-        when (checkRes) {
-            is EligibilityCheckRes.Pass -> showPass(checkRes)
-            is EligibilityCheckRes.Warn -> showWarn(checkRes)
-            is EligibilityCheckRes.Error -> showError(checkRes)
+    private fun EligibilityCheckRes?.showRes() {
+        when (this) {
+            is EligibilityCheckRes.Pass -> showPass(this)
+            is EligibilityCheckRes.Warn -> showWarn(this)
+            is EligibilityCheckRes.Error -> showError(this)
             null -> showError(null)
         }
     }
