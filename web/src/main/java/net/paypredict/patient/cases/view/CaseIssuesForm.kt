@@ -33,6 +33,7 @@ class CaseIssuesForm : Composite<Div>() {
                 update(new)
             }
     var onValueChange: ((CaseStatus?) -> Unit)? = null
+    var onCasesUpdated: (() -> Unit)? = null
     var onResolved: ((CaseStatus, statusValue: String?) -> Unit)? = null
 
     private fun update(new: CaseStatus?) {
@@ -211,6 +212,7 @@ class CaseIssuesForm : Composite<Div>() {
                 form.caseId = _id
                 form.selectedItem = selected
                 form.items = issuesEligibility.value
+                form.onCasesUpdated = onCasesUpdated
                 form.onClose = { dialog.close() }
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {

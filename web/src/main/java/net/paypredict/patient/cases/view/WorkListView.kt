@@ -18,6 +18,7 @@ class WorkListView : Composite<SplitLayout>() {
     }
     private val form = CaseIssuesForm().apply {
         onValueChange = { caseStatus -> if (caseStatus != null) grid.refreshItem(caseStatus) }
+        onCasesUpdated = { grid.refresh() }
         onResolved = { _, statusValue ->
             if (statusValue == "RESOLVED" && viewOnlyUnresolved.value) grid.refresh()
         }

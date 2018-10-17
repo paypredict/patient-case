@@ -7,6 +7,7 @@ import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.html.Div
 import com.vaadin.flow.component.html.H3
+import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
@@ -16,14 +17,15 @@ import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
 import com.vaadin.flow.shared.Registration
-import net.paypredict.patient.cases.data.worklist.IssueEligibility
-import net.paypredict.patient.cases.data.worklist.ResponsibilityOrder
+import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.html.ImgPanZoom
 import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo._id
+import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
+import net.paypredict.patient.cases.pokitdok.eligibility.PayersData
 
 /**
  * <p>
@@ -160,12 +162,13 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     var onPatientEligibilitySave: ((IssueEligibility) -> Unit)? = null
     var onInsert: ((IssueEligibility) -> Unit)? = null
     var onRemove: (((IssueEligibility) -> Boolean) -> Unit)? = null
+    var onCasesUpdated: (() -> Unit)? = null
     var onClose: (() -> Unit)? = null
 
-    private infix fun VerticalLayout.withActions(actions: HorizontalLayout) {
-        this += actions
-        setHorizontalComponentAlignment(FlexComponent.Alignment.END, actions)
-        setFlexGrow(1.0, actions)
+    private infix fun VerticalLayout.expand(content: Component) {
+        this += content
+        setHorizontalComponentAlignment(FlexComponent.Alignment.END, content)
+        setFlexGrow(1.0, content)
     }
 
     private fun actions(build: HorizontalLayout.() -> Unit = {}): HorizontalLayout =
@@ -221,6 +224,8 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         }
     }
 
+    private val payersRecheck = PayersRecheck()
+
     init {
         val main = VerticalLayout().apply {
             isPadding = false
@@ -252,42 +257,66 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                             this += sectionHeader("Subscriber")
                             this += subscriberForm
                         }
-                        this withActions actions {
-                            this += Button("Save with no verification").apply {
-                                element.setAttribute("theme", "tertiary")
-                                addClickListener {
-                                    if (insuranceForm.isValid && subscriberForm.isValid)
-                                        onPatientEligibilitySave?.invoke(
-                                            responsibilityTabs.selectedRespTab.value
-                                                .copy(
-                                                    origin = null,
-                                                    responsibility = selectedResponsibilityOrder?.name,
-                                                    insurance = insuranceForm.value,
-                                                    subscriber = subscriberForm.value,
-                                                    eligibility = null
+                        this expand HorizontalLayout().apply {
+                            isPadding = false
+                            width = "100%"
+                            defaultVerticalComponentAlignment = FlexComponent.Alignment.END
+                            this += VerticalLayout().apply {
+                                isPadding = false
+                                width = "100%"
+                                defaultHorizontalComponentAlignment = FlexComponent.Alignment.END
+                                this += payersRecheck
+                                this += actions {
+                                    this += Button("Save with no verification").apply {
+                                        element.setAttribute("theme", "tertiary")
+                                        addClickListener {
+                                            if (insuranceForm.isValid && subscriberForm.isValid) {
+                                                val insurance = insuranceForm.value
+                                                onPatientEligibilitySave?.invoke(
+                                                    responsibilityTabs.selectedRespTab.value
+                                                        .copy(
+                                                            origin = null,
+                                                            responsibility = selectedResponsibilityOrder?.name,
+                                                            insurance = insurance,
+                                                            subscriber = subscriberForm.value,
+                                                            eligibility = null
+                                                        )
                                                 )
-                                        )
-                                }
-                            }
-                            this += Button("Verify Eligibility").apply {
-                                element.setAttribute("theme", "primary")
-                                addClickListener {
-                                    if (insuranceForm.isValid && subscriberForm.isValid) {
-                                        val issue =
-                                            responsibilityTabs.selectedRespTab.value
-                                                .copy(
-                                                    origin = null,
-                                                    responsibility = selectedResponsibilityOrder?.name,
-                                                    insurance = insuranceForm.value,
-                                                    subscriber = subscriberForm.value,
-                                                    eligibility = null
+                                                insurance?.updatePayerLookups(
+                                                    insuranceForm.tradingPartnerOf(
+                                                        insurance
+                                                    )
                                                 )
-                                        val res = EligibilityChecker(issue).check()
-                                        val eligibilityRes = if (res is EligibilityCheckRes.HasResult) res.id else null
-                                        issue.eligibility = eligibilityRes
-                                        eligibilityCheckResView.value = eligibilityRes
-                                        if (eligibilityRes != null) subscriberTabs.selectedTab = eligibilityCheckResTab
-                                        onPatientEligibilityChecked?.invoke(issue, res)
+                                            }
+                                        }
+                                    }
+                                    this += Button("Verify Eligibility").apply {
+                                        element.setAttribute("theme", "primary")
+                                        addClickListener {
+                                            if (insuranceForm.isValid && subscriberForm.isValid) {
+                                                val insurance = insuranceForm.value
+                                                val issue =
+                                                    responsibilityTabs.selectedRespTab.value
+                                                        .copy(
+                                                            origin = null,
+                                                            responsibility = selectedResponsibilityOrder?.name,
+                                                            insurance = insurance,
+                                                            subscriber = subscriberForm.value,
+                                                            eligibility = null
+                                                        )
+                                                val res = EligibilityChecker(issue).check()
+                                                val eligibilityRes =
+                                                    if (res is EligibilityCheckRes.HasResult) res.id else null
+                                                issue.eligibility = eligibilityRes
+                                                eligibilityCheckResView.value = eligibilityRes
+                                                onPatientEligibilityChecked?.invoke(issue, res)
+                                                insurance?.updatePayerLookups(
+                                                    insuranceForm.tradingPartnerOf(
+                                                        insurance
+                                                    )
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -296,7 +325,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                     eligibilityCheckResTab to VerticalLayout().apply {
                         isPadding = false
                         this += eligibilityCheckResView
-                        this withActions actions()
+                        this expand actions()
                     }
                 )
 
@@ -334,6 +363,18 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
 
         content.setFlexGrow(1.0, main)
         content.setFlexGrow(1.0, right)
+    }
+
+    private fun Insurance.updatePayerLookups(tradingPartner: PayersData.TradingPartner?) {
+        tradingPartner ?: return
+        val caseId = caseId ?: return
+        val payerName = payerName ?: return
+        val payerLookup = PayerLookup()
+        val oldPayerLookupId = payerLookup[payerName]?.id
+        payerLookup[payerName] = zmPayerId
+        if (zmPayerId != oldPayerLookupId) {
+            payersRecheck.show(caseId, payerName, zmPayerId, onCasesUpdated)
+        }
     }
 
     class ResponsibilityTab(
@@ -391,4 +432,74 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             get() = ResponsibilityOrder.values().getOrNull(this?.ordinal?.plus(1) ?: 0)
     }
 
+}
+
+private class PayersRecheck : HorizontalLayout() {
+    private var toRecheck: List<Item> = emptyList()
+    private var onRecheckFinished: (() -> Unit)? = null
+    private val note = Span()
+    private val button = Button("").apply {
+        addClickListener { toRecheck.recheck() }
+    }
+
+    init {
+        this += note
+        this += button
+        isVisible = false
+    }
+
+    private class Item(
+        val case: CaseIssue,
+        val zmPayerId: String,
+        val eligibilityList: MutableList<IssueEligibility> = mutableListOf()
+    )
+
+    private fun List<Item>.recheck() {
+        isVisible = false
+        val payerLookup = PayerLookup()
+        forEach { item ->
+            val checked =
+                item.eligibilityList
+                    .asSequence()
+                    .map { it.deepCopy() }
+                    .map {
+                        it.insurance?.zmPayerId = item.zmPayerId
+                        it.checkEligibility(payerLookup)
+                    }
+                    .toList()
+            item.case.eligibility += checked
+            DBS.Collections.casesIssues().replaceOne(item.case._id!!._id(), item.case.toDocument())
+        }
+        onRecheckFinished?.invoke()
+    }
+
+    fun show(caseId: String, payerName: String, zmPayerId: String?, onCasesUpdated: (() -> Unit)?) {
+        zmPayerId ?: return
+        onRecheckFinished = onCasesUpdated
+        toRecheck = buildToRecheck(caseId, payerName, zmPayerId)
+        isVisible = toRecheck.isNotEmpty()
+        note.text = "TODO"
+        button.text = "Recheck ${toRecheck.size} issues"
+    }
+
+    private fun buildToRecheck(caseId: String, payerName: String, zmPayerId: String): List<Item> {
+        val items = mutableMapOf<String, Item>()
+        DBS.Collections.casesIssues()
+            .find(doc { doc["issue.eligibility.insurance.payerName"] = payerName })
+            .map { it.toCaseIssue() }
+            .filterNot { caseId == it._id || it.isResolved }
+            .forEach { case: CaseIssue ->
+                case.eligibility
+                    .groupBy { it.responsibility }
+                    .values
+                    .forEach { eligibilityList: List<IssueEligibility> ->
+                        eligibilityList.lastOrNull()?.let { it: IssueEligibility ->
+                            items
+                                .getOrPut(case._id!!) { Item(case, zmPayerId) }
+                                .eligibilityList += it
+                        }
+                    }
+            }
+        return items.values.toList()
+    }
 }

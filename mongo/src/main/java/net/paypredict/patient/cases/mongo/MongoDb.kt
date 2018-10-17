@@ -57,6 +57,9 @@ object DBS {
             fun find_zmPayerId(): MongoCollection<Document> =
                 ppPayers().getCollection("find_zmPayerId")
 
+            fun users_find_zmPayerId(): MongoCollection<Document> =
+                ppPayers().getCollection("users_find_zmPayerId")
+
             fun zirmedPayers(): MongoCollection<Document> =
                 ppPayers().getCollection("zirmedPayers")
 

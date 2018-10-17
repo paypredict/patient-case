@@ -17,9 +17,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.binder.Binder
 import net.paypredict.patient.cases.data.worklist.Insurance
-import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo._id
-import net.paypredict.patient.cases.mongo.opt
+import net.paypredict.patient.cases.data.worklist.PayerLookup
 import net.paypredict.patient.cases.pokitdok.eligibility.PayersData
 
 /**
@@ -117,6 +115,9 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         companion object
     }
 
+    fun tradingPartnerOf(insurance: Insurance?): PayersData.TradingPartner? =
+        insurance?.toTradingPartner()
+
     private fun InsuranceItem.toTradingPartner(): PayersData.TradingPartner? =
         payersData.tradingPartners[payersData.findPkdPayerId(zmPayerId)]
 
@@ -147,11 +148,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
             this += payerName
             this += Button("Find").apply {
                 addClickListener {
-                    val found = DBS.Collections.PPPayers.find_zmPayerId()
-                        .find(payerName.text.toLowerCase()._id())
-                        .firstOrNull()
-                        ?.opt<String>("zmPayerId")
-
+                    val found = PayerLookup()[payerName.text]?.id
                     zmPayerId.value = InsuranceItem[found]
                 }
             }

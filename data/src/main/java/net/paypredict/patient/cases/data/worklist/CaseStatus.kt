@@ -24,54 +24,54 @@ data class CaseStatus(
         label = "Date.Time", order = 10,
         docKey = "file.date"
     )
-    var date: Date?,
+    var date: Date? = null,
 
     @DataView(
         label = "Accession", order = 20,
         docKey = "case.Case.accessionNumber"
     )
-    var accession: String?,
+    var accession: String? = null,
 
     @DataView(
         label = "Payer Name", order = 30,
         flexGrow = 5,
         docKey = "case.view.subscriber.payerName"
     )
-    var payerName: String?,
+    var payerName: String? = null,
 
     @DataView(
         label = "Problems", order = 40,
         docKey = "status.problems",
         isVisible = false
     )
-    var problems: Int?,
+    var problems: Int? = null,
 
     @DataView(
         label = "NPI", order = 50,
         docKey = "status.values.npi.value"
     )
-    var npi: Status?,
+    var npi: Status? = null,
 
     @DataView(
         label = "Eligibility", order = 60,
         docKey = "status.values.eligibility",
         srtKey = "status.values.eligibility.value"
     )
-    var eligibility: Status?,
+    var eligibility: Status? = null,
 
     @DataView(
         label = "Address", order = 70,
         docKey = "status.values.address",
         srtKey = "status.values.address.value"
     )
-    var address: Status?,
+    var address: Status? = null,
 
     @DataView(
         label = "AI", order = 80,
         docKey = "status.values.expert",
         srtKey = "status.values.expert.value"
     )
-    var expert: Status?
+    var expert: Status? = null
 )
 
 val CASE_STATUS_META_DATA_MAP: Map<String, MetaData<CaseStatus>> by lazy { metaDataMap<CaseStatus>() }
@@ -120,6 +120,16 @@ var CaseStatus.statusValue: String?
             Document("_id", _id),
             Document(`$set`, Document("status.value", value))
         )
+    }
+
+val CaseStatus.isResolved
+    get() = statusValue == "RESOLVED"
+
+
+val CaseIssue.isResolved: Boolean
+    get() {
+        val _id = _id ?: return true
+        return CaseStatus(_id = _id).isResolved
     }
 
 fun CaseStatus.createOutXml() {

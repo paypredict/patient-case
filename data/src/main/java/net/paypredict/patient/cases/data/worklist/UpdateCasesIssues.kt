@@ -27,11 +27,11 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
         doc["status.problems"] = doc { doc[`$exists`] = false }
     }
     val usStreet = UsStreet()
-    val find_zmPayerId: MongoCollection<Document> = DBS.Collections.PPPayers.find_zmPayerId()
+    val payerLookup = PayerLookup()
     for (case in casesRaw.find(filter)) {
         IssueCheckerAuto(
             usStreet = usStreet,
-            find_zmPayerId = find_zmPayerId,
+            payerLookup = payerLookup,
             casesRaw = casesRaw,
             casesIssues = casesIssues,
             case = case
@@ -130,7 +130,7 @@ open class IssueChecker(
 
 private class IssueCheckerAuto(
     override val usStreet: UsStreet = UsStreet(),
-    val find_zmPayerId: MongoCollection<Document> = DBS.Collections.PPPayers.find_zmPayerId(),
+    val payerLookup: PayerLookup = PayerLookup(),
     val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
     val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
     val case: Document
@@ -249,7 +249,7 @@ private class IssueCheckerAuto(
             )
         }
         if (issueEligibilityList.isNotEmpty()) {
-            val checkedEligibility = issueEligibilityList.map { it.checkEligibility() }
+            val checkedEligibility = issueEligibilityList.map { it.checkEligibility(payerLookup) }
             caseIssue = caseIssue.copy(eligibility = issueEligibilityList + checkedEligibility)
             if (checkedEligibility.any { it.status != IssueEligibility.Status.Confirmed }) {
                 statusProblems += 1
@@ -271,36 +271,6 @@ private class IssueCheckerAuto(
                     Status("WARNING", "No Subscribers found").toDocument()
         }
     }
-
-    private fun IssueEligibility.checkEligibility(): IssueEligibility =
-        deepCopy().apply {
-            val checkable = insurance?.run {
-                val found =
-                    payerName?.let {
-                        find_zmPayerId
-                            .find(it.toLowerCase()._id())
-                            .firstOrNull()
-                    }
-                zmPayerId = found?.opt<String>("zmPayerId")
-                found?.opt<Int>("try")
-            } == 1
-            status = when {
-                checkable -> {
-                    val checkRes = EligibilityChecker(this).check()
-                    eligibility = if (checkRes is EligibilityCheckRes.HasResult) checkRes.id else null
-                    when (checkRes) {
-                        is EligibilityCheckRes.Pass -> IssueEligibility.Status.Confirmed
-                        is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
-                            "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
-                        )
-                        is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(
-                            "Checking Error", checkRes.message
-                        )
-                    }
-                }
-                else -> IssueEligibility.Status.Unchecked
-            }
-        }
 
     private fun checkAddress() {
         val person = case.findPatient()
@@ -381,6 +351,31 @@ private class IssueCheckerAuto(
     }
 
 }
+
+fun IssueEligibility.checkEligibility(payerLookup: PayerLookup): IssueEligibility =
+    deepCopy().apply {
+        val checkable = insurance?.run {
+            val found = payerName?.let { payerLookup[it] }
+            zmPayerId = found?.id
+            found?.checkable
+        }  == true
+        status = when {
+            checkable -> {
+                val checkRes = EligibilityChecker(this).check()
+                eligibility = if (checkRes is EligibilityCheckRes.HasResult) checkRes.id else null
+                when (checkRes) {
+                    is EligibilityCheckRes.Pass -> IssueEligibility.Status.Confirmed
+                    is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
+                        "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
+                    )
+                    is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(
+                        "Checking Error", checkRes.message
+                    )
+                }
+            }
+            else -> IssueEligibility.Status.Unchecked
+        }
+    }
 
 private fun Document?.casePatient(): Person? =
     this<Document>("case", "Case", "Patient")
