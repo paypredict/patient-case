@@ -213,5 +213,25 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
 
 
     private fun errorLabel(text: String) = Label(text).apply { style["color"] = "red" }
+
+    fun checkFields(): Boolean {
+        var result = true
+
+        if (zmPayerId.value == null) {
+            zmPayerId.errorMessage = FIELD_IS_REQUIRED
+            result = false
+        }
+
+        if (pokitDokPayer.value.isNullOrBlank()) {
+            pokitDokPayer.prefixComponent = errorLabel(FIELD_IS_REQUIRED)
+            result = false
+        }
+
+        return result
+    }
+
+    companion object {
+        private const val FIELD_IS_REQUIRED = "This field is required for online eligibility verification."
+    }
 }
 

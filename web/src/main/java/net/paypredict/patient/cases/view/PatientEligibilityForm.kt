@@ -258,7 +258,9 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         element.setAttribute("theme", "primary")
         addClickListener {
             val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
-            if (insuranceForm.isValid && subscriberForm.isValid) {
+            val insuranceValid = insuranceForm.checkFields()
+            val subscriberValid = subscriberForm.checkFields()
+            if (insuranceValid && subscriberValid) {
                 val insurance = insuranceForm.value
                 val issue =
                     responsibilityTabs.selectedRespTab.value

@@ -226,7 +226,19 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         }
     }
 
+    fun checkFields(): Boolean {
+        var result = true
+        listOf(policyNumber, firstName, lastName).forEach {
+            if (it.value.isNullOrBlank()) {
+                it.errorMessage = FIELD_IS_REQUIRED
+                result = false
+            }
+        }
+        return result
+    }
+
     companion object {
+        private const val FIELD_IS_REQUIRED = "This field is required for online eligibility verification."
         private val relationshipCodeItems = listOf("SEL", "UNK", "CHD", "SPO", "OTH", "PAR", "DOM")
         private val genderItems = listOf("Male", "Female", "Unknown")
     }
