@@ -47,6 +47,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     private val requisitionFormList =
         RequisitionFormList().apply {
             height = "100%"
+            isAutoSelect = true
             onRequisitionsSelected = { requisitionForm ->
                 if (requisitionForm == null) {
                     requisitionDiv.isVisible = false
