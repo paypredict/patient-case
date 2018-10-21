@@ -155,7 +155,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
             this += payerName
             this += Button("Find").apply {
                 addClickListener {
-                    val found = PayerLookup()[payerName.text]?.id
+                    val found = PayerLookup()[payerName.text]?.value
                     zmPayerId.value = InsuranceItem[found]
                 }
             }

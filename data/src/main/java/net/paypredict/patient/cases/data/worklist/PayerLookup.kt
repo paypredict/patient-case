@@ -17,11 +17,11 @@ class PayerLookup {
         val filter = payerName.toPayerNameFilter()
         return usersCollection
             .find(filter)
-            .map { PayerId(id = it["payerId"] as String, checkable = true) }
+            .map { PayerId(value = it["payerId"] as? String, checkable = true) }
             .firstOrNull()
             ?: systemCollection
                 .find(filter)
-                .map { PayerId(id = it["zmPayerId"] as String, checkable = it.opt<Int>("try") == 1) }
+                .map { PayerId(value = it["zmPayerId"] as? String, checkable = it.opt<Int>("try") == 1) }
                 .firstOrNull()
     }
 
@@ -45,4 +45,4 @@ class PayerLookup {
     }
 }
 
-data class PayerId(val id: String, val checkable: Boolean)
+data class PayerId(val value: String?, val checkable: Boolean)

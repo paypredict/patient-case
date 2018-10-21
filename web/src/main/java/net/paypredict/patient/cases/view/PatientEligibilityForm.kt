@@ -380,7 +380,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         val caseId = caseId ?: return
         val payerName = payerName ?: return
         val payerLookup = PayerLookup()
-        val oldPayerLookupId = payerLookup[payerName]?.id
+        val oldPayerLookupId = payerLookup[payerName]?.value
         payerLookup[payerName] = zmPayerId
         if (pokitDokPayerUpdated || zmPayerId != oldPayerLookupId) {
             payersRecheck.show(caseId, payerName, zmPayerId, onCasesUpdated)
@@ -550,13 +550,14 @@ private class PayersRecheck : HorizontalLayout() {
         isVisible = false
         val payerLookup = PayerLookup()
         forEach { item ->
+            val eligibilityCheckContext = EligibilityCheckContext(payerLookup, null)
             val checked =
                 item.eligibilityList
                     .asSequence()
                     .map { it.deepCopy() }
                     .map {
                         it.insurance?.zmPayerId = item.zmPayerId
-                        it.checkEligibility(payerLookup)
+                        it.checkEligibility(eligibilityCheckContext)
                     }
                     .toList()
             item.case.eligibility += checked

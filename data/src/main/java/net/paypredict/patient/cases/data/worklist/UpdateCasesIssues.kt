@@ -151,7 +151,7 @@ private class IssueCheckerAuto(
         )
 
         checkNPI()
-        checkSubscriber()
+        checkSubscriber(caseIssue.patient)
         checkAddress()
 
         casesIssues.insertOne(caseIssue.toDocument())
@@ -237,7 +237,7 @@ private class IssueCheckerAuto(
         }
     }
 
-    private fun checkSubscriber() {
+    private fun checkSubscriber(patient: Person?) {
         val issueEligibilityList = case.toSubscriberList().map {
             IssueEligibility(
                 status = IssueEligibility.Status.Original,
@@ -249,7 +249,10 @@ private class IssueCheckerAuto(
             )
         }
         if (issueEligibilityList.isNotEmpty()) {
-            val checkedEligibility = issueEligibilityList.map { it.checkEligibility(payerLookup) }
+            val eligibilityCheckContext = EligibilityCheckContext(payerLookup, patient)
+            val checkedEligibility = issueEligibilityList.map {
+                it.checkEligibility(eligibilityCheckContext)
+            }
             caseIssue = caseIssue.copy(eligibility = issueEligibilityList + checkedEligibility)
             if (checkedEligibility.any { it.status != IssueEligibility.Status.Confirmed }) {
                 statusProblems += 1
@@ -352,13 +355,40 @@ private class IssueCheckerAuto(
 
 }
 
-fun IssueEligibility.checkEligibility(payerLookup: PayerLookup): IssueEligibility =
+class EligibilityCheckContext(
+    val payerLookup: PayerLookup,
+    val patient: Person?
+)
+
+fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEligibility =
     deepCopy().apply {
-        val checkable = insurance?.run {
-            val found = payerName?.let { payerLookup[it] }
-            zmPayerId = found?.id
-            found?.checkable
-        }  == true
+        var isPayerCheckable = false
+        insurance?.run {
+            val payer = payerName?.let { context.payerLookup[it] }
+            zmPayerId = payer?.value
+            if (payer?.checkable == true) {
+                isPayerCheckable = true
+            }
+        }
+
+        var isSubscriberCheckable = false
+        subscriber?.run {
+            val hasPolicyNumber = !policyNumber.isNullOrBlank()
+            context.patient?.also { patient ->
+                patient.gender?.also { if (!(it == "Unknown" || it.isBlank())) gender = it }
+                patient.dobAsLocalDate?.also { if (it.year > 1900) dob = patient.dob }
+                when (relationshipCode) {
+                    "SEL", "UNK" -> {
+                        if (firstName.isNullOrBlank()) firstName = patient.firstName
+                        if (lastName.isNullOrBlank()) lastName = patient.lastName
+                        if (mi.isNullOrBlank()) mi = patient.mi
+                    }
+                }
+            }
+            isSubscriberCheckable = hasPolicyNumber && !firstName.isNullOrBlank() && !lastName.isNullOrBlank()
+        }
+
+        val checkable: Boolean = isPayerCheckable && isSubscriberCheckable
         status = when {
             checkable -> {
                 val checkRes = EligibilityChecker(this).check()
