@@ -326,7 +326,10 @@ data class Person(
     val dob: String? = null
 ) {
     override fun toString(): String =
-        listOfNotNull(lastName, mi, firstName, gender, dob).joinToString()
+        listOfNotNull(firstName, lastName, mi, gender, dob)
+            .asSequence()
+            .filter { it.isNotBlank() }
+            .joinToString()
 
     companion object {
         val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy")
