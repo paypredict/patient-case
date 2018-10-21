@@ -211,6 +211,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
                     this += Button("Override").apply {
                         element.setAttribute("theme", "error primary")
                         addClickListener { _ ->
+                            relationshipCode.value = "SEL"
                             firstName.value = patient.firstName ?: ""
                             lastName.value = patient.lastName ?: ""
                             mi.value = patient.mi ?: ""
