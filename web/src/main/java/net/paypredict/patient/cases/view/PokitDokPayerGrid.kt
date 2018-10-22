@@ -58,7 +58,18 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
         content.focus()
     }
 
-    private var filter: Document = doc { }
+    private var filter: Document = filterDoc()
+
+    private fun filterDoc(builder: DocBuilder.() -> Unit = {}): Document =
+        doc {
+            val expr = doc(builder)
+            if (expr.isEmpty())
+                doc["data.supported_transactions"] = "270" else
+                doc[`$and`] = listOf(
+                    expr,
+                    doc { doc["data.supported_transactions"] = "270" }
+                )
+        }
 
     init {
         content.setColumns(
@@ -80,8 +91,9 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
                     valueChangeMode = ValueChangeMode.EAGER
                     width = "32em"
                     addValueChangeListener {
-                        filter = if (value.isNullOrBlank()) doc { } else doc {
-                            doc[`$text`] = doc { doc[`$search`] = value }
+                        filter = filterDoc {
+                            if (!value.isNullOrBlank())
+                                doc[`$text`] = doc { doc[`$search`] = value }
                         }
                         content.scrollTo(0)
                         updateDataProvider()
@@ -130,10 +142,8 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
 
         private fun collection(): MongoCollection<Document> =
             DBS.Collections.tradingPartners().apply {
-                createIndex(doc {
-                    doc["data.name"] = "text"
-//                    doc["data.payer_id"] = "text"
-                })
+                createIndex(doc { doc["data.name"] = "text" })
+                createIndex(doc { doc["data.supported_transactions"] = 1 })
             }
 
         private fun Document.toTradingPartnerItem(): TradingPartnerItem =
