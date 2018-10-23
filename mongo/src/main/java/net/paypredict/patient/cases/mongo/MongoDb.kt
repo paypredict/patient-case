@@ -123,6 +123,8 @@ const val `$exists`: String = "$" + "exists"
 const val `$or`: String = "$" + "or"
 @Suppress("ObjectPropertyName", "unused")
 const val `$and`: String = "$" + "and"
+@Suppress("ObjectPropertyName", "unused")
+const val `$push`: String = "$" + "push"
 
 inline fun <reified T> Document.opt(vararg path: String): T? {
     var result: Any? = this

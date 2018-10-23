@@ -115,13 +115,13 @@ open class IssueChecker(
                 statusValues["status.values.address"] =
                         Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
                 statusProblems += 1
-                false
+                true
             }
             FootNote.Level.INFO -> {
                 issue.status = IssueAddress.Status.Confirmed
                 statusValues["status.values.address"] =
                         Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
-                false
+                true
             }
         }
     }
@@ -150,9 +150,10 @@ private class IssueCheckerAuto(
             patient = case.casePatient()
         )
 
+        var subscriberAddress: IssueAddress? = null
         checkNPI()
-        checkSubscriber(caseIssue.patient)
-        checkAddress()
+        checkSubscriber(caseIssue.patient) { subscriberAddress = it.findSubscriberAddress() }
+        checkAddress(subscriberAddress)
 
         casesIssues.insertOne(caseIssue.toDocument())
         casesRaw.updateOne(caseIdFilter, doc {
@@ -237,7 +238,7 @@ private class IssueCheckerAuto(
         }
     }
 
-    private fun checkSubscriber(patient: Person?) {
+    private fun checkSubscriber(patient: Person?, onHasResult: OnHasResult) {
         val issueEligibilityList = case.toSubscriberList().map {
             IssueEligibility(
                 status = IssueEligibility.Status.Original,
@@ -249,7 +250,7 @@ private class IssueCheckerAuto(
             )
         }
         if (issueEligibilityList.isNotEmpty()) {
-            val eligibilityCheckContext = EligibilityCheckContext(payerLookup, patient)
+            val eligibilityCheckContext = EligibilityCheckContext(payerLookup, patient, onHasResult)
             val checkedEligibility = issueEligibilityList.map {
                 it.checkEligibility(eligibilityCheckContext)
             }
@@ -275,10 +276,10 @@ private class IssueCheckerAuto(
         }
     }
 
-    private fun checkAddress() {
+    private fun checkAddress(subscriberAddress: IssueAddress?) {
         val person = case.findPatient()
-        var original: IssueAddress? = null
-        val issue = IssueAddress(status = IssueAddress.Status.Unchecked)
+        val history = mutableListOf<IssueAddress>()
+        var issue = IssueAddress(status = IssueAddress.Status.Unchecked)
         try {
             if (person == null) throw CheckingException("Case Subscriber and Patient is null")
             issue.person = Person(
@@ -294,11 +295,23 @@ private class IssueCheckerAuto(
             issue.city = person("city")
             issue.state = person("state")
 
-            if (issue.address1.isNullOrBlank()) throw CheckingException("Address not found")
+            history += issue.copy(status = IssueAddress.Status.Original)
 
-            original = issue.copy(status = IssueAddress.Status.Original)
+            var passed: Boolean
+            try {
+                if (issue.address1.isNullOrBlank()) throw CheckingException("Address not found")
+                passed = checkIssueAddress(issue)
+            } catch (e: CheckingException) {
+                passed = false
+                if (subscriberAddress == null) throw e
+                history += issue.copy(status = e.toStatus(), error = e.message)
+            }
 
-            checkIssueAddress(issue)
+            if (!passed && subscriberAddress != null) {
+                history += subscriberAddress.copy(status = IssueAddress.Status.Unchecked)
+                issue = subscriberAddress
+                checkIssueAddress(issue)
+            }
 
         } catch (x: Throwable) {
             val e = when (x) {
@@ -306,16 +319,18 @@ private class IssueCheckerAuto(
                 is CheckingException -> x
                 else -> throw x
             }
-            val status = (e.status as? IssueAddress.Status
-                ?: IssueAddress.Status.Error("Checking Error", e.message))
-
+            val status = e.toStatus()
             issue.status = status
             issue.error = e.message
             statusProblems += 1
             statusValues["status.values.address"] = Status(status.name, e.message).toDocument()
         }
-        caseIssue = caseIssue.copy(address = listOfNotNull(original, issue))
+        caseIssue = caseIssue.copy(address = history + issue)
     }
+
+    private fun CheckingException.toStatus(): IssueAddress.Status =
+        status as? IssueAddress.Status
+            ?: IssueAddress.Status.Error("Checking Error", message)
 
     companion object {
         private fun Document.toSubscriberList(): List<Document> =
@@ -355,9 +370,25 @@ private class IssueCheckerAuto(
 
 }
 
+fun EligibilityCheckRes.HasResult.findSubscriberAddress(): IssueAddress? {
+    val address = result.opt<Document>("data", "subscriber", "address") ?: return null
+    val lines = address<List<*>>("address_lines")
+        ?.filterIsInstance<String>() ?: return null
+    return IssueAddress(
+        address1 = lines.getOrNull(0) ?: return null,
+        address2 = lines.getOrNull(1),
+        zip = address("zipcode") ?: return null,
+        city = address("city") ?: return null,
+        state = address("state") ?: return null
+    )
+}
+
+typealias OnHasResult = (EligibilityCheckRes.HasResult) -> Unit
+
 class EligibilityCheckContext(
     val payerLookup: PayerLookup,
-    val patient: Person?
+    val patient: Person? = null,
+    val onHasResult: OnHasResult? = null
 )
 
 fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEligibility =
@@ -392,7 +423,26 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
         status = when {
             checkable -> {
                 val checkRes = EligibilityChecker(this).check()
-                eligibility = if (checkRes is EligibilityCheckRes.HasResult) checkRes.id else null
+                if (checkRes is EligibilityCheckRes.HasResult) {
+                    eligibility = checkRes.id
+                    subscriber?.run {
+                        checkRes.result.opt<Document>("data", "subscriber")
+                            ?.also { res ->
+                                firstName = res("first_name")
+                                lastName = res("last_name")
+                                mi = res("middle_name")
+                                gender = res<String>("gender")?.capitalize()
+                                dob = res<String>("birth_date")?.convertDateTime(
+                                    EligibilityCheckRes.dateFormat,
+                                    Person.dateFormat
+                                )
+                            }
+                    }
+                    context.onHasResult?.invoke(checkRes)
+                } else {
+                    eligibility = null
+                }
+
                 when (checkRes) {
                     is EligibilityCheckRes.Pass -> IssueEligibility.Status.Confirmed
                     is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(

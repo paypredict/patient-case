@@ -350,6 +350,8 @@ infix fun String?.asLocalDateOrNull(dateFormat: DateTimeFormatter): LocalDate? =
 infix fun LocalDate.formatAs(dateFormat: DateTimeFormatter): String =
     dateFormat.format(this)
 
+fun String.convertDateTime(from: DateTimeFormatter, to: DateTimeFormatter): String =
+    to.format(from.parse(this))
 
 @VaadinBean
 data class IssueAddress(
@@ -655,7 +657,7 @@ private fun Document.toIssueAddress(): IssueAddress =
         person = opt<Document>("person")?.toPerson()
     )
 
-private fun IssueAddress.toDocument(): Document = doc {
+fun IssueAddress.toDocument(): Document = doc {
     doc["status"] = status?.toDocument()
     doc["address1"] = address1
     doc["address2"] = address2

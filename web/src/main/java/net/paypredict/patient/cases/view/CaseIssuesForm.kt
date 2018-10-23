@@ -15,9 +15,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.server.VaadinSession
 import net.paypredict.patient.cases.data.worklist.*
-import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo.`$set`
-import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import org.bson.Document
 import kotlin.properties.Delegates
@@ -217,9 +215,11 @@ class CaseIssuesForm : Composite<Div>() {
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
                         is EligibilityCheckRes.Pass -> {
+                            res.fixAddress()
                             addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
                         }
                         is EligibilityCheckRes.Warn -> {
+                            res.fixAddress()
                             addEligibilityIssue(
                                 issue, IssueEligibility.Status.Problem(
                                     "Problem With Eligibility",
@@ -258,6 +258,24 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
+
+    private fun EligibilityCheckRes.HasResult.fixAddress() {
+        fun addAddress() {
+            findSubscriberAddress()
+                ?.also { issueAddress ->
+                    value?.addAddressIssue(
+                        issueAddress,
+                        IssueAddress.Status.Unchecked
+                    )
+                }
+        }
+
+        val filter = value?._id?._id() ?: return
+        val caseIssue = DBS.Collections.casesIssues().find(filter).firstOrNull()?.toCaseIssue() ?: return
+        val address = caseIssue.address.firstOrNull() ?: return addAddress()
+        if (address.status?.passed == true) return
+        addAddress()
+    }
 
     private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: IssueEligibility.Status? = null) {
         val casesIssuesCollection = DBS.Collections.casesIssues()

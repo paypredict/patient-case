@@ -14,6 +14,7 @@ import net.paypredict.patient.cases.pokitdok.client.PokitDokApiException
 import net.paypredict.patient.cases.pokitdok.client.digest
 import net.paypredict.patient.cases.pokitdok.client.query
 import org.bson.Document
+import java.time.format.DateTimeFormatter
 
 /**
  * <p>
@@ -127,6 +128,10 @@ sealed class EligibilityCheckRes {
     }
 
     class Warning(val message: String)
+
+    companion object {
+        val dateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    }
 }
 
 fun Document.toEligibilityCheckRes(): EligibilityCheckRes =

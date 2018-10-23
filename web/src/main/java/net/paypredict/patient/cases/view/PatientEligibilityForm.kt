@@ -553,7 +553,7 @@ private class PayersRecheck : HorizontalLayout() {
         isVisible = false
         val payerLookup = PayerLookup()
         forEach { item ->
-            val eligibilityCheckContext = EligibilityCheckContext(payerLookup, null)
+            val eligibilityCheckContext = EligibilityCheckContext(payerLookup)
             val checked =
                 item.eligibilityList
                     .asSequence()
