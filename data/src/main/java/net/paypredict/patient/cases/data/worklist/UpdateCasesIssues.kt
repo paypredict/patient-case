@@ -401,7 +401,9 @@ internal class IssueCheckerAuto(
 }
 
 fun EligibilityCheckRes.HasResult.findSubscriberAddress(): IssueAddress? {
-    val address = result.opt<Document>("data", "subscriber", "address") ?: return null
+    val address = result.opt<Document>("data", "subscriber", "address")
+            ?: result.opt<Document>("data", "dependent", "address")
+            ?: return null
     val lines = address<List<*>>("address_lines")
         ?.filterIsInstance<String>() ?: return null
     return IssueAddress(
