@@ -167,10 +167,17 @@ internal class IssueCheckerAuto(
             patient = case.casePatient()
         )
 
-        var subscriberAddress: IssueAddress? = null
+        val hasResultByResponsibilityMap: MutableMap<String, EligibilityCheckRes.HasResult> = mutableMapOf()
+
         checkNPI()
-        checkSubscriber(caseIssue.patient) { subscriberAddress = it.findSubscriberAddress() }
-        checkAddress(subscriberAddress)
+        checkSubscriber(caseIssue.patient) { hasResult ->
+            responsibility?.also { hasResultByResponsibilityMap[it] = hasResult }
+        }
+        checkAddress(
+            ResponsibilityOrder.values()
+                .asSequence()
+                .mapNotNull { hasResultByResponsibilityMap[it.name]?.findSubscriberAddress() }
+                .firstOrNull())
 
         casesIssues.insertOne(caseIssue.toDocument())
         casesRaw.updateOne(caseIdFilter, doc {
@@ -407,7 +414,7 @@ fun EligibilityCheckRes.HasResult.findSubscriberAddress(): IssueAddress? {
     )
 }
 
-typealias OnHasResult = (EligibilityCheckRes.HasResult) -> Unit
+typealias OnHasResult = IssueEligibility.(EligibilityCheckRes.HasResult) -> Unit
 
 class EligibilityCheckContext(
     val payerLookup: PayerLookup,
@@ -462,7 +469,7 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
                                 )
                             }
                     }
-                    context.onHasResult?.invoke(checkRes)
+                    context.onHasResult?.invoke(this@checkEligibility, checkRes)
                 } else {
                     eligibility = null
                 }
