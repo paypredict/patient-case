@@ -311,7 +311,7 @@ internal class IssueCheckerAuto(
             }
 
             if (!passed && subscriberAddress != null) {
-                history += subscriberAddress.copy(status = IssueAddress.Status.Unchecked)
+                history += subscriberAddress.copy(status = IssueAddress.Status.Corrected)
                 issue = subscriberAddress
                 checkIssueAddress(issue)
             }

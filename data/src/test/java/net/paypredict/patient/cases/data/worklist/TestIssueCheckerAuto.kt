@@ -3,6 +3,7 @@ package net.paypredict.patient.cases.data.worklist
 import com.mongodb.client.MongoCollection
 import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo._id
+import net.paypredict.patient.cases.mongo.`$set`
 import net.paypredict.patient.cases.mongo.doc
 import org.bson.Document
 
@@ -15,10 +16,20 @@ object TestIssueCheckerAuto {
         val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw()
         val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues()
         val case = casesRaw.find(doc { doc["case.Case.accessionNumber"] = args[0] }).first()
-        casesIssues.deleteOne(case.getString("_id")!!._id())
+
+        val _id = case.getString("_id")!!._id()
+        casesRaw.updateOne(_id, doc {
+            doc[`$set`] = doc {
+                doc["status.problems"] = 0
+                doc["status.value"] = null
+            }
+        })
+        casesIssues.deleteOne(_id)
+
         val issueCheckerAuto =
             IssueCheckerAuto(
                 casesRaw = casesRaw,
+                casesIssues = casesIssues,
                 case = case
             )
         issueCheckerAuto.check()
