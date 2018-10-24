@@ -23,20 +23,23 @@ import org.bson.Document
 fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     val casesRaw = DBS.Collections.casesRaw()
     val casesIssues = DBS.Collections.casesIssues()
-    val filter = doc {
-        doc["status.problems"] = doc { doc[`$exists`] = false }
-    }
+    val items: List<Document> = casesRaw
+        .find(doc { doc["status.problems"] = doc { doc[`$exists`] = false } })
+        .projection(doc { })
+        .toList()
     val usStreet = UsStreet()
     val payerLookup = PayerLookup()
-    for (case in casesRaw.find(filter)) {
-        IssueCheckerAuto(
-            usStreet = usStreet,
-            payerLookup = payerLookup,
-            casesRaw = casesRaw,
-            casesIssues = casesIssues,
-            case = case
-        )
-            .check()
+    for (item in items) {
+        val case = casesRaw.find(item).firstOrNull() ?: continue
+        val issueCheckerAuto =
+            IssueCheckerAuto(
+                usStreet = usStreet,
+                payerLookup = payerLookup,
+                casesRaw = casesRaw,
+                casesIssues = casesIssues,
+                case = case
+            )
+        issueCheckerAuto.check()
         if (isInterrupted()) break
     }
 }
@@ -128,7 +131,7 @@ open class IssueChecker(
 }
 
 
-private class IssueCheckerAuto(
+internal class IssueCheckerAuto(
     override val usStreet: UsStreet = UsStreet(),
     val payerLookup: PayerLookup = PayerLookup(),
     val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
@@ -136,9 +139,9 @@ private class IssueCheckerAuto(
     val case: Document
 ) : IssueChecker() {
 
-    val caseId = case["_id"] as String
-    val caseIdFilter = doc { doc["_id"] = caseId }
-    val issue: Document? = casesIssues.find(caseIdFilter).firstOrNull()
+    private val caseId = case["_id"] as String
+    private val caseIdFilter = doc { doc["_id"] = caseId }
+    private val issue: Document? = casesIssues.find(caseIdFilter).firstOrNull()
 
     lateinit var caseIssue: CaseIssue
 
