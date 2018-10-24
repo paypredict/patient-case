@@ -345,7 +345,10 @@ class CaseIssuesForm : Composite<Div>() {
     private fun AddressForm.checkAddress(issue: IssueAddress) {
         val issueCopy = issue.copy()
         try {
-            IssueChecker().checkIssueAddress(issueCopy)
+            IssueChecker().run {
+                val res = checkIssueAddress(issueCopy)
+                updateStatus(res)
+            }
             value = issueCopy
             this@CaseIssuesForm.value?.addAddressIssue(issueCopy, issueCopy.status)
         } catch (e: CheckingException) {

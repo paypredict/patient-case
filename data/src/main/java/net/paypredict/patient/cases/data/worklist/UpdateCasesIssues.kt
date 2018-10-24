@@ -46,13 +46,18 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
 
 class CheckingException(override val message: String, var status: IssuesStatus? = null) : Exception()
 
+data class IssueAddressCheckRes(
+    val hasProblems: Boolean = false,
+    val status: Status? = null
+)
+
 open class IssueChecker(
     open val usStreet: UsStreet = UsStreet()
 ) {
     var statusProblems = 0
     val statusValues = mutableMapOf<String, Any>()
 
-    fun checkIssueAddress(issue: IssueAddress): Boolean {
+    fun checkIssueAddress(issue: IssueAddress): IssueAddressCheckRes {
         issue.status = IssueAddress.Status.Unchecked
         issue.footnotes = null
 
@@ -104,28 +109,37 @@ open class IssueChecker(
         return when (maxFootNote?.level) {
             null -> {
                 issue.status = IssueAddress.Status.Confirmed
-                true
+                IssueAddressCheckRes()
             }
             FootNote.Level.ERROR -> {
                 issue.status = IssueAddress.Status.Error(maxFootNote.label, maxFootNote.note)
-                statusValues["status.values.address"] =
-                        Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
-                statusProblems += 1
-                false
+                IssueAddressCheckRes(
+                    hasProblems = true,
+                    status = Status(maxFootNote.level.name, candidate.analysis.footnotes)
+                )
             }
             FootNote.Level.WARNING -> {
                 issue.status = IssueAddress.Status.Corrected
-                statusValues["status.values.address"] =
-                        Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
-                statusProblems += 1
-                true
+                IssueAddressCheckRes(
+                    hasProblems = true,
+                    status = Status(maxFootNote.level.name, candidate.analysis.footnotes)
+                )
             }
             FootNote.Level.INFO -> {
                 issue.status = IssueAddress.Status.Confirmed
-                statusValues["status.values.address"] =
-                        Status(maxFootNote.level.name, candidate.analysis.footnotes).toDocument()
-                true
+                IssueAddressCheckRes(
+                    hasProblems = false,
+                    status = Status(maxFootNote.level.name, candidate.analysis.footnotes)
+                )
             }
+        }
+    }
+
+    fun updateStatus(res: IssueAddressCheckRes) {
+        if (res.hasProblems)
+            statusProblems++
+        res.status?.toDocument()?.also {
+            statusValues["status.values.address"] = it
         }
     }
 }
@@ -283,6 +297,7 @@ internal class IssueCheckerAuto(
         val person = case.findPatient()
         val history = mutableListOf<IssueAddress>()
         var issue = IssueAddress(status = IssueAddress.Status.Unchecked)
+        var checkRes: IssueAddressCheckRes? = null
         try {
             if (person == null) throw CheckingException("Case Subscriber and Patient is null")
             issue.person = Person(
@@ -300,20 +315,21 @@ internal class IssueCheckerAuto(
 
             history += issue.copy(status = IssueAddress.Status.Original)
 
-            var passed: Boolean
+            var hasProblems: Boolean
             try {
                 if (issue.address1.isNullOrBlank()) throw CheckingException("Address not found")
-                passed = checkIssueAddress(issue)
+                checkRes = checkIssueAddress(issue)
+                hasProblems = checkRes.hasProblems
             } catch (e: CheckingException) {
-                passed = false
+                hasProblems = true
                 if (subscriberAddress == null) throw e
                 history += issue.copy(status = e.toStatus(), error = e.message)
             }
 
-            if (!passed && subscriberAddress != null) {
+            if (hasProblems && subscriberAddress != null) {
                 history += subscriberAddress.copy(status = IssueAddress.Status.Corrected)
                 issue = subscriberAddress
-                checkIssueAddress(issue)
+                checkRes = checkIssueAddress(issue)
             }
 
         } catch (x: Throwable) {
@@ -325,8 +341,13 @@ internal class IssueCheckerAuto(
             val status = e.toStatus()
             issue.status = status
             issue.error = e.message
-            statusProblems += 1
-            statusValues["status.values.address"] = Status(status.name, e.message).toDocument()
+            checkRes = IssueAddressCheckRes(
+                hasProblems = true,
+                status = Status(status.name, e.message)
+            )
+        }
+        checkRes?.also {
+            updateStatus(it)
         }
         caseIssue = caseIssue.copy(address = history + issue)
     }
