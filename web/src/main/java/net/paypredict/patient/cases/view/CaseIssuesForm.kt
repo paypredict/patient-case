@@ -347,7 +347,7 @@ class CaseIssuesForm : Composite<Div>() {
         try {
             IssueChecker().run {
                 val res = checkIssueAddress(issueCopy)
-                updateStatus(res)
+                updateStatusValuesAddress(res)
             }
             value = issueCopy
             this@CaseIssuesForm.value?.addAddressIssue(issueCopy, issueCopy.status)

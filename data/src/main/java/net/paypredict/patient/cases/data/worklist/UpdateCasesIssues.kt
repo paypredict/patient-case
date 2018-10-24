@@ -55,7 +55,7 @@ open class IssueChecker(
     open val usStreet: UsStreet = UsStreet()
 ) {
     var statusProblems = 0
-    val statusValues = mutableMapOf<String, Any>()
+    val statusValues: MutableMap<String, Any?> = mutableMapOf()
 
     fun checkIssueAddress(issue: IssueAddress): IssueAddressCheckRes {
         issue.status = IssueAddress.Status.Unchecked
@@ -135,12 +135,9 @@ open class IssueChecker(
         }
     }
 
-    fun updateStatus(res: IssueAddressCheckRes) {
-        if (res.hasProblems)
-            statusProblems++
-        res.status?.toDocument()?.also {
-            statusValues["status.values.address"] = it
-        }
+    fun updateStatusValuesAddress(res: IssueAddressCheckRes) {
+        if (res.hasProblems) statusProblems++
+        statusValues["status.values.address"] = res.status?.toDocument()
     }
 }
 
@@ -185,8 +182,10 @@ internal class IssueCheckerAuto(
                 doc["status.problems"] = statusProblems
                 if (statusProblems > 0)
                     doc["status.value"] = "PROBLEMS"
-                statusValues.forEach {
-                    doc[it.key] = it.value
+                statusValues.forEach { (key, value) ->
+                    if (value != null)
+                        doc[key] = value else
+                        doc -= key
                 }
             }
         })
@@ -354,7 +353,7 @@ internal class IssueCheckerAuto(
             )
         }
         checkRes?.also {
-            updateStatus(it)
+            updateStatusValuesAddress(it)
         }
         caseIssue = caseIssue.copy(address = history + issue)
     }
