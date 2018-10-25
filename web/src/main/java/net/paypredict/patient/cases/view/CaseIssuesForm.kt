@@ -215,11 +215,9 @@ class CaseIssuesForm : Composite<Div>() {
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
                         is EligibilityCheckRes.Pass -> {
-                            res.fixAddress()
                             addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
                         }
                         is EligibilityCheckRes.Warn -> {
-                            res.fixAddress()
                             addEligibilityIssue(
                                 issue, IssueEligibility.Status.Problem(
                                     "Problem With Eligibility",
@@ -256,25 +254,6 @@ class CaseIssuesForm : Composite<Div>() {
             dialog.isCloseOnOutsideClick = false
             dialog.open()
         }
-    }
-
-
-    private fun EligibilityCheckRes.HasResult.fixAddress() {
-        fun addAddress() {
-            findSubscriberAddress()
-                ?.also { issueAddress ->
-                    value?.addAddressIssue(
-                        issueAddress,
-                        IssueAddress.Status.Unchecked
-                    )
-                }
-        }
-
-        val filter = value?._id?._id() ?: return
-        val caseIssue = DBS.Collections.casesIssues().find(filter).firstOrNull()?.toCaseIssue() ?: return
-        val address = caseIssue.address.firstOrNull() ?: return addAddress()
-        if (address.status?.passed == true) return
-        addAddress()
     }
 
     private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: IssueEligibility.Status? = null) {
