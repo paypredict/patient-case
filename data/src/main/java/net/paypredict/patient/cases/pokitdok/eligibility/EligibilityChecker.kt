@@ -3,12 +3,12 @@ package net.paypredict.patient.cases.pokitdok.eligibility
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.UpdateOptions
-import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo.doc
-import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
 import net.paypredict.patient.cases.data.worklist.formatAs
+import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo.`$set`
+import net.paypredict.patient.cases.mongo.doc
+import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.pokitdok.client.EligibilityQuery
 import net.paypredict.patient.cases.pokitdok.client.PokitDokApiException
 import net.paypredict.patient.cases.pokitdok.client.digest
@@ -40,7 +40,12 @@ class EligibilityChecker(private val issue: IssueEligibility) {
         val zmPayerId = insurance.zmPayerId
             ?: return EligibilityCheckRes.Error.insuranceFieldRequired("zmPayerId")
 
-        val tradingPartnerId = PayersData().findPkdPayerId(zmPayerId)
+        val pkdPayer = PayersData().findPkdPayer(zmPayerId)
+        if (pkdPayer?.notAvailable == true) {
+            return EligibilityCheckRes.NotAvailable
+        }
+
+        val tradingPartnerId = pkdPayer?.id
             ?: return EligibilityCheckRes.Error.insuranceZirMedPayerIdNotFoundInPP(zmPayerId)
 
         val query = EligibilityQuery(member = member, trading_partner_id = tradingPartnerId)
@@ -70,6 +75,7 @@ class EligibilityChecker(private val issue: IssueEligibility) {
                     doc["status"] = when (result) {
                         is EligibilityCheckRes.Pass -> "pass"
                         is EligibilityCheckRes.Warn -> "warn"
+                        is EligibilityCheckRes.NotAvailable -> "ntav"
                         is EligibilityCheckRes.Error -> "error"
                     }
                     doc["meta"] = res["meta"]
@@ -93,6 +99,8 @@ sealed class EligibilityCheckRes {
 
     class Warn(override val id: String, override val result: Document, val warnings: List<Warning>) :
         EligibilityCheckRes(), HasResult
+
+    object NotAvailable: EligibilityCheckRes()
 
     class Error(val message: String) : EligibilityCheckRes() {
         companion object {
@@ -143,6 +151,8 @@ fun Document.toEligibilityCheckRes(): EligibilityCheckRes =
             opt<List<*>>("warnings")?.mapNotNull { it.toWarning() } ?: emptyList()
         )
 
+        "ntav" -> EligibilityCheckRes.NotAvailable
+
         "error" -> EligibilityCheckRes.Error(
             opt<String>("error") ?: "Unknown Eligibility Error at ${get("_id")}"
         )
@@ -179,7 +189,8 @@ class PayersData {
         data class UsersMatchPayer(
             override val _id: String,
             val zmPayerId: String,
-            val pkdPayerId: String?
+            val pkdPayerId: String?,
+            val notAvailable: Boolean = false
         ) : Doc
 
         private val usersMatchPayers: Map<String, UsersMatchPayer> by lazy {
@@ -189,19 +200,14 @@ class PayersData {
                 UsersMatchPayer(
                     _id = doc["_id"] as String,
                     zmPayerId = doc.opt<String>("zmPayerId")!!,
-                    pkdPayerId = doc.opt<String>("pkdPayerId")
+                    pkdPayerId = doc.opt<String>("pkdPayerId"),
+                    notAvailable = doc.opt<Boolean>("notAvailable") ?: false
                 )
             }
         }
 
         val usersMatchPayersByZmPayerId: Map<String, UsersMatchPayer> by lazy {
             usersMatchPayers.values.map { it.zmPayerId to it }.toMap()
-        }
-
-        val usersMatchPayersByZmPkdPayerId: Map<String, UsersMatchPayer> by lazy {
-            usersMatchPayers.values
-                .mapNotNull { payer -> payer.pkdPayerId?.let { it to payer } }
-                .toMap()
         }
 
     }
@@ -214,7 +220,7 @@ class PayersData {
         val zmPayerId: String?
     ) : Doc
 
-    val matchPayers: Map<String, MatchPayer> by lazy {
+    private val matchPayers: Map<String, MatchPayer> by lazy {
         findAndMap(
             collection = DBS.Collections.PPPayers.matchPayers()
         ) { doc ->
@@ -226,7 +232,7 @@ class PayersData {
         }
     }
 
-    val matchPayersByZmPayerId: Map<String, MatchPayer> by lazy {
+    private val matchPayersByZmPayerId: Map<String, MatchPayer> by lazy {
         matchPayers.values.mapNotNull { it.zmPayerId?.let { key -> key to it } }.toMap()
     }
 
@@ -257,20 +263,31 @@ class PayersData {
         }
     }
 
-    fun findPkdPayerId(zmPayerId: String?): String? {
+    data class PkdPayer(
+        val id: String?,
+        val notAvailable: Boolean = false
+    )
+
+    fun findPkdPayer(zmPayerId: String?): PkdPayer? {
         val usersMatchPayer =
             usersData.usersMatchPayersByZmPayerId[zmPayerId]
-        if (usersMatchPayer != null) return usersMatchPayer.pkdPayerId
-        return matchPayersByZmPayerId[zmPayerId]?._id
+        if (usersMatchPayer != null) {
+            return PkdPayer(usersMatchPayer.pkdPayerId, usersMatchPayer.notAvailable)
+        }
+        return PkdPayer(matchPayersByZmPayerId[zmPayerId]?._id)
     }
 
-    fun updateUsersMatchPayersRecord(zmPayerId: String, pkdPayerId: String?) {
+    fun findPkdPayerId(zmPayerId: String?): String? =
+        findPkdPayer(zmPayerId)?.id
+
+    fun updateUsersMatchPayersRecord(zmPayerId: String, pkdPayerId: String?, notAvailable: Boolean = false) {
         DBS.Collections.PPPayers.usersMatchPayers().updateOne(
             doc { doc["_id"] = zmPayerId },
             doc {
                 doc[`$set`] = doc {
                     doc["zmPayerId"] = zmPayerId
                     doc["pkdPayerId"] = pkdPayerId
+                    doc["notAvailable"] = notAvailable
                 }
             },
             UpdateOptions().upsert(true)

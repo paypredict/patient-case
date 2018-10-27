@@ -40,7 +40,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
 
         setItemLabelGenerator { it?.displayName }
         addValueChangeListener { event ->
-            pokitDokPayer.setPokitDokPayer(event?.value?.toTradingPartner())
+            pokitDokPayer.setPokitDokPayer(event?.value?.toPokitDokPayer())
         }
 
         binder
@@ -72,7 +72,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                     val zmPayerIdStr = zmPayerId.value?.zmPayerId
                     if (zmPayerIdStr != null) {
                         payersData.removeUsersMatchPayersRecord(zmPayerIdStr)
-                        field.setPokitDokPayer(value?.toTradingPartner())
+                        field.setPokitDokPayer(value?.toPokitDokPayer())
                     } else {
                         zmPayerId.focus()
                         field.prefixComponent = errorLabel("Cortex Payer Required")
@@ -104,7 +104,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         }
         set(new) {
             payerName.text = new?.payerName ?: ""
-            pokitDokPayer.setPokitDokPayer(new?.toTradingPartner())
+            pokitDokPayer.setPokitDokPayer(new?.toPokitDokPayer())
             binder.readBean(new)
             field = new
             isPokitDokPayerUpdated = false
@@ -122,11 +122,11 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         companion object
     }
 
-    fun tradingPartnerOf(insurance: Insurance?): PayersData.TradingPartner? =
-        insurance?.toTradingPartner()
+    private fun InsuranceItem.toPokitDokPayer(): PokitDokPayer? =
+        payersData.findPkdPayer(zmPayerId)?.let { PokitDokPayer(payersData.tradingPartners[it.id], it.notAvailable) }
 
-    private fun InsuranceItem.toTradingPartner(): PayersData.TradingPartner? =
-        payersData.tradingPartners[payersData.findPkdPayerId(zmPayerId)]
+    private fun Insurance.toPokitDokPayer(): PokitDokPayer? =
+        payersData.findPkdPayer(zmPayerId)?.let { PokitDokPayer(payersData.tradingPartners[it.id], it.notAvailable) }
 
     private fun Insurance.toTradingPartner(): PayersData.TradingPartner? =
         payersData.tradingPartners[payersData.findPkdPayerId(zmPayerId)]
@@ -176,6 +176,22 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                 val grid = PokitDokPayerGrid().apply { width = "100%" }
                 val actions = HorizontalLayout().apply {
                     isPadding = false
+                    this += Button("Mark As Not Available PokitDok Payer").apply {
+                        element.setAttribute("theme", "primary")
+                        addClickListener {
+                            val zmPayerId = zmPayerId.value?.zmPayerId
+                            if (zmPayerId != null) {
+                                payersData.updateUsersMatchPayersRecord(
+                                    zmPayerId = zmPayerId,
+                                    pkdPayerId = null,
+                                    notAvailable = true
+                                )
+                                pokitDokPayer.setPokitDokPayer(value?.toPokitDokPayer())
+                                isPokitDokPayerUpdated = true
+                                dialog.close()
+                            }
+                        }
+                    }
                     this += Button("Cancel") { dialog.close() }
                     this += Button("Select").apply {
                         element.setAttribute("theme", "primary")
@@ -187,7 +203,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                                     zmPayerId = zmPayerId,
                                     pkdPayerId = selected?._id
                                 )
-                                pokitDokPayer.setPokitDokPayer(value?.toTradingPartner())
+                                pokitDokPayer.setPokitDokPayer(value?.toPokitDokPayer())
                                 isPokitDokPayerUpdated = true
                                 dialog.close()
                             }
@@ -206,9 +222,19 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         }
     }
 
-    private fun TextField.setPokitDokPayer(tradingPartner: PayersData.TradingPartner?) {
-        value = tradingPartner?.displayName ?: ""
-        prefixComponent = null
+    private data class PokitDokPayer(
+        val tradingPartner: PayersData.TradingPartner?,
+        val notAvailable: Boolean = false
+    )
+
+    private val payerNotAvailable = Span("Not Available").apply { style["font-weight"] = "500" }
+
+    private fun TextField.setPokitDokPayer(payer: PokitDokPayer?) {
+        value = payer?.tradingPartner?.displayName ?: ""
+        prefixComponent = when (payer?.notAvailable) {
+            true -> payerNotAvailable
+            else -> null
+        }
     }
 
 
@@ -223,8 +249,10 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
         }
 
         if (pokitDokPayer.value.isNullOrBlank()) {
-            pokitDokPayer.prefixComponent = errorLabel(FIELD_IS_REQUIRED)
-            result = false
+            if (pokitDokPayer.prefixComponent != payerNotAvailable) {
+                pokitDokPayer.prefixComponent = errorLabel(FIELD_IS_REQUIRED)
+                result = false
+            }
         }
 
         return result

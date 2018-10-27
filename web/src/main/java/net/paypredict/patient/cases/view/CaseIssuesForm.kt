@@ -219,7 +219,8 @@ class CaseIssuesForm : Composite<Div>() {
                 form.onCasesUpdated = onCasesUpdated
                 form.onClose = { dialog.close() }
                 form.onPatientEligibilityChecked = { issue, res ->
-                    when (res) {
+                    @Suppress("UNUSED_VARIABLE")
+                    val ignore = when (res) {
                         is EligibilityCheckRes.Pass -> {
                             res.fixAddress()
                             addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
@@ -232,6 +233,9 @@ class CaseIssuesForm : Composite<Div>() {
                                     res.warnings.joinToString { it.message }
                                 )
                             )
+                        }
+                        EligibilityCheckRes.NotAvailable -> {
+                            addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
                         }
                         is EligibilityCheckRes.Error -> {
                             addEligibilityIssue(

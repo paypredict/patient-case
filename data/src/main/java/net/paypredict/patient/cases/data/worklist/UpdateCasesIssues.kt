@@ -507,6 +507,7 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
                     is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
                         "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
                     )
+                    EligibilityCheckRes.NotAvailable -> IssueEligibility.Status.Confirmed
                     is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(
                         "Checking Error", checkRes.message
                     )

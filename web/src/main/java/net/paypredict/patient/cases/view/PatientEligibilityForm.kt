@@ -487,6 +487,7 @@ private class EligibilityCheckResSum : VerticalLayout() {
                 } else
                     ErrorBanner("Request not valid")
             }
+            EligibilityCheckRes.NotAvailable -> PassBanner("Payer Not Available")
             is EligibilityCheckRes.Error -> ErrorBanner(value.message)
         }
 
