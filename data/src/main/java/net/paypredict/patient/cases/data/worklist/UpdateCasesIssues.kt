@@ -52,12 +52,25 @@ data class IssueAddressCheckRes(
 )
 
 open class IssueChecker(
-    open val usStreet: UsStreet = UsStreet()
+    private val usStreet: UsStreet = UsStreet(),
+    protected val payerLookup: PayerLookup = PayerLookup(),
+    protected val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
+    protected val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
+    protected val caseId: String
 ) {
-    var statusProblems = 0
-    val statusValues: MutableMap<String, Any?> = mutableMapOf()
+    protected val caseIdFilter = caseId._id()
 
-    fun checkIssueAddress(issue: IssueAddress): IssueAddressCheckRes {
+    protected var statusProblems = 0
+    protected val statusValues: MutableMap<String, Any?> = mutableMapOf()
+
+    fun checkIssueAddressAndUpdateStatus(issue: IssueAddress) {
+        val res = checkIssueAddress(issue)
+        caseRawStatusLoad()
+        this += res
+        caseRawStatusUpdate()
+    }
+
+    protected fun checkIssueAddress(issue: IssueAddress): IssueAddressCheckRes {
         issue.status = IssueAddress.Status.Unchecked
         issue.footnotes = null
 
@@ -135,26 +148,53 @@ open class IssueChecker(
         }
     }
 
-    fun updateStatusValuesAddress(res: IssueAddressCheckRes) {
-        if (res.hasProblems) statusProblems++
-        statusValues["status.values.address"] = res.status?.toDocument()
+    protected operator fun plusAssign(res: IssueAddressCheckRes?) {
+        if (res != null) {
+            if (res.hasProblems) statusProblems++
+            statusValues["status.values.address"] = res.status?.toDocument()
+        }
     }
+
+    private fun caseRawStatusLoad() {
+        val status = casesRaw.find(caseIdFilter)
+            .projection(doc { doc["status"] = 1 })
+            .firstOrNull()
+        statusProblems = status?.opt("status", "problems") ?: 0 // TODO add calculation
+        statusValues.clear()
+        status?.opt<Document>("status", "values")?.forEach { key, value ->
+            statusValues[key] = value
+        }
+    }
+
+    protected fun caseRawStatusUpdate() {
+        casesRaw.updateOne(caseIdFilter, doc {
+            doc[`$set`] = doc {
+                doc["status.problems"] = statusProblems
+                if (statusProblems > 0)
+                    doc["status.value"] = "PROBLEMS"
+                statusValues.forEach { (key, value) ->
+                    if (value != null)
+                        doc[key] = value else
+                        doc -= key
+                }
+            }
+        })
+    }
+
 }
 
 
 internal class IssueCheckerAuto(
-    override val usStreet: UsStreet = UsStreet(),
-    val payerLookup: PayerLookup = PayerLookup(),
-    val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
-    val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
-    val case: Document
-) : IssueChecker() {
+    usStreet: UsStreet = UsStreet(),
+    payerLookup: PayerLookup = PayerLookup(),
+    casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
+    casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
+    private val case: Document
+) : IssueChecker(usStreet, payerLookup, casesRaw, casesIssues, case["_id"] as String) {
 
-    private val caseId = case["_id"] as String
-    private val caseIdFilter = doc { doc["_id"] = caseId }
     private val issue: Document? = casesIssues.find(caseIdFilter).firstOrNull()
 
-    lateinit var caseIssue: CaseIssue
+    private lateinit var caseIssue: CaseIssue
 
     fun check() {
         if (issue != null) return
@@ -177,18 +217,7 @@ internal class IssueCheckerAuto(
                 .firstOrNull())
 
         casesIssues.insertOne(caseIssue.toDocument())
-        casesRaw.updateOne(caseIdFilter, doc {
-            doc[`$set`] = doc {
-                doc["status.problems"] = statusProblems
-                if (statusProblems > 0)
-                    doc["status.value"] = "PROBLEMS"
-                statusValues.forEach { (key, value) ->
-                    if (value != null)
-                        doc[key] = value else
-                        doc -= key
-                }
-            }
-        })
+        caseRawStatusUpdate()
     }
 
     private fun checkNPI() {
@@ -352,9 +381,7 @@ internal class IssueCheckerAuto(
                 status = Status(status.name, e.message)
             )
         }
-        checkRes?.also {
-            updateStatusValuesAddress(it)
-        }
+        this += checkRes
         caseIssue = caseIssue.copy(address = history + issue)
     }
 
@@ -402,8 +429,8 @@ internal class IssueCheckerAuto(
 
 fun EligibilityCheckRes.HasResult.findSubscriberAddress(): IssueAddress? {
     val address = result.opt<Document>("data", "subscriber", "address")
-            ?: result.opt<Document>("data", "dependent", "address")
-            ?: return null
+        ?: result.opt<Document>("data", "dependent", "address")
+        ?: return null
     val lines = address<List<*>>("address_lines")
         ?.filterIsInstance<String>() ?: return null
     return IssueAddress(

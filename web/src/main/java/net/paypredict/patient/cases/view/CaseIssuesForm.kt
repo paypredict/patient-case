@@ -7,7 +7,10 @@ import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.datepicker.DatePicker
 import com.vaadin.flow.component.dialog.Dialog
 import com.vaadin.flow.component.formlayout.FormLayout
-import com.vaadin.flow.component.html.*
+import com.vaadin.flow.component.html.Div
+import com.vaadin.flow.component.html.H2
+import com.vaadin.flow.component.html.H3
+import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
@@ -15,7 +18,10 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.server.VaadinSession
 import net.paypredict.patient.cases.data.worklist.*
-import net.paypredict.patient.cases.mongo.*
+import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo._id
+import net.paypredict.patient.cases.mongo.`$set`
+import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import org.bson.Document
 import kotlin.properties.Delegates
@@ -215,9 +221,11 @@ class CaseIssuesForm : Composite<Div>() {
                 form.onPatientEligibilityChecked = { issue, res ->
                     when (res) {
                         is EligibilityCheckRes.Pass -> {
+                            res.fixAddress()
                             addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
                         }
                         is EligibilityCheckRes.Warn -> {
+                            res.fixAddress()
                             addEligibilityIssue(
                                 issue, IssueEligibility.Status.Problem(
                                     "Problem With Eligibility",
@@ -254,6 +262,27 @@ class CaseIssuesForm : Composite<Div>() {
             dialog.isCloseOnOutsideClick = false
             dialog.open()
         }
+    }
+
+    private fun EligibilityCheckRes.HasResult.fixAddress() {
+        val caseStatus = value ?: return
+        val caseId = caseStatus._id
+
+        fun addAddress() {
+            findSubscriberAddress()
+                ?.also { issueAddress ->
+                    caseStatus.addAddressIssue(issueAddress.copy(status = IssueAddress.Status.Unchecked))
+                    IssueChecker(caseId = caseId).checkIssueAddressAndUpdateStatus(issueAddress)
+                    caseStatus.addAddressIssue(issueAddress)
+                }
+        }
+
+        val caseIssue = DBS.Collections.casesIssues().find(caseId._id()).firstOrNull()?.toCaseIssue()
+            ?: return
+        val address = caseIssue.address.lastOrNull()
+            ?: return addAddress()
+        if (address.status?.passed != true)
+            addAddress()
     }
 
     private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: IssueEligibility.Status? = null) {
@@ -324,10 +353,8 @@ class CaseIssuesForm : Composite<Div>() {
     private fun AddressForm.checkAddress(issue: IssueAddress) {
         val issueCopy = issue.copy()
         try {
-            IssueChecker().run {
-                val res = checkIssueAddress(issueCopy)
-                updateStatusValuesAddress(res)
-            }
+            IssueChecker(caseId = caseId!!)
+                .checkIssueAddressAndUpdateStatus(issueCopy)
             value = issueCopy
             this@CaseIssuesForm.value?.addAddressIssue(issueCopy, issueCopy.status)
         } catch (e: CheckingException) {
@@ -341,7 +368,7 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private fun CaseStatus.addAddressIssue(issue: IssueAddress, statusValue: IssueAddress.Status?) {
+    private fun CaseStatus.addAddressIssue(issue: IssueAddress, statusValue: IssueAddress.Status? = issue.status) {
         val casesIssuesCollection = DBS.Collections.casesIssues()
         val byId = Document("_id", _id)
         val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
