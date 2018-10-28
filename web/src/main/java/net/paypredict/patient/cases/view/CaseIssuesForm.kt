@@ -162,8 +162,9 @@ class CaseIssuesForm : Composite<Div>() {
 
     private fun confirmResolved(confirmed: () -> Unit, canceled: () -> Unit) {
         val autoConfirmResolvedSessionAttr = "autoConfirmResolved"
+        val onErrorHeader = "Error on make issue resolved"
         if (VaadinSession.getCurrent()?.getAttribute(autoConfirmResolvedSessionAttr) == true) {
-            confirmed()
+            confirmed.uiSafeInvoke(onErrorHeader)
             return
         }
         Dialog().also { dialog ->
@@ -177,7 +178,7 @@ class CaseIssuesForm : Composite<Div>() {
                             if (doNotShowThisAgain.value)
                                 VaadinSession.getCurrent()
                                     ?.setAttribute(autoConfirmResolvedSessionAttr, true)
-                            confirmed()
+                            confirmed.uiSafeInvoke(onErrorHeader)
                             dialog.close()
                         }
                     }
@@ -204,6 +205,14 @@ class CaseIssuesForm : Composite<Div>() {
             dialog.open()
         }
     }
+
+    private fun (() -> Unit).uiSafeInvoke(errorHeader: String? = null) =
+        try {
+            invoke()
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            showError(e, errorHeader)
+        }
 
     private fun CaseStatus.openEligibilityDialog(selected: IssueEligibility) {
         Dialog().also { dialog ->
@@ -343,7 +352,8 @@ class CaseIssuesForm : Composite<Div>() {
                                     e.error
                                 }
                                 else -> e.message
-                            }
+                            },
+                            "API Call Error"
                         )
                     }
                 }
@@ -390,10 +400,17 @@ class CaseIssuesForm : Composite<Div>() {
         onValueChange?.invoke(value)
     }
 
-    private fun showError(error: String?) {
+    private fun showError(x: Throwable, header: String? = "API Call Error") {
+        var error = x.message
+        if (error.isNullOrBlank()) error = x.javaClass.name
+        showError(error, header)
+    }
+
+    private fun showError(error: String?, header: String? = "API Call Error") {
         Dialog().apply {
             this += VerticalLayout().apply {
-                this += H2("API Call Error")
+                if (header != null)
+                    this += H2(header)
                 this += H3(error)
             }
             open()
