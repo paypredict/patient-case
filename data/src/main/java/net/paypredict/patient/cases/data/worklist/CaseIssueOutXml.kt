@@ -51,7 +51,7 @@ fun CaseIssue.createOutXml() {
         if (!it.isFile) throw CaseDataException("Orders source XML file $it not found")
     }
     val outFile = outDir.resolve(fileName).also {
-        if (it.exists()) throw CaseDataException("Orders out XML file $it already exists")
+        if (it.exists() && !it.delete()) throw CaseDataException("Orders out XML file $it already exists")
     }
 
     val domDocument: DomDocument = documentBuilderFactory.newDocumentBuilder()
