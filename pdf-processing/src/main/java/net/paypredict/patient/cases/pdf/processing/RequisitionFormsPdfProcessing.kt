@@ -267,10 +267,11 @@ class RequisitionFormsPdfProcessing(
         }
 
         private fun Array<String>.toDateFilter(): File.() -> Boolean {
-            val afterPrefix = "after:"
+            val afterPrefix = "--after:"
+            val datePattern = "yyyy-MM-dd"
             val after = lastOrNull { it.startsWith(afterPrefix) }
-                ?.let { SimpleDateFormat("yyyy-MM-dd").parse(it.removePrefix(afterPrefix)).time }
-                ?: throw Exception("after:yyyy-MM-dd parameter required")
+                ?.let { SimpleDateFormat(datePattern).parse(it.removePrefix(afterPrefix)).time }
+                ?: throw Exception("$afterPrefix$datePattern parameter required")
             return {
                 lastModified() >= after
             }
