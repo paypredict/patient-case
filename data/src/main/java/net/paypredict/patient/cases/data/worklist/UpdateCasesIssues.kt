@@ -14,6 +14,7 @@ import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import org.bson.Document
+import java.time.LocalDate
 
 /**
  * <p>
@@ -463,19 +464,11 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
 
         var isSubscriberCheckable = false
         subscriber?.run {
-            val hasPolicyNumber = !policyNumber.isNullOrBlank()
-            context.patient?.also { patient ->
-                patient.gender?.also { if (!(it == "Unknown" || it.isBlank())) gender = it }
-                patient.dobAsLocalDate?.also { if (it.year > 1900) dob = patient.dob }
-                when (relationshipCode) {
-                    "SEL", "UNK" -> {
-                        if (firstName.isNullOrBlank()) firstName = patient.firstName
-                        if (lastName.isNullOrBlank()) lastName = patient.lastName
-                        if (mi.isNullOrBlank()) mi = patient.mi
-                    }
-                }
-            }
-            isSubscriberCheckable = hasPolicyNumber && !firstName.isNullOrBlank() && !lastName.isNullOrBlank()
+            mergeFromPatient(context)
+            isSubscriberCheckable =
+                    !policyNumber.isNullOrBlank() &&
+                    !firstName.isNullOrBlank() &&
+                    !lastName.isNullOrBlank()
         }
 
         val checkable: Boolean = isPayerCheckable && isSubscriberCheckable
@@ -516,6 +509,30 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
             else -> IssueEligibility.Status.Unchecked
         }
     }
+
+private val reasonablePatientsDobYearsRange = 1901..LocalDate.now().year
+
+private fun Subscriber.mergeFromPatient(context: EligibilityCheckContext) {
+    context.patient?.also { patient ->
+        patient.gender?.also {
+            when (it) {
+                "Male", "Female" -> gender = it
+            }
+        }
+        patient.dobAsLocalDate?.also {
+            when (it.year) {
+                in reasonablePatientsDobYearsRange -> dob = patient.dob
+            }
+        }
+        when (relationshipCode) {
+            "SEL", "UNK" -> {
+                if (firstName.isNullOrBlank()) firstName = patient.firstName
+                if (lastName.isNullOrBlank()) lastName = patient.lastName
+                if (mi.isNullOrBlank()) mi = patient.mi
+            }
+        }
+    }
+}
 
 private fun Document?.casePatient(): Person? =
     this<Document>("case", "Case", "Patient")
