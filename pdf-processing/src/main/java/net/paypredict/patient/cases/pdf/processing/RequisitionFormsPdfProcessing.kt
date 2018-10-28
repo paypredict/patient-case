@@ -14,6 +14,7 @@ import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.graphics.PDXObject
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject
+import org.bson.Document
 import sun.awt.image.ByteComponentRaster
 import java.awt.Image
 import java.awt.image.BufferedImage
@@ -214,26 +215,8 @@ class RequisitionFormsPdfProcessing(
         }
 
         private fun barcodeReader(): BarcodeReader =
-            BarcodeReader(
-                "t0068NQAAAJ6+yW41SfwL2XeoHbPcCGbmPuGvaekIrdNUE5n8OXUbcF6gGQzpTrawX88fJ8VUlpuTSWKg3IRNUKElU9HnBYs="
-            ).apply {
-                //language=JSON
-                appendParameterTemplate(
-                    """{
-  "ImageParameters": {
-    "Name": "exampleTpl",
-    "ScaleDownThreshold": 3400,
-    "BarcodeFormatIds": [
-      "DATAMATRIX"
-    ],
-    "ExpectedBarcodesCount": 512,
-    "DeblurLevel": 9,
-    "AntiDamageLevel": 9,
-    "TextFilterMode": "Enable"
-  }
-}"""
-                )
-            }
+            BarcodeReader(Conf.license)
+                .apply { Conf.templates.forEach { appendParameterTemplate(it) } }
 
         @JvmStatic
         fun main(args: Array<String>) {
@@ -263,6 +246,44 @@ class RequisitionFormsPdfProcessing(
                 println("$count files left")
                 service.awaitTermination(10, TimeUnit.SECONDS)
             }
+        }
+    }
+
+    private object Conf {
+        private val file = File("/PayPredict/conf/com.dynamsoft.barcode.json")
+        private val conf: Document
+            get() = if (file.exists()) Document.parse(file.readText()) else Document()
+
+        val license: String
+            get() =
+                conf.opt<String>("license") ?: throw Exception("$file: license not found")
+
+        val templates: List<String>
+            get() =
+                conf.opt<List<*>>("templates")
+                    ?.asSequence()
+                    ?.filterIsInstance<Document>()
+                    ?.map { it.toJson() }
+                    ?.toList()
+                    ?: defaultTemplates
+
+        private val defaultTemplates: List<String> by lazy {
+            //language=JSON
+            listOf(
+                """{
+                      "ImageParameters": {
+                        "Name": "exampleTpl",
+                        "ScaleDownThreshold": 3400,
+                        "BarcodeFormatIds": [
+                          "DATAMATRIX"
+                        ],
+                        "ExpectedBarcodesCount": 512,
+                        "DeblurLevel": 9,
+                        "AntiDamageLevel": 9,
+                        "TextFilterMode": "Enable"
+                      }
+                    }"""
+            )
         }
     }
 }
