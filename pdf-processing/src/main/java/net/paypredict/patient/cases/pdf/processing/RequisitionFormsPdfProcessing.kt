@@ -19,6 +19,7 @@ import sun.awt.image.ByteComponentRaster
 import java.awt.Image
 import java.awt.image.BufferedImage
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -36,7 +37,8 @@ class RequisitionFormsPdfProcessing(
     private val pdfFile: File
 ) {
     data class Options(
-        val requisitionFormsDir: File
+        val requisitionFormsDir: File,
+        val requisitionPDFsDir: File
     )
 
     private var pageIndex: Int = 0
@@ -209,8 +211,10 @@ class RequisitionFormsPdfProcessing(
             val client = option("client", "test")
             val clientDir = File("/PayPredict/clients").resolve(client)
             val requisitionFormsDir: File = clientDir.resolve("requisitionForms")
+            val requisitionPDFsDir: File = clientDir.resolve("requisitionPDFs")
             return Options(
-                requisitionFormsDir = requisitionFormsDir
+                requisitionFormsDir = requisitionFormsDir,
+                requisitionPDFsDir = requisitionPDFsDir
             )
         }
 
@@ -229,9 +233,8 @@ class RequisitionFormsPdfProcessing(
         fun main(args: Array<String>) {
             val service: ExecutorService = Executors.newFixedThreadPool(8)
             val options = args.toOptions()
-            val dir = File(args.last())
             val count = AtomicInteger()
-            for (file in dir.walk()) {
+            for (file in options.requisitionPDFsDir.walk()) {
                 if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true)) {
                     count.incrementAndGet()
                     service.submit {
@@ -248,6 +251,32 @@ class RequisitionFormsPdfProcessing(
             }
         }
     }
+
+    object ClearCache {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            val isDateMatches = args.toDateFilter()
+            val options = args.toOptions()
+            val collection = DBS.Collections.requisitionPDFs()
+            for (file in options.requisitionPDFsDir.walk()) {
+                if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true) && file.isDateMatches()) {
+                    println(file)
+                    collection.deleteOne(doc { doc["name"] = file.name })
+                }
+            }
+        }
+
+        private fun Array<String>.toDateFilter(): File.() -> Boolean {
+            val afterPrefix = "after:"
+            val after = lastOrNull { it.startsWith(afterPrefix) }
+                ?.let { SimpleDateFormat("yyyy-MM-dd").parse(it.removePrefix(afterPrefix)).time }
+                ?: throw Exception("after:yyyy-MM-dd parameter required")
+            return {
+                lastModified() >= after
+            }
+        }
+    }
+
 
     private object Conf {
         private val file = File("/PayPredict/conf/com.dynamsoft.barcode.json")
