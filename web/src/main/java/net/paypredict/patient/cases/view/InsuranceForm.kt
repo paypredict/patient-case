@@ -118,6 +118,9 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
             field = value
         }
 
+    val isPokitDokPayerNotAvailable: Boolean
+        get() = pokitDokPayer.prefixComponent == payerNotAvailable
+
     data class InsuranceItem(val zmPayerId: String, val displayName: String) {
         companion object
     }
@@ -177,7 +180,6 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                 val actions = HorizontalLayout().apply {
                     isPadding = false
                     this += Button("Mark As Not Available PokitDok Payer").apply {
-                        element.setAttribute("theme", "primary")
                         addClickListener {
                             val zmPayerId = zmPayerId.value?.zmPayerId
                             if (zmPayerId != null) {

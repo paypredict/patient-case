@@ -168,6 +168,7 @@ private fun CaseIssue.updateSubscribers(domDocument: DomDocument, fileName: Stri
             .findPassed()
         if (issue != null) {
             when (issue.status) {
+                IssueEligibility.Status.NotAvailable,
                 IssueEligibility.Status.Unchecked -> {
                     out.updateSubscriber(issue)
                 }

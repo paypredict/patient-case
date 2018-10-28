@@ -236,7 +236,6 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     private val saveWithNoVerificationButton = Button("Save with no verification").apply {
         element.setAttribute("theme", "tertiary")
         addClickListener {
-            val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
             if (insuranceForm.isValid && subscriberForm.isValid) {
                 val insurance = insuranceForm.value
                 onPatientEligibilitySave?.invoke(
@@ -246,10 +245,16 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                             responsibility = selectedResponsibilityOrder?.name,
                             insurance = insurance,
                             subscriber = subscriberForm.value,
-                            eligibility = null
+                            eligibility = null,
+                            status = when (insuranceForm.isPokitDokPayerNotAvailable) {
+                                true -> IssueEligibility.Status.NotAvailable
+                                false -> IssueEligibility.Status.Unchecked
+                            }
                         )
                 )
-                insurance?.updatePayerLookups(pokitDokPayerUpdated)
+                insurance?.updatePayerLookups(
+                    insuranceForm.isPokitDokPayerUpdated
+                )
             }
         }
     }

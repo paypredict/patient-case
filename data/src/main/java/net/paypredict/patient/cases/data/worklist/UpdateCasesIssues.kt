@@ -307,7 +307,7 @@ internal class IssueCheckerAuto(
                 it.checkEligibility(eligibilityCheckContext)
             }
             caseIssue = caseIssue.copy(eligibility = issueEligibilityList + checkedEligibility)
-            if (checkedEligibility.any { it.status != IssueEligibility.Status.Confirmed }) {
+            if (checkedEligibility.any { it.status?.passed == false }) {
                 statusProblems += 1
                 statusValues["status.values.eligibility"] =
                         Status("WARNING").toDocument()
@@ -507,7 +507,7 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
                     is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
                         "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
                     )
-                    EligibilityCheckRes.NotAvailable -> IssueEligibility.Status.Confirmed
+                    EligibilityCheckRes.NotAvailable -> IssueEligibility.Status.NotAvailable
                     is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(
                         "Checking Error", checkRes.message
                     )

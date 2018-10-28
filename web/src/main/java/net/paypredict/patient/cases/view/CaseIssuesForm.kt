@@ -235,7 +235,7 @@ class CaseIssuesForm : Composite<Div>() {
                             )
                         }
                         EligibilityCheckRes.NotAvailable -> {
-                            addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
+                            addEligibilityIssue(issue, IssueEligibility.Status.NotAvailable)
                         }
                         is EligibilityCheckRes.Error -> {
                             addEligibilityIssue(
@@ -250,7 +250,7 @@ class CaseIssuesForm : Composite<Div>() {
                     form.items = issuesEligibility.value
                 }
                 form.onPatientEligibilitySave = { issue ->
-                    addEligibilityIssue(issue, IssueEligibility.Status.Unchecked)
+                    addEligibilityIssue(issue, issue.status)
                     onValueChange?.invoke(this)
                     form.items = issuesEligibility.value
                 }

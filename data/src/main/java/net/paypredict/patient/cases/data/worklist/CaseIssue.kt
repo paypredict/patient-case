@@ -180,6 +180,7 @@ data class IssueEligibility(
         object Missing : Status("Missing", false)
         object Original : Status("Original", false)
         object Unchecked : Status("Unchecked", false)
+        object NotAvailable : Status("NotAvailable", true)
         object Corrected : Status("Corrected", true)
         object Confirmed : Status("Confirmed", true)
         class Problem(
@@ -209,6 +210,7 @@ fun Document.toIssueEligibilityStatus(): IssueEligibility.Status? =
         IssueEligibility.Status.Missing.name -> IssueEligibility.Status.Missing
         IssueEligibility.Status.Original.name -> IssueEligibility.Status.Original
         IssueEligibility.Status.Unchecked.name -> IssueEligibility.Status.Unchecked
+        IssueEligibility.Status.NotAvailable.name -> IssueEligibility.Status.NotAvailable
         IssueEligibility.Status.Corrected.name -> IssueEligibility.Status.Corrected
         IssueEligibility.Status.Confirmed.name -> IssueEligibility.Status.Confirmed
         IssueEligibility.Status.Problem::class.java.simpleName -> IssueEligibility.Status.Problem(
