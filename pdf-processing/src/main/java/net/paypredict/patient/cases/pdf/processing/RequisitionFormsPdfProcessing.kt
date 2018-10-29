@@ -295,7 +295,7 @@ class RequisitionFormsPdfProcessing(
                     doc["barcode"] = 1
                     doc["pdf.id"] = 1
                 })
-                .filter { (it["barcode"] as? String)?.endsWith("trial license.") != true }
+                .filter { (it["barcode"] as? String)?.endsWith("trial license.") == true }
                 .mapNotNull { it.opt<String>("pdf", "id") }
                 .toSet()
                 .forEach {
