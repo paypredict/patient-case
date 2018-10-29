@@ -148,7 +148,10 @@ class RequisitionFormsPdfProcessing(
 
         val requisitionPDFs = DBS.Collections.requisitionPDFs()
         if (requisitionPDFs.findById(pdfFileId)?.opt<Boolean>("isProcessed") == true) return
-        requisitionPDFs.upsertOne(pdfFileId._id(), "name" to pdfFile.name)
+        requisitionPDFs.upsertOne(pdfFileId._id(),
+            "name" to pdfFile.name,
+            "time" to pdfFile.lastModified()
+            )
 
         try {
             PDDocument.load(pdfFile).use { pdDocument ->
@@ -257,11 +260,13 @@ class RequisitionFormsPdfProcessing(
         fun main(args: Array<String>) {
             val isDateMatches = args.toDateFilter()
             val options = args.toOptions()
-            val collection = DBS.Collections.requisitionPDFs()
+            val files = DBS.Collections.requisitionPDFs()
+            val forms = DBS.Collections.requisitionForms()
             for (file in options.requisitionPDFsDir.walk()) {
                 if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true) && file.isDateMatches()) {
                     println(file)
-                    collection.deleteOne(doc { doc["name"] = file.name })
+                    files.deleteOne(doc { doc["name"] = file.name })
+                    forms.deleteOne(doc { doc["pdf.name"] = file.name })
                 }
             }
         }
