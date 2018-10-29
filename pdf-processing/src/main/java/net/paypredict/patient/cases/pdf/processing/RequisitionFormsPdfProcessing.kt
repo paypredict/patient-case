@@ -238,7 +238,7 @@ class RequisitionFormsPdfProcessing(
             val service: ExecutorService = Executors.newFixedThreadPool(8)
             val options = args.toOptions()
             val count = AtomicInteger()
-            for (file in options.requisitionPDFsDir.walk()) {
+            for (file in options.requisitionPDFsDir.walk().sortedByDescending { it.lastModified() }) {
                 if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true)) {
                     count.incrementAndGet()
                     service.submit {
