@@ -148,10 +148,11 @@ class RequisitionFormsPdfProcessing(
 
         val requisitionPDFs = DBS.Collections.requisitionPDFs()
         if (requisitionPDFs.findById(pdfFileId)?.opt<Boolean>("isProcessed") == true) return
-        requisitionPDFs.upsertOne(pdfFileId._id(),
+        requisitionPDFs.upsertOne(
+            pdfFileId._id(),
             "name" to pdfFile.name,
             "time" to pdfFile.lastModified()
-            )
+        )
 
         try {
             PDDocument.load(pdfFile).use { pdDocument ->
@@ -265,8 +266,8 @@ class RequisitionFormsPdfProcessing(
             for (file in options.requisitionPDFsDir.walk()) {
                 if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true) && file.isDateMatches()) {
                     println(file)
-                    files.deleteOne(doc { doc["name"] = file.name })
-                    forms.deleteOne(doc { doc["pdf.name"] = file.name })
+                    files.deleteMany(doc { doc["name"] = file.name })
+                    forms.deleteMany(doc { doc["pdf.name"] = file.name })
                 }
             }
         }
@@ -283,6 +284,27 @@ class RequisitionFormsPdfProcessing(
         }
     }
 
+    object ClearTrialLicenseMessagesInCache {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            val files = DBS.Collections.requisitionPDFs()
+            val forms = DBS.Collections.requisitionForms()
+
+            forms.find()
+                .projection(doc {
+                    doc["barcode"] = 1
+                    doc["pdf.id"] = 1
+                })
+                .filter { (it["barcode"] as? String)?.endsWith("trial license.") != true }
+                .mapNotNull { it.opt<String>("pdf", "id") }
+                .toSet()
+                .forEach {
+                    println("delete $it")
+                    files.deleteOne(doc { doc["_id"] = it })
+                    forms.deleteMany(doc { doc["pdf.id"] = it })
+                }
+        }
+    }
 
     private object Conf {
         private val file = File("/PayPredict/conf/com.dynamsoft.barcode.json")
