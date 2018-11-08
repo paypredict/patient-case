@@ -600,7 +600,8 @@ private class PayersRecheck : HorizontalLayout() {
         DBS.Collections.cases()
             .find(doc { doc["hist.eligibility.insurance.payerName"] = payerName })
             .map { it.toCaseHist() }
-            .filterNot { caseId == it._id || it.isResolved }
+            .filterNot { caseId == it._id }
+            .filter { it.status?.isCheckedOnly == true }
             .forEach { case: CaseHist ->
                 case.eligibility
                     .groupBy { it.responsibility }

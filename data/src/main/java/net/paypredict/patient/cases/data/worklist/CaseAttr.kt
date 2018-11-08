@@ -130,21 +130,26 @@ fun CaseStatus.toDocument(): Document =
         doc["value"] = value
     }
 
+val CaseStatus.isCheckedOnly: Boolean
+    get() = checked && !resolved && !passed && !timeout && !sent
+
+val CaseAttr.isCheckedOnly: Boolean
+    get() = status?.isCheckedOnly ?: false
+
+
 fun CaseAttr.resolve() {
-    status = (status ?: CaseStatus())
-        .copy(resolved = true)
-        .also { newCaseStatus ->
-            DBS.Collections.cases().updateOne(_id._id(), doc {
-                doc[`$set`] = doc { doc["status"] = newCaseStatus.toDocument() }
-            })
+    val cases = DBS.Collections.cases()
+    cases
+        .find(_id._id())
+        .firstOrNull()
+        ?.toCaseHist()
+        ?.apply {
+            update(
+                context = UpdateContext(
+                    cases = cases,
+                    message = "resolved"
+                ),
+                status = (status ?: CaseStatus()).copy(resolved = true)
+            )
         }
-}
-val CaseAttr.isResolved: Boolean
-    get() = status?.resolved ?: false
-
-val CaseHist.isResolved: Boolean
-    get() = status?.resolved ?: false
-
-fun CaseAttr.createOutXml() {
-    DBS.Collections.cases().find(_id._id()).firstOrNull()?.toCaseHist()?.createOutXml()
 }

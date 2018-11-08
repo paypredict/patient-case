@@ -37,7 +37,7 @@ class CaseIssuesForm : Composite<Div>() {
             }
     var onValueChange: ((CaseAttr?) -> Unit)? = null
     var onCasesUpdated: (() -> Unit)? = null
-    var onResolved: ((CaseAttr, statusValue: String?) -> Unit)? = null
+    var onResolved: ((CaseAttr) -> Unit)? = null
 
     private fun update(new: CaseAttr?) {
         accession.value = new?.accession ?: ""
@@ -58,8 +58,8 @@ class CaseIssuesForm : Composite<Div>() {
         issuesExpert.value = caseHist?.expert
 
         issueActions.isVisible = new != null
-        issueResolved.value = new?.status?.resolved == true || new?.status?.passed == true
-        issueResolved.isEnabled = new?.status?.passed != true
+        issueResolved.value = new?.status?.resolved == true
+        issueResolved.isEnabled = new?.status?.isCheckedOnly == true
 
         requisitionFormsNotFound.isVisible = new?.accession?.let { accession ->
             DBS.Collections
@@ -89,36 +89,23 @@ class CaseIssuesForm : Composite<Div>() {
         checkbox.addValueChangeListener { event ->
             if (event.isFromClient) {
                 value?.let { caseAttr ->
-                    if (caseAttr.isResolved) {
-                        checkbox.value = true
-                    } else {
+                    if (caseAttr.isCheckedOnly) {
                         if (event.value) {
                             confirmResolved(
                                 confirmed = {
-                                    val cases = DBS.Collections.cases()
-                                    cases
-                                        .find(caseAttr._id._id())
-                                        .firstOrNull()
-                                        ?.toCaseHist()
-                                        ?.apply {
-                                            update(
-                                                context = UpdateContext(
-                                                    cases = cases,
-                                                    message = "resolved"
-                                                ),
-                                                status = (status ?: CaseStatus()).copy(resolved = true)
-                                            )
-                                            onResolved?.invoke(caseAttr, "RESOLVED")
-                                        }
-
+                                    caseAttr.resolve()
+                                    checkbox.isEnabled = false
+                                    onResolved?.invoke(caseAttr)
                                 },
                                 canceled = {
                                     checkbox.value = false
                                 }
                             )
                         } else {
-                            checkbox.value = true
+                            checkbox.value = false
                         }
+                    } else {
+                        checkbox.value = false
                     }
                 }
             }
