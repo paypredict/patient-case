@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.data.worklist
 
+import com.mongodb.client.MongoCollection
 import com.vaadin.flow.templatemodel.Encode
 import net.paypredict.patient.cases.DataView
 import net.paypredict.patient.cases.MetaData
@@ -8,8 +9,7 @@ import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
 import net.paypredict.patient.cases.metaDataMap
-import net.paypredict.patient.cases.mongo.doc
-import net.paypredict.patient.cases.mongo.opt
+import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -22,9 +22,12 @@ import java.util.*
  */
 
 @VaadinBean
-data class CaseIssue(
+data class CaseHist(
     @DataView("_id", isVisible = false)
     val _id: String? = null,
+
+    @DataView(label = "Accession", isVisible = false)
+    var accession: String? = null,
 
     @set:Encode(DateToDateTimeBeanEncoder::class)
     @DataView("Date.Time", order = 10)
@@ -36,15 +39,91 @@ data class CaseIssue(
     @DataView("NPI", order = 30)
     var npi: List<IssueNPI> = emptyList(),
 
-    @DataView("Eligibility", order = 40)
-    var eligibility: List<IssueEligibility> = emptyList(),
+    @DataView("Primary Insurance", isVisible = false)
+    var insurancePrimary: List<IssueEligibility> = emptyList(),
+
+    @DataView("Secondary Insurance", isVisible = false)
+    var insuranceSecondary: List<IssueEligibility> = emptyList(),
+
+    @DataView("Tertiary Insurance", isVisible = false)
+    var insuranceTertiary: List<IssueEligibility> = emptyList(),
 
     @DataView("Address", order = 50)
     var address: List<IssueAddress> = emptyList(),
 
     @DataView("AI", order = 60)
-    var expert: List<IssueExpert> = emptyList()
+    var expert: List<IssueExpert> = emptyList(),
+
+    @DataView("Status", isVisible = false)
+    var status: CaseStatus? = null
 )
+
+var CaseHist.eligibility: List<IssueEligibility>
+    get() =
+        insurancePrimary + insuranceSecondary + insuranceTertiary
+    set(new) {
+        insurancePrimary = emptyList()
+        insuranceSecondary = emptyList()
+        insuranceTertiary = emptyList()
+        new.forEach {
+            when (it.responsibility) {
+                "Primary" -> insurancePrimary += it
+                "Secondary" -> insuranceSecondary += it
+                "Tertiary" -> insuranceTertiary += it
+            }
+        }
+    }
+
+class UpdateContext(
+    val cases: MongoCollection<Document> = DBS.Collections.cases(),
+    val casesLog: MongoCollection<Document> = DBS.Collections.casesLog(),
+    val message: String? = null,
+    val user: String? = null
+)
+
+fun CaseHist.update(context: UpdateContext = UpdateContext(), status: CaseStatus? = null) {
+    val filter = _id!!._id()
+    context.cases.upsertOne(filter, doc {
+        doc[`$set`] = doc {
+            doc["hist.npi"] = npi.map { it.toDocument() }
+            doc["hist.insurancePrimary"] = insurancePrimary.map { it.toDocument() }
+            doc["hist.insuranceSecondary"] = insuranceSecondary.map { it.toDocument() }
+            doc["hist.insuranceTertiary"] = insuranceTertiary.map { it.toDocument() }
+            doc["hist.address"] = address.map { it.toDocument() }
+            doc["hist.expert"] = expert.map { it.toDocument() }
+
+            doc["attr.npi"] = npi.lastOrNull()?.toDocument()
+            doc["attr.insurancePrimary"] = insurancePrimary.lastOrNull()?.toDocument()
+            doc["attr.insuranceSecondary"] = insuranceSecondary.lastOrNull()?.toDocument()
+            doc["attr.insuranceTertiary"] = insuranceTertiary.lastOrNull()?.toDocument()
+            doc["attr.eligibility"] = toEligibilityAttr()?.toDocument()
+            doc["attr.address"] = address.lastOrNull()?.toDocument()
+            doc["attr.expert"] = expert.lastOrNull()?.toDocument()
+
+            if (status != null) {
+                doc["status"] = status.toDocument()
+            }
+
+            doc["doc.updated"] = Date()
+        }
+    })
+    context.casesLog.insertOne(doc {
+        doc["time"] = Date()
+        doc["id"] = _id
+        doc["accession"] = accession
+        doc["message"] = context.message
+        doc["user"] = context.user
+        if (status != null) {
+            doc["status"] = status.toDocument()
+        }
+    })
+}
+
+private fun CaseHist.toEligibilityAttr(): IssueEligibility? =
+    listOf(insurancePrimary, insuranceSecondary, insuranceTertiary)
+        .mapNotNull { it.lastOrNull() }
+        .sortedBy { it.status }
+        .lastOrNull()
 
 interface IssueItem<S : IssuesStatus> {
     var status: S?
@@ -59,20 +138,26 @@ interface IssuesClass<T : IssueItem<*>> {
 interface IssuesStatus {
     val name: String
     val passed: Boolean
+    val type: Type
+
+    enum class Type {
+        OK, INFO, WARN, QUESTION, ERROR
+    }
 }
 
-interface IssuesStatusError : IssuesStatus {
-    val error: String?
-    val message: String?
+interface IssuesStatusExt : IssuesStatus {
+    val ext: Map<String, Any>
 }
 
 fun IssuesStatus.toDocument(): Document = doc {
     val status = this@toDocument
-    doc["name"] = name
-    if (status is IssuesStatusError) {
-        doc["error"] = status.error
-        doc["message"] = status.message
+    if (status is IssuesStatusExt) {
+        status.ext.forEach { key, value ->
+            doc[key] = value
+        }
     }
+    doc["name"] = name
+    doc["passed"] = passed
 }
 
 fun <T : IssueItem<S>, S : IssuesStatus> List<T>.findPassed(): T? =
@@ -94,15 +179,26 @@ data class IssueNPI(
 
 ) : IssueItem<IssueNPI.Status> {
 
-    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
-        object Original : Status("Original", false)
-        object Unchecked : Status("Unchecked", false)
-        object Corrected : Status("Corrected", true)
-        object Confirmed : Status("Confirmed", true)
+    sealed class Status(
+        override val name: String,
+        override val passed: Boolean,
+        override val type: IssuesStatus.Type
+    ) : IssuesStatus {
+        object Original : Status("Original", false, IssuesStatus.Type.WARN)
+        object Unchecked : Status("Unchecked", false, IssuesStatus.Type.WARN)
+        object Corrected : Status("Corrected", true, IssuesStatus.Type.INFO)
+        object Confirmed : Status("Confirmed", true, IssuesStatus.Type.OK)
         class Error(
-            override val error: String? = null,
-            override val message: String? = null
-        ) : Status("Error", false), IssuesStatusError
+            val error: String? = null,
+            val message: String? = null
+        ) : Status("Error", false, IssuesStatus.Type.ERROR), IssuesStatusExt {
+            override val ext: Map<String, Any> by lazy {
+                mutableMapOf<String, Any>().also { ext ->
+                    error?.let { ext["error"] = it }
+                    message?.let { ext["message"] = it }
+                }
+            }
+        }
 
         override fun toString(): String = name
 
@@ -176,21 +272,46 @@ data class IssueEligibility(
 
 ) : IssueItem<IssueEligibility.Status> {
 
-    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
-        object Missing : Status("Missing", false)
-        object Original : Status("Original", false)
-        object Unchecked : Status("Unchecked", false)
-        object NotAvailable : Status("NotAvailable", true)
-        object Corrected : Status("Corrected", true)
-        object Confirmed : Status("Confirmed", true)
+    sealed class Status(
+        override val name: String,
+        override val passed: Boolean,
+        override val type: IssuesStatus.Type
+    ) : IssuesStatus, Comparable<Status> {
+        object Missing : Status("Missing", false, IssuesStatus.Type.QUESTION)
+        object Original : Status("Original", false, IssuesStatus.Type.INFO)
+        object Unchecked : Status("Unchecked", false, IssuesStatus.Type.WARN)
+        object NotAvailable : Status("NotAvailable", true, IssuesStatus.Type.INFO)
+        object Corrected : Status("Corrected", true, IssuesStatus.Type.OK)
+        object Confirmed : Status("Confirmed", true, IssuesStatus.Type.OK)
         class Problem(
-            override val error: String? = null,
-            override val message: String? = null
-        ) : Status("Problem", false), IssuesStatusError
+            val error: String? = null,
+            val message: String? = null
+        ) : Status("Problem", false, IssuesStatus.Type.ERROR), IssuesStatusExt {
+            override val ext: Map<String, Any> by lazy {
+                mutableMapOf<String, Any>().also { ext ->
+                    error?.let { ext["error"] = it }
+                    message?.let { ext["message"] = it }
+                }
+            }
+        }
 
         override fun toString(): String = name
 
-        companion object
+        override fun compareTo(other: Status): Int =
+            ord.compareTo(other.ord)
+
+        companion object {
+            private val Status.ord: Int
+                get() = when (this) {
+                    Missing -> -2000
+                    is Problem -> -1000
+                    Unchecked -> -100
+                    Original -> 0
+                    NotAvailable -> 10
+                    Corrected -> 100
+                    Confirmed -> 1000
+                }
+        }
     }
 
     companion object : IssuesClass<IssueEligibility> {
@@ -225,9 +346,6 @@ enum class ResponsibilityOrder {
     Quaternary, Quinary, Senary,
     Septenary, Octonary, Nonary, Denary
 }
-
-fun IssueEligibility.isEmpty(): Boolean =
-    responsibility.isNullOrBlank() && eligibility.isNullOrBlank() && insurance == null && subscriber == null
 
 /**
  * `Case.SubscriberDetails.Subscriber`
@@ -386,16 +504,36 @@ data class IssueAddress(
 
 ) : IssueItem<IssueAddress.Status> {
 
-    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
-        object Missing : Status("Missing", false)
-        object Original : Status("Original", false)
-        object Unchecked : Status("Unchecked", false)
-        object Corrected : Status("Corrected", true)
-        object Confirmed : Status("Confirmed", true)
+    sealed class Status(
+        override val name: String,
+        override val passed: Boolean,
+        override val type: IssuesStatus.Type,
+        private val footnotes: String? = null
+    ) :
+        IssuesStatusExt {
+        class Missing(footnotes: String? = null) : Status("Missing", false, IssuesStatus.Type.WARN, footnotes)
+        class Original(footnotes: String? = null) : Status("Original", false, IssuesStatus.Type.INFO, footnotes)
+        class Unchecked(footnotes: String? = null) : Status("Unchecked", false, IssuesStatus.Type.WARN, footnotes)
+        class Corrected(footnotes: String? = null) : Status("Corrected", true, IssuesStatus.Type.OK, footnotes)
+        class Confirmed(footnotes: String? = null) : Status("Confirmed", true, IssuesStatus.Type.OK, footnotes)
         class Error(
-            override val error: String? = null,
-            override val message: String? = null
-        ) : Status("Error", false), IssuesStatusError
+            val error: String? = null,
+            val message: String? = null,
+            footnotes: String? = null
+        ) : Status("Error", false, IssuesStatus.Type.ERROR, footnotes), IssuesStatusExt {
+            override val ext: Map<String, Any> by lazy {
+                super.ext + mutableMapOf<String, Any>().also { ext ->
+                    error?.let { ext["error"] = it }
+                    message?.let { ext["message"] = it }
+                }
+            }
+        }
+
+        override val ext: Map<String, Any> by lazy {
+            mutableMapOf<String, Any>().also { ext ->
+                footnotes?.let { ext["footnotes"] = it }
+            }
+        }
 
         override fun toString(): String = name
 
@@ -419,14 +557,15 @@ data class IssueAddress(
 
 fun Document.toIssueAddressStatus(): IssueAddress.Status? =
     when (opt<String>("name")) {
-        IssueAddress.Status.Missing.name -> IssueAddress.Status.Missing
-        IssueAddress.Status.Original.name -> IssueAddress.Status.Original
-        IssueAddress.Status.Unchecked.name -> IssueAddress.Status.Unchecked
-        IssueAddress.Status.Corrected.name -> IssueAddress.Status.Corrected
-        IssueAddress.Status.Confirmed.name -> IssueAddress.Status.Confirmed
-        IssueAddress.Status.Error::class.java.simpleName -> IssueAddress.Status.Error(
+        IssueAddress.Status.Missing::class.simpleName -> IssueAddress.Status.Missing(opt<String>("footnotes"))
+        IssueAddress.Status.Original::class.simpleName -> IssueAddress.Status.Original(opt<String>("footnotes"))
+        IssueAddress.Status.Unchecked::class.simpleName -> IssueAddress.Status.Unchecked(opt<String>("footnotes"))
+        IssueAddress.Status.Corrected::class.simpleName -> IssueAddress.Status.Corrected(opt<String>("footnotes"))
+        IssueAddress.Status.Confirmed::class.simpleName -> IssueAddress.Status.Confirmed(opt<String>("footnotes"))
+        IssueAddress.Status.Error::class.simpleName -> IssueAddress.Status.Error(
             error = opt<String>("error"),
-            message = opt<String>("message")
+            message = opt<String>("message"),
+            footnotes = (opt<String>("footnotes"))
         )
         else -> null
     }
@@ -444,11 +583,22 @@ data class IssueExpert(
 
 ) : IssueItem<IssueExpert.Status> {
 
-    sealed class Status(override val name: String, override val passed: Boolean) : IssuesStatus {
+    sealed class Status(
+        override val name: String,
+        override val passed: Boolean,
+        override val type: IssuesStatus.Type
+    ) : IssuesStatus {
         class Problem(
-            override val error: String? = null,
-            override val message: String? = null
-        ) : Status("Problem", false), IssuesStatusError
+            val error: String? = null,
+            val message: String? = null
+        ) : Status("Problem", false, IssuesStatus.Type.ERROR), IssuesStatusExt {
+            override val ext: Map<String, Any> by lazy {
+                mutableMapOf<String, Any>().also { ext ->
+                    error?.let { ext["error"] = it }
+                    message?.let { ext["message"] = it }
+                }
+            }
+        }
 
         override fun toString(): String = name
 
@@ -471,48 +621,47 @@ fun Document.toIssueExpertStatus(): IssueExpert.Status? =
         else -> null
     }
 
-fun Document.toCaseIssue(): CaseIssue =
-    CaseIssue(
+fun Document.toCaseHist(): CaseHist =
+    CaseHist(
         _id = get("_id").toString(),
-        time = opt<Date>("time"),
-        patient = opt<Document>("patient")?.toPerson(),
-        npi = opt<List<*>>("issue", "npi")
+        accession = opt("case", "Case", "accessionNumber"),
+        time = opt<Date>("doc", "created"),
+        patient = casePatient(),
+        npi = opt<List<*>>("hist", "npi")
             ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueNPI() }
             ?.toList()
             ?: emptyList(),
-        eligibility = opt<List<*>>("issue", "eligibility")
-            ?.asSequence()
-            ?.filterIsInstance<Document>()
-            ?.map { it.toIssueEligibility() }
-            ?.toList()
+        insurancePrimary = opt<List<*>>("hist", "insurancePrimary")
+            ?.toInsuranceList()
             ?: emptyList(),
-        address = opt<List<*>>("issue", "address")
+        insuranceSecondary = opt<List<*>>("hist", "insuranceSecondary")
+            ?.toInsuranceList()
+            ?: emptyList(),
+        insuranceTertiary = opt<List<*>>("hist", "insuranceTertiary")
+            ?.toInsuranceList()
+            ?: emptyList(),
+        address = opt<List<*>>("hist", "address")
             ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueAddress() }
             ?.toList()
             ?: emptyList(),
-        expert = opt<List<*>>("issue", "expert")
+        expert = opt<List<*>>("hist", "expert")
             ?.asSequence()
             ?.filterIsInstance<Document>()
             ?.map { it.toIssueExpert() }
             ?.toList()
-            ?: emptyList()
+            ?: emptyList(),
+        status = opt<Document>("status")?.toCaseStatus()
     )
 
-fun CaseIssue.toDocument(): Document = doc {
-    doc["_id"] = _id
-    doc["time"] = time
-    doc["patient"] = patient?.toDocument()
-    doc["issue"] = doc {
-        doc["npi"] = npi.map { it.toDocument() }
-        doc["eligibility"] = eligibility.map { it.toDocument() }
-        doc["address"] = address.map { it.toDocument() }
-        doc["expert"] = expert.map { it.toDocument() }
-    }
-}
+private fun List<*>.toInsuranceList(): List<IssueEligibility> =
+    asSequence()
+        .filterIsInstance<Document>()
+        .map { it.toIssueEligibility() }
+        .toList()
 
 fun Document.toIssueNPI(): IssueNPI =
     IssueNPI(

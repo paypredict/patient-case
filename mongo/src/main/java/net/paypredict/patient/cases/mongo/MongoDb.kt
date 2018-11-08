@@ -25,48 +25,45 @@ object DBS {
     fun ptn(): MongoDatabase = mongoClient.getDatabase("ptn")
 
     object Collections {
-        fun cases(): MongoCollection<Document> =
+        fun cases(): DocumentMongoCollection =
             orders().getCollection("cases")
 
-        fun casesRaw(): MongoCollection<Document> =
-            orders().getCollection("casesRaw")
+        fun casesLog(): DocumentMongoCollection =
+            orders().getCollection("casesLog")
 
-        fun casesIssues(): MongoCollection<Document> =
-            orders().getCollection("casesIssues")
-
-        fun requisitionForms(): MongoCollection<Document> =
+        fun requisitionForms(): DocumentMongoCollection =
             orders().getCollection("requisitionForms")
 
-        fun requisitionPDFs(): MongoCollection<Document> =
+        fun requisitionPDFs(): DocumentMongoCollection =
             orders().getCollection("requisitionPDFs")
 
-        fun tradingPartners(): MongoCollection<Document> =
+        fun tradingPartners(): DocumentMongoCollection =
             pokitDok().getCollection("tradingPartners")
 
-        fun eligibility(): MongoCollection<Document> =
+        fun eligibility(): DocumentMongoCollection =
             pokitDok().getCollection("eligibility")
 
-        fun npiRegistry(): MongoCollection<Document> =
+        fun npiRegistry(): DocumentMongoCollection =
             nppes().getCollection("npiRegistry")
 
-        fun usStreet(): MongoCollection<Document> =
+        fun usStreet(): DocumentMongoCollection =
             smartyStreets().getCollection("usStreet")
 
         object PPPayers {
             @Suppress("FunctionName")
-            fun find_zmPayerId(): MongoCollection<Document> =
+            fun find_zmPayerId(): DocumentMongoCollection =
                 ppPayers().getCollection("find_zmPayerId")
 
-            fun users_find_zmPayerId(): MongoCollection<Document> =
+            fun users_find_zmPayerId(): DocumentMongoCollection =
                 ppPayers().getCollection("users_find_zmPayerId")
 
-            fun zirmedPayers(): MongoCollection<Document> =
+            fun zirmedPayers(): DocumentMongoCollection =
                 ppPayers().getCollection("zirmedPayers")
 
-            fun matchPayers(): MongoCollection<Document> =
+            fun matchPayers(): DocumentMongoCollection =
                 ppPayers().getCollection("matchPayers")
 
-            fun usersMatchPayers(): MongoCollection<Document> =
+            fun usersMatchPayers(): DocumentMongoCollection =
                 ppPayers().getCollection("usersMatchPayers")
         }
     }
@@ -76,18 +73,32 @@ object DBS {
     }
 }
 
-fun MongoCollection<Document>.upsertOne(filter: Bson, vararg fields: Pair<String, Any?>) =
+inline fun DocumentMongoCollection.upsertOne(
+    filter: Bson,
+    vararg fields: Pair<String, Any?>,
+    onCreate: (filter: Bson) -> Unit = {}
+) =
     upsertOne(filter, doc {
         doc[`$set`] = doc {
             fields.forEach { doc[it.first] = it.second }
         }
-    })
+    }, onCreate)
 
-fun MongoCollection<Document>.upsertOne(filter: Bson, update: Bson) {
+inline fun DocumentMongoCollection.upsertOne(
+    filter: Bson,
+    update: Bson,
+    onCreate: (filter: Bson) -> Unit = {}
+) {
     updateOne(filter, update, UpdateOptions().upsert(true))
+        ?.upsertedId
+        ?.also {
+            onCreate(filter)
+        }
 }
 
-fun MongoCollection<Document>.findById(id: String): Document? =
+typealias DocumentMongoCollection = MongoCollection<Document>
+
+fun DocumentMongoCollection.findById(id: String): Document? =
     find(id._id()).firstOrNull()
 
 
@@ -118,7 +129,11 @@ const val `$ne`: String = "$" + "ne"
 @Suppress("ObjectPropertyName", "unused")
 const val `$gt`: String = "$" + "gt"
 @Suppress("ObjectPropertyName", "unused")
+const val `$lt`: String = "$" + "lt"
+@Suppress("ObjectPropertyName", "unused")
 const val `$exists`: String = "$" + "exists"
+@Suppress("ObjectPropertyName", "unused")
+const val `$in`: String = "$" + "in"
 @Suppress("ObjectPropertyName", "unused")
 const val `$or`: String = "$" + "or"
 @Suppress("ObjectPropertyName", "unused")

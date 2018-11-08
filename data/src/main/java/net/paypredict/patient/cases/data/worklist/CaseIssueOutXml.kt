@@ -16,10 +16,10 @@ import org.xml.sax.InputSource
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys
-import kotlin.coroutines.experimental.buildSequence
 import javax.xml.transform.TransformerFactory
-import javax.xml.transform.stream.StreamResult
 import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
+import kotlin.coroutines.experimental.buildSequence
 
 /**
  * <p>
@@ -27,30 +27,39 @@ import javax.xml.transform.dom.DOMSource
  */
 val ordersDir: File by lazy { PatientCases.clientDir.resolve("orders") }
 
-val srcDir: File by lazy {
+val ordersSrcDir: File by lazy {
     ordersDir.resolve("src").also {
         if (!it.isDirectory) throw CaseDataException("Orders source directory $it not found")
     }
 }
-val outDir: File by lazy {
+val ordersArchiveDir: File by lazy {
+    ordersDir.resolve("archive").apply { mkdir() }
+}
+val ordersOutDir: File by lazy {
     ordersDir.resolve("out").apply { mkdir() }
 }
+
+fun ordersArchiveFile(digest: String): File=
+    ordersArchiveDir
+        .resolve(digest.take(4)).apply { mkdir() }
+        .resolve(digest)
 
 typealias DomDocument = org.w3c.dom.Document
 
 private val documentBuilderFactory: DocumentBuilderFactory by lazy { DocumentBuilderFactory.newInstance() }
 private val transformerFactory: TransformerFactory by lazy { TransformerFactory.newInstance() }
 
-fun CaseIssue.createOutXml() {
-    val case: Document = _id?.let { DBS.Collections.casesRaw().find(it._id()).firstOrNull() }
-        ?: throw CaseDataException("document $_id not found in casesRaw")
+fun CaseHist.createOutXml() {
+    val id = _id ?: throw CaseDataException("CaseHist._id required")
+    val case: Document = DBS.Collections.cases().find(id._id()).firstOrNull()
+        ?: throw CaseDataException("document $id not found in collection cases")
     val fileName: String = case.opt("file", "name")
-        ?: throw CaseDataException("file.name not found in casesRaw $_id")
+        ?: throw CaseDataException("file.name not found in collection cases $id")
 
-    val srcFile = srcDir.resolve(fileName).also {
-        if (!it.isFile) throw CaseDataException("Orders source XML file $it not found")
+    val srcFile = ordersArchiveFile(id).also {
+        if (!it.isFile) throw CaseDataException("Orders Archive File $it not found")
     }
-    val outFile = outDir.resolve(fileName).also {
+    val outFile = ordersOutDir.resolve(fileName).also {
         if (it.exists() && !it.delete()) throw CaseDataException("Orders out XML file $it already exists")
     }
 
@@ -89,8 +98,8 @@ private val fixedOutDir: File by lazy {
 }
 
 private fun makeFixedCopies(fileName: String) {
-    srcDir.resolve(fileName).makeFixedCopy(fixedSrcDir.resolve(fileName))
-    outDir.resolve(fileName).makeFixedCopy(fixedOutDir.resolve(fileName))
+    ordersSrcDir.resolve(fileName).makeFixedCopy(fixedSrcDir.resolve(fileName))
+    ordersOutDir.resolve(fileName).makeFixedCopy(fixedOutDir.resolve(fileName))
 }
 
 private fun File.makeFixedCopy(dst: File) =
@@ -132,7 +141,7 @@ private fun makeTestCopy(fileName: String) {
         )
 }
 
-private fun CaseIssue.updateSubscribers(domDocument: DomDocument, fileName: String) {
+private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: String) {
     val caseElement =
         domDocument
             .getElementsByTagName("Case")
@@ -318,7 +327,7 @@ private enum class SubscriberAttr(val eligibilityPath: String = "", val default:
     SubscriberZIP("data.subscriber.address.zipcode")
 }
 
-private fun CaseIssue.updateProvider(domDocument: DomDocument) {
+private fun CaseHist.updateProvider(domDocument: DomDocument) {
     val element: Element =
         domDocument
             .getElementsByTagName("Provider")
@@ -365,7 +374,7 @@ private operator fun Element.set(attr: ProviderAttr, value: String?) {
 }
 
 
-private fun CaseIssue.updatePatient(domDocument: DomDocument) {
+private fun CaseHist.updatePatient(domDocument: DomDocument) {
     val domPatient: Element =
         domDocument
             .getElementsByTagName("Patient")

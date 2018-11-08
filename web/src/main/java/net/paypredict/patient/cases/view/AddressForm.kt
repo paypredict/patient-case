@@ -28,7 +28,7 @@ import net.paypredict.patient.cases.html.ImgPanZoom
  * Created by alexei.vylegzhanin@gmail.com on 8/28/2018.
  */
 @Route("address")
-class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
+class AddressForm(private val readOnly: Boolean) : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
     private var binder: Binder<IssueAddress> = Binder()
     var value: IssueAddress? = null
         get() {
@@ -38,6 +38,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
         }
         set(new) {
             binder.readBean(new)
+            binder.setReadOnly(readOnly)
             updateFootnotes(new?.footNoteSet ?: emptySet())
             field = new
         }
@@ -175,6 +176,7 @@ class AddressForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
                         addClickListener { onClose?.invoke() }
                     }
                     this += Button("Check Address").apply {
+                        isEnabled = !readOnly
                         element.setAttribute("theme", "primary")
                         addClickListener {
                             val validationStatus = binder.validate()

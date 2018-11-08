@@ -8,6 +8,7 @@ import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.data.renderer.IconRenderer
 import net.paypredict.patient.cases.mongo.DBS
+import net.paypredict.patient.cases.mongo._id
 import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.mongo.opt
 import org.bson.Document
@@ -71,9 +72,7 @@ class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>
 
     private fun requisitionFormList(caseId: String?): List<RequisitionForm> {
         caseId ?: return emptyList()
-        val case = DBS.Collections.casesRaw().find(doc {
-            doc["_id"] = caseId
-        }).firstOrNull()
+        val case = DBS.Collections.cases().find(caseId._id()).firstOrNull()
             ?: return emptyList()
         val accession = case.opt<String>("case", "Case", "accessionNumber")
             ?: return emptyList()

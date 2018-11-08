@@ -12,7 +12,7 @@ import org.bson.Document
 object BuildCasesSubscriberCollection {
     @JvmStatic
     fun main(args: Array<String>) {
-        val subscriberArraysList = DBS.Collections.casesRaw().find()
+        val subscriberArraysList = DBS.Collections.cases().find()
             .projection(doc { doc["case.Case.SubscriberDetails.Subscriber"] = 1 })
             .toList()
 

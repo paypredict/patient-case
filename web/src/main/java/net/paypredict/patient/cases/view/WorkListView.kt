@@ -10,7 +10,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.splitlayout.SplitLayout
 
 class WorkListView : Composite<SplitLayout>() {
-    private val grid = CaseStatusGrid().apply {
+    private val grid = CaseAttrGrid().apply {
         height = "100%"
         element.style["border-left"] = "none"
         element.style["border-right"] = "none"

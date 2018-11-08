@@ -20,11 +20,11 @@ import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.data.binder.Binder
 import com.vaadin.flow.data.binder.ValidationResult
 import com.vaadin.flow.data.binder.ValueContext
-import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.data.worklist.Person
 import net.paypredict.patient.cases.data.worklist.Subscriber
 import net.paypredict.patient.cases.data.worklist.formatAs
+import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo._id
 import org.bson.Document
 import java.time.LocalDate
@@ -33,7 +33,7 @@ import java.time.LocalDate
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 9/4/2018.
  */
-class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
+class SubscriberForm(private val readOnly: Boolean = false) : Composite<FormLayout>(), HasSize, ThemableLayout {
     private var binder: Binder<Subscriber> = Binder()
     private val fieldIsRequired: (Any?, ValueContext) -> ValidationResult = { value: Any?, _ ->
         if (value == null || value is String && value.isBlank())
@@ -130,6 +130,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
         }
         set(new) {
             binder.readBean(new)
+            binder.setReadOnly(readOnly)
             field = new
         }
 
@@ -154,6 +155,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
             isPadding = false
             defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
             this += Button("Copy from Patient").apply {
+                isEnabled = !readOnly
                 element.setAttribute("theme", "tertiary-inline")
                 addClickListener {
                     showCopyFromPatientDialog()
@@ -181,7 +183,7 @@ class SubscriberForm : Composite<FormLayout>(), HasSize, ThemableLayout {
     }
 
     private fun String.findCasePatient(): Person? =
-        DBS.Collections.casesRaw()
+        DBS.Collections.cases()
             .find(_id())
             .mapNotNull { case ->
                 case.opt<Document>("case", "Case", "Patient")?.let { patient ->

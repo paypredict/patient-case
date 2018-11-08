@@ -34,12 +34,16 @@ import net.paypredict.patient.cases.toTitleCase
  * Created by alexei.vylegzhanin@gmail.com on 8/25/2018.
  */
 @Route("eligibility")
-class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableLayout {
+class PatientEligibilityForm(private val readOnly: Boolean = false) :
+    Composite<HorizontalLayout>(),
+    HasSize,
+    ThemableLayout {
+
     private val responsibilityTabs: Tabs = Tabs()
     private var responsibilityTabsSelectedRegistration: Registration? = null
     private val subscriberTabs: Tabs = Tabs()
     private val insuranceForm =
-        InsuranceForm(sectionHeader("Insurance Payer")).apply { width = "100%" }
+        InsuranceForm(sectionHeader("Insurance Payer"), readOnly).apply { width = "100%" }
     private val requisitionDiv = Div().apply {
         setSizeFull()
         isVisible = false
@@ -61,7 +65,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                 }
             }
         }
-    private val subscriberForm = SubscriberForm()
+    private val subscriberForm = SubscriberForm(readOnly)
     private val subscriberInputTab = Tab("Information")
     private val eligibilityCheckResTab = Tab("Eligibility")
     private val eligibilityCheckResView = EligibilityCheckResView().apply {
@@ -187,6 +191,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
 
 
     private val addResponsibility = Button(VaadinIcon.PLUS.create()).apply {
+        isEnabled = !readOnly
         element.setAttribute("theme", "icon tertiary")
         addClickListener { _ ->
             val onInsert = onInsert
@@ -207,6 +212,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     }
 
     private val deleteResponsibility = Button(VaadinIcon.MINUS.create()).apply {
+        isEnabled = !readOnly
         element.setAttribute("theme", "icon tertiary")
         addClickListener { _ ->
             val toDelete = responsibilityTabs.selectedRespTab.value
@@ -215,9 +221,12 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
                     defaultHorizontalComponentAlignment = FlexComponent.Alignment.CENTER
                     this += H3("Do you wish to delete ${responsibilityTabs.selectedTab.label} Information?")
                     this += HorizontalLayout().apply {
-                        this += Button("Delete") { _ ->
-                            onRemove?.invoke { it == toDelete }
-                            dialog.close()
+                        this += Button("Delete").apply {
+                            isEnabled = !readOnly
+                            addClickListener { _ ->
+                                onRemove?.invoke { it == toDelete }
+                                dialog.close()
+                            }
                         }
                         this += Button("Cancel") { dialog.close() }
                     }
@@ -234,6 +243,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     private val payersRecheck = PayersRecheck()
 
     private val saveWithNoVerificationButton = Button("Save with no verification").apply {
+        isEnabled = !readOnly
         element.setAttribute("theme", "tertiary")
         addClickListener {
             if (insuranceForm.isValid && subscriberForm.isValid) {
@@ -260,6 +270,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
     }
 
     private val verifyEligibilityButton = Button("Verify Eligibility").apply {
+        isEnabled = !readOnly
         element.setAttribute("theme", "primary")
         addClickListener {
             val pokitDokPayerUpdated = insuranceForm.isPokitDokPayerUpdated
@@ -289,8 +300,8 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
         eligibilityCheckResView.value = res
         checkResSum.value = res
         subscriberForm.banner = checkResSum.banner
-        saveWithNoVerificationButton.isEnabled = res !is EligibilityCheckRes.Pass
-        verifyEligibilityButton.isEnabled = res !is EligibilityCheckRes.Pass
+        saveWithNoVerificationButton.isEnabled = !readOnly && res !is EligibilityCheckRes.Pass
+        verifyEligibilityButton.isEnabled = !readOnly && res !is EligibilityCheckRes.Pass
     }
 
     init {
@@ -408,7 +419,7 @@ class PatientEligibilityForm : Composite<HorizontalLayout>(), HasSize, ThemableL
             }
 
         private fun updateUI() {
-            val case = caseId?.let { DBS.Collections.casesRaw().find(it._id()).firstOrNull() }
+            val case = caseId?.let { DBS.Collections.cases().find(it._id()).firstOrNull() }
             accession.text = case?.opt<String>("case", "Case", "accessionNumber") ?: ""
         }
 
@@ -550,7 +561,7 @@ private class PayersRecheck : HorizontalLayout() {
     }
 
     private class Item(
-        val case: CaseIssue,
+        val caseHist: CaseHist,
         val zmPayerId: String,
         val eligibilityList: MutableList<IssueEligibility> = mutableListOf()
     )
@@ -569,8 +580,8 @@ private class PayersRecheck : HorizontalLayout() {
                         it.checkEligibility(eligibilityCheckContext)
                     }
                     .toList()
-            item.case.eligibility += checked
-            DBS.Collections.casesIssues().replaceOne(item.case._id!!._id(), item.case.toDocument())
+            item.caseHist.eligibility += checked
+            item.caseHist.update(UpdateContext(message = "Recheck related issues"))
         }
         onRecheckFinished?.invoke()
     }
@@ -586,11 +597,11 @@ private class PayersRecheck : HorizontalLayout() {
 
     private fun buildToRecheck(caseId: String, payerName: String, zmPayerId: String): List<Item> {
         val items = mutableMapOf<String, Item>()
-        DBS.Collections.casesIssues()
-            .find(doc { doc["issue.eligibility.insurance.payerName"] = payerName })
-            .map { it.toCaseIssue() }
+        DBS.Collections.cases()
+            .find(doc { doc["hist.eligibility.insurance.payerName"] = payerName })
+            .map { it.toCaseHist() }
             .filterNot { caseId == it._id || it.isResolved }
-            .forEach { case: CaseIssue ->
+            .forEach { case: CaseHist ->
                 case.eligibility
                     .groupBy { it.responsibility }
                     .values

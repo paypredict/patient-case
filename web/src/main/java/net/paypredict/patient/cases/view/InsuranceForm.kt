@@ -24,7 +24,10 @@ import net.paypredict.patient.cases.pokitdok.eligibility.PayersData
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 9/5/2018.
  */
-class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), HasSize, ThemableLayout {
+class InsuranceForm(header: Component? = null, private val readOnly: Boolean = false) :
+    Composite<VerticalLayout>(),
+    HasSize,
+    ThemableLayout {
 
     private val payersData = PayersData()
 
@@ -68,6 +71,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                 element.setAttribute("theme", "icon small contrast tertiary")
             }
             this += Button(VaadinIcon.CLOSE.create()).withStyle().apply {
+                isEnabled = !readOnly
                 addClickListener {
                     val zmPayerIdStr = zmPayerId.value?.zmPayerId
                     if (zmPayerIdStr != null) {
@@ -81,6 +85,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
                 }
             }
             this += Button(VaadinIcon.EDIT.create()).withStyle().apply {
+                isEnabled = !readOnly
                 addClickListener {
                     if (zmPayerId.value?.zmPayerId != null) {
                         selectPokitDokPayer()
@@ -106,6 +111,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
             payerName.text = new?.payerName ?: ""
             pokitDokPayer.setPokitDokPayer(new?.toPokitDokPayer())
             binder.readBean(new)
+            binder.setReadOnly(readOnly)
             field = new
             isPokitDokPayerUpdated = false
         }
@@ -157,6 +163,7 @@ class InsuranceForm(header: Component? = null) : Composite<VerticalLayout>(), Ha
             if (header != null) this += header
             this += payerName
             this += Button("Find").apply {
+                isEnabled = !readOnly
                 addClickListener {
                     val found = PayerLookup()[payerName.text]?.value
                     zmPayerId.value = InsuranceItem[found]

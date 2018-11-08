@@ -8,5 +8,5 @@ import java.io.File
  */
 object PatientCases {
     var client = "test"
-    val clientDir get() = File("/PayPredict/clients/$client")
+    val clientDir: File get() = File("/PayPredict/clients/$client").absoluteFile
 }

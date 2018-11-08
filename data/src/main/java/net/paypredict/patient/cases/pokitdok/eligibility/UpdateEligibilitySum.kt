@@ -1,6 +1,7 @@
 package net.paypredict.patient.cases.pokitdok.eligibility
 
-import net.paypredict.patient.cases.data.worklist.toCaseIssue
+import net.paypredict.patient.cases.data.worklist.eligibility
+import net.paypredict.patient.cases.data.worklist.toCaseHist
 import net.paypredict.patient.cases.mongo.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -14,12 +15,11 @@ import kotlin.system.exitProcess
 object UpdateEligibilitySum {
     @JvmStatic
     fun main(args: Array<String>) {
-        val casesRaw = DBS.Collections.casesRaw()
-        val casesIssues = DBS.Collections.casesIssues()
+        val cases = DBS.Collections.cases()
         val eligibility = DBS.Collections.eligibility()
         val executorService: ExecutorService = Executors.newSingleThreadExecutor()
 
-        val accessionById = casesRaw.find()
+        val accessionById = cases.find()
             .projection(doc { doc["case.Case.accessionNumber"] = 1 })
             .mapNotNull { case ->
                 case.opt<String>("case", "Case", "accessionNumber")
@@ -27,8 +27,8 @@ object UpdateEligibilitySum {
             }
             .toMap()
 
-        casesIssues.find()
-            .map { it.toCaseIssue() }
+        cases.find()
+            .map { it.toCaseHist() }
             .toList()
             .forEach { casesIssue ->
                 casesIssue.eligibility

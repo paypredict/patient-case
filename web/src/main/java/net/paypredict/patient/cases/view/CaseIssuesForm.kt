@@ -20,7 +20,6 @@ import com.vaadin.flow.server.VaadinSession
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo._id
-import net.paypredict.patient.cases.mongo.`$set`
 import net.paypredict.patient.cases.mongo.doc
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import org.bson.Document
@@ -32,34 +31,35 @@ import kotlin.properties.Delegates
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
 class CaseIssuesForm : Composite<Div>() {
-    var value: CaseStatus?
-            by Delegates.observable(null) { _, _: CaseStatus?, new: CaseStatus? ->
+    var value: CaseAttr?
+            by Delegates.observable(null) { _, _: CaseAttr?, new: CaseAttr? ->
                 update(new)
             }
-    var onValueChange: ((CaseStatus?) -> Unit)? = null
+    var onValueChange: ((CaseAttr?) -> Unit)? = null
     var onCasesUpdated: (() -> Unit)? = null
-    var onResolved: ((CaseStatus, statusValue: String?) -> Unit)? = null
+    var onResolved: ((CaseAttr, statusValue: String?) -> Unit)? = null
 
-    private fun update(new: CaseStatus?) {
+    private fun update(new: CaseAttr?) {
         accession.value = new?.accession ?: ""
         payerName.value = new?.payerName ?: ""
 
-        val caseIssues = new?.let {
-            DBS.Collections.casesIssues().find(Document("_id", it._id)).firstOrNull()?.toCaseIssue()
+        val caseHist = new?.let {
+            DBS.Collections.cases().find(it._id._id()).firstOrNull()?.toCaseHist()
         }
-        val patient = caseIssues?.patient
+        val patient = caseHist?.patient
         patientFirstName.value = patient?.firstName ?: ""
         patientLastName.value = patient?.lastName ?: ""
         patientMI.value = patient?.mi ?: ""
         patientDOB.value = patient?.dobAsLocalDate
 
-        issuesNPI.value = caseIssues?.npi
-        issuesEligibility.value = caseIssues?.eligibility
-        issuesAddress.value = caseIssues?.address
-        issuesExpert.value = caseIssues?.expert
+        issuesNPI.value = caseHist?.npi
+        issuesEligibility.value = caseHist?.eligibility
+        issuesAddress.value = caseHist?.address
+        issuesExpert.value = caseHist?.expert
 
         issueActions.isVisible = new != null
-        issueResolved.value = new?.statusValue == "RESOLVED"
+        issueResolved.value = new?.status?.resolved == true || new?.status?.passed == true
+        issueResolved.isEnabled = new?.status?.passed != true
 
         requisitionFormsNotFound.isVisible = new?.accession?.let { accession ->
             DBS.Collections
@@ -88,18 +88,36 @@ class CaseIssuesForm : Composite<Div>() {
     private val issueResolved = Checkbox("Issue resolved").also { checkbox ->
         checkbox.addValueChangeListener { event ->
             if (event.isFromClient) {
-                value?.let { caseStatus ->
-                    when (caseStatus.statusValue) {
-                        "RESOLVED" -> checkbox.value = true
-                        else -> if (event.value) {
+                value?.let { caseAttr ->
+                    if (caseAttr.isResolved) {
+                        checkbox.value = true
+                    } else {
+                        if (event.value) {
                             confirmResolved(
                                 confirmed = {
-                                    caseStatus.createOutXml()
-                                    caseStatus.statusValue = "RESOLVED"
-                                    onResolved?.invoke(caseStatus, "RESOLVED")
+                                    val cases = DBS.Collections.cases()
+                                    cases
+                                        .find(caseAttr._id._id())
+                                        .firstOrNull()
+                                        ?.toCaseHist()
+                                        ?.apply {
+                                            update(
+                                                context = UpdateContext(
+                                                    cases = cases,
+                                                    message = "resolved"
+                                                ),
+                                                status = (status ?: CaseStatus()).copy(resolved = true)
+                                            )
+                                            onResolved?.invoke(caseAttr, "RESOLVED")
+                                        }
+
                                 },
-                                canceled = { checkbox.value = true }
+                                canceled = {
+                                    checkbox.value = false
+                                }
                             )
+                        } else {
+                            checkbox.value = true
                         }
                     }
                 }
@@ -214,11 +232,12 @@ class CaseIssuesForm : Composite<Div>() {
             showError(e, errorHeader)
         }
 
-    private fun CaseStatus.openEligibilityDialog(selected: IssueEligibility) {
+    private fun CaseAttr.openEligibilityDialog(selected: IssueEligibility) {
+        val readOnly = status?.passed == true
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
-            dialog += PatientEligibilityForm().also { form ->
+            dialog += PatientEligibilityForm(readOnly).also { form ->
                 form.isPadding = false
                 form.width = "100%"
                 form.height = "100%"
@@ -232,25 +251,34 @@ class CaseIssuesForm : Composite<Div>() {
                     val ignore = when (res) {
                         is EligibilityCheckRes.Pass -> {
                             res.fixAddress()
-                            addEligibilityIssue(issue, IssueEligibility.Status.Confirmed)
+                            addEligibilityIssue(
+                                issue,
+                                IssueEligibility.Status.Confirmed,
+                                "User Eligibility Checking"
+                            )
                         }
                         is EligibilityCheckRes.Warn -> {
                             res.fixAddress()
                             addEligibilityIssue(
-                                issue, IssueEligibility.Status.Problem(
+                                issue,
+                                IssueEligibility.Status.Problem(
                                     "Problem With Eligibility",
-                                    res.warnings.joinToString { it.message }
-                                )
+                                    res.warnings.joinToString { it.message }),
+                                "User Checking"
                             )
                         }
                         EligibilityCheckRes.NotAvailable -> {
-                            addEligibilityIssue(issue, IssueEligibility.Status.NotAvailable)
+                            addEligibilityIssue(
+                                issue,
+                                IssueEligibility.Status.NotAvailable,
+                                "User Eligibility Checking"
+                            )
                         }
                         is EligibilityCheckRes.Error -> {
                             addEligibilityIssue(
-                                issue, IssueEligibility.Status.Problem(
-                                    "Checking Error", res.message
-                                )
+                                issue,
+                                IssueEligibility.Status.Problem("Checking Error", res.message),
+                                "User Checking"
                             )
                             showError(res.message)
                         }
@@ -258,16 +286,16 @@ class CaseIssuesForm : Composite<Div>() {
                     onValueChange?.invoke(this)
                     form.items = issuesEligibility.value
                 }
-                form.onPatientEligibilitySave = { issue ->
-                    addEligibilityIssue(issue, issue.status)
+                form.onPatientEligibilitySave = if (readOnly) null else { issue ->
+                    addEligibilityIssue(issue, issue.status, "User Eligibility Saving")
                     onValueChange?.invoke(this)
                     form.items = issuesEligibility.value
                 }
-                form.onInsert = { responsibility ->
-                    addEligibilityIssue(responsibility)
+                form.onInsert = if (readOnly) null else { responsibility ->
+                    addEligibilityIssue(responsibility, message = "User Eligibility Saving")
                     form.items = issuesEligibility.value
                 }
-                form.onRemove = { responsibility ->
+                form.onRemove = if (readOnly) null else { responsibility ->
                     removeEligibilityIssue(responsibility)
                     form.items = issuesEligibility.value
                 }
@@ -284,59 +312,50 @@ class CaseIssuesForm : Composite<Div>() {
         fun addAddress() {
             findSubscriberAddress()
                 ?.also { issueAddress ->
-                    caseStatus.addAddressIssue(issueAddress.copy(status = IssueAddress.Status.Unchecked))
-                    IssueChecker(caseId = caseId).checkIssueAddressAndUpdateStatus(issueAddress)
+                    caseStatus.addAddressIssue(issueAddress.copy(status = IssueAddress.Status.Unchecked()))
+                    IssueChecker().checkIssueAddressAndUpdateStatus(issueAddress)
                     caseStatus.addAddressIssue(issueAddress)
                 }
         }
 
-        val caseIssue = DBS.Collections.casesIssues().find(caseId._id()).firstOrNull()?.toCaseIssue()
+        val cases = DBS.Collections.cases().find(caseId._id()).firstOrNull()?.toCaseHist()
             ?: return
-        val address = caseIssue.address.lastOrNull()
+        val address = cases.address.lastOrNull()
             ?: return addAddress()
         if (address.status?.passed != true)
             addAddress()
     }
 
-    private fun CaseStatus.addEligibilityIssue(issue: IssueEligibility, statusValue: IssueEligibility.Status? = null) {
-        val casesIssuesCollection = DBS.Collections.casesIssues()
+    private fun CaseAttr.addEligibilityIssue(
+        issue: IssueEligibility,
+        statusValue: IssueEligibility.Status? = null,
+        message: String
+    ) {
+        val cases = DBS.Collections.cases()
         val byId = Document("_id", _id)
-        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
+        val caseHist: CaseHist = cases.find(byId).first().toCaseHist()
         val new = issue.copy(status = statusValue)
-        if (new == caseIssues.eligibility.lastOrNull()) return
-
-        var newList = caseIssues.eligibility + new
-        if (newList.size > 1 && newList[0].isEmpty()) {
-            newList = newList.drop(1)
-        }
-        caseIssues.eligibility = newList
-
-        casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
-        val status = Status(value = statusValue?.name)
-        DBS.Collections.casesRaw().updateOne(byId,
-            doc {
-                doc[`$set`] = doc {
-                    doc["status.values.eligibility"] = status.toDocument()
-                }
-            })
-        issuesEligibility.value = caseIssues.eligibility
-        value?.eligibility = status
+        caseHist.eligibility += new
+        caseHist.update(UpdateContext(message = message))
+        issuesEligibility.value = caseHist.eligibility
+        value?.eligibility = new.status
     }
 
-    private fun CaseStatus.removeEligibilityIssue(predicate: (IssueEligibility) -> Boolean) {
-        val casesIssuesCollection = DBS.Collections.casesIssues()
+    private fun CaseAttr.removeEligibilityIssue(predicate: (IssueEligibility) -> Boolean) {
+        val cases = DBS.Collections.cases()
         val byId = Document("_id", _id)
-        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
-        caseIssues.eligibility = caseIssues.eligibility.filterNot(predicate)
-        casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
-        issuesEligibility.value = caseIssues.eligibility
+        val caseHist: CaseHist = cases.find(byId).first().toCaseHist()
+        caseHist.eligibility = caseHist.eligibility.filterNot(predicate)
+        caseHist.update(UpdateContext(message = "Remove Insurance Record"))
+        issuesEligibility.value = caseHist.eligibility
     }
 
-    private fun CaseStatus.openAddressDialog(address: IssueAddress) {
+    private fun CaseAttr.openAddressDialog(address: IssueAddress) {
+        val readOnly = status?.passed == true
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
-            dialog += AddressForm().apply {
+            dialog += AddressForm(readOnly).apply {
                 setSizeFull()
                 isPadding = false
                 value = address
@@ -367,36 +386,27 @@ class CaseIssuesForm : Composite<Div>() {
     private fun AddressForm.checkAddress(issue: IssueAddress) {
         val issueCopy = issue.copy()
         try {
-            IssueChecker(caseId = caseId!!)
+            IssueChecker()
                 .checkIssueAddressAndUpdateStatus(issueCopy)
             value = issueCopy
             this@CaseIssuesForm.value?.addAddressIssue(issueCopy, issueCopy.status)
         } catch (e: CheckingException) {
             showError(e.message)
             this@CaseIssuesForm.value?.addAddressIssue(
-                issueCopy, (e.status as? IssuesStatusError)
-                    ?.toDocument()
-                    ?.toIssueAddressStatus()
-                    ?: IssueAddress.Status.Error("Checking Error", e.message)
+                issueCopy,
+                IssueAddress.Status.Error("Checking Error", e.message)
             )
         }
     }
 
-    private fun CaseStatus.addAddressIssue(issue: IssueAddress, statusValue: IssueAddress.Status? = issue.status) {
-        val casesIssuesCollection = DBS.Collections.casesIssues()
+    private fun CaseAttr.addAddressIssue(issue: IssueAddress, statusValue: IssueAddress.Status? = issue.status) {
+        val cases = DBS.Collections.cases()
         val byId = Document("_id", _id)
-        val caseIssues = casesIssuesCollection.find(byId).first().toCaseIssue()
-        caseIssues.address += issue.copy(status = statusValue)
-        casesIssuesCollection.replaceOne(byId, caseIssues.toDocument())
-        val status = Status(value = statusValue?.name)
-        DBS.Collections.casesRaw().updateOne(byId,
-            doc {
-                doc[`$set`] = doc {
-                    doc["status.values.address"] = status.toDocument()
-                }
-            })
-        issuesAddress.value = caseIssues.address
-        value?.address = status
+        val caseHist: CaseHist = cases.find(byId).first().toCaseHist()
+        caseHist.address += issue.copy(status = statusValue)
+        caseHist.update(UpdateContext(message = "User Update Address"))
+        issuesAddress.value = caseHist.address
+        value?.address = statusValue
         onValueChange?.invoke(value)
     }
 

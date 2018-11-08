@@ -1,6 +1,5 @@
 package net.paypredict.patient.cases.data.worklist
 
-import com.mongodb.client.MongoCollection
 import com.smartystreets.api.exceptions.BadRequestException
 import com.smartystreets.api.exceptions.SmartyException
 import com.smartystreets.api.us_street.Lookup
@@ -10,11 +9,19 @@ import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.UsStreet
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
+import net.paypredict.patient.cases.data.cases.Import
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
 import org.bson.Document
-import java.time.LocalDate
+import java.io.File
+import java.time.*
+import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
+import java.util.logging.Level
+import java.util.logging.Logger
+import kotlin.concurrent.withLock
 
 /**
  * <p>
@@ -22,22 +29,66 @@ import java.time.LocalDate
  */
 
 fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
-    val casesRaw = DBS.Collections.casesRaw()
-    val casesIssues = DBS.Collections.casesIssues()
-    val items: List<Document> = casesRaw
-        .find(doc { doc["status.problems"] = doc { doc[`$exists`] = false } })
-        .projection(doc { })
+    val cases = DBS.Collections.cases()
+    cases.importCases(isInterrupted)
+    cases.checkCases(isInterrupted)
+    cases.markTimeoutCases(isInterrupted)
+    cases.sendCases(isInterrupted)
+}
+
+private object ImportCasesAttempts {
+    const val MAX: Int = 10
+    private val lock = ReentrantLock()
+    private val attemptsByFilePath = mutableMapOf<String, AtomicInteger>()
+
+    operator fun get(file: File): Int = lock.withLock {
+        attemptsByFilePath[file.path]?.get() ?: 0
+    }
+
+    inline operator fun invoke(file: File, onFirstError: () -> Unit) = lock.withLock {
+        attemptsByFilePath.getOrPut(file.path) {
+            onFirstError()
+            AtomicInteger(0)
+        }.incrementAndGet()
+    }
+
+}
+
+private fun DocumentMongoCollection.importCases(isInterrupted: () -> Boolean) {
+    for (file in ordersSrcDir.walk()) {
+        if (isInterrupted()) break
+        if (!file.isFile) continue
+        if (ImportCasesAttempts[file] > ImportCasesAttempts.MAX) continue
+        try {
+            Import.importXmlFile(file, cases = this, skipByNameAndTime = true, override = false) { digest ->
+                val archiveFile = ordersArchiveFile(digest)
+                if (!archiveFile.exists())
+                    file.copyTo(archiveFile)
+            }
+        } catch (e: Throwable) {
+            ImportCasesAttempts(file) {
+                Logger
+                    .getLogger(Import::class.qualifiedName)
+                    .log(Level.WARNING, "importXmlFile $file error", e)
+            }
+            continue
+        }
+    }
+}
+
+private fun DocumentMongoCollection.checkCases(isInterrupted: () -> Boolean) {
+    val items: List<Document> = find(doc { doc["status.checked"] = doc { doc[`$exists`] = false } })
+        .projection(doc { doc["_id"] = 1 })
         .toList()
     val usStreet = UsStreet()
     val payerLookup = PayerLookup()
     for (item in items) {
-        val case = casesRaw.find(item).firstOrNull() ?: continue
+        val case = find(item).firstOrNull() ?: continue
         val issueCheckerAuto =
             IssueCheckerAuto(
                 usStreet = usStreet,
                 payerLookup = payerLookup,
-                casesRaw = casesRaw,
-                casesIssues = casesIssues,
+                cases = this,
                 case = case
             )
         issueCheckerAuto.check()
@@ -45,34 +96,75 @@ fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     }
 }
 
-class CheckingException(override val message: String, var status: IssuesStatus? = null) : Exception()
+private fun DocumentMongoCollection.markTimeoutCases(
+    isInterrupted: () -> Boolean,
+    timeOutDate: LocalDateTime = LocalDateTime.now() - Duration.ofDays(7)
+) {
+    val timeout = Date.from(timeOutDate.atZone(ZoneId.systemDefault()).toInstant())
+    val filter = doc {
+        doc["status.value"] = "CHECKED"
+        doc["doc.created"] = doc { doc[`$lt`] = timeout }
+    }
+    val items: List<Document> =
+        find(filter)
+            .projection(doc { doc["_id"] = 1 })
+            .toList()
 
-data class IssueAddressCheckRes(
-    val hasProblems: Boolean = false,
-    val status: Status? = null
-)
+    for (item in items) {
+        find(item)
+            .firstOrNull()
+            ?.toCaseHist()
+            ?.run {
+                update(
+                    context = UpdateContext(
+                        cases = this@markTimeoutCases,
+                        message = "timeout"
+                    ),
+                    status = (status ?: CaseStatus()).copy(timeout = true)
+                )
+            }
+        if (isInterrupted()) break
+    }
+}
+
+private fun DocumentMongoCollection.sendCases(isInterrupted: () -> Boolean) {
+    val items: List<Document> =
+        find(doc { doc["status.value"] = doc { doc[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") } })
+            .projection(doc { doc["_id"] = 1 })
+            .toList()
+
+    for (item in items) {
+        find(item)
+            .firstOrNull()
+            ?.toCaseHist()
+            ?.run {
+                createOutXml()
+                update(
+                    context = UpdateContext(
+                        cases = this@sendCases,
+                        message = "sent"
+                    ),
+                    status = (status ?: CaseStatus()).copy(sent = true)
+                )
+            }
+        if (isInterrupted()) break
+    }
+}
+
+class CheckingException(override val message: String, var status: IssuesStatus? = null) : Exception()
 
 open class IssueChecker(
     private val usStreet: UsStreet = UsStreet(),
     protected val payerLookup: PayerLookup = PayerLookup(),
-    protected val casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
-    protected val casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
-    protected val caseId: String
+    protected val cases: DocumentMongoCollection = DBS.Collections.cases()
 ) {
-    protected val caseIdFilter = caseId._id()
-
-    protected var statusProblems = 0
-    protected val statusValues: MutableMap<String, Any?> = mutableMapOf()
 
     fun checkIssueAddressAndUpdateStatus(issue: IssueAddress) {
-        val res = checkIssueAddress(issue)
-        caseRawStatusLoad()
-        this += res
-        caseRawStatusUpdate()
+        checkIssueAddress(issue)
     }
 
-    protected fun checkIssueAddress(issue: IssueAddress): IssueAddressCheckRes {
-        issue.status = IssueAddress.Status.Unchecked
+    protected fun checkIssueAddress(issue: IssueAddress) {
+        issue.status = IssueAddress.Status.Unchecked()
         issue.footnotes = null
 
         val lookup = Lookup().apply {
@@ -122,93 +214,55 @@ open class IssueChecker(
         val maxFootNote = candidate.analysis.footNoteSet.asSequence().maxBy { it.level }
         return when (maxFootNote?.level) {
             null -> {
-                issue.status = IssueAddress.Status.Confirmed
-                IssueAddressCheckRes()
+                issue.status = IssueAddress.Status.Confirmed(
+                    footnotes = candidate.analysis.footnotes
+                )
             }
             FootNote.Level.ERROR -> {
-                issue.status = IssueAddress.Status.Error(maxFootNote.label, maxFootNote.note)
-                IssueAddressCheckRes(
-                    hasProblems = true,
-                    status = Status(maxFootNote.level.name, candidate.analysis.footnotes)
+                issue.status = IssueAddress.Status.Error(
+                    error = maxFootNote.label,
+                    message = maxFootNote.note,
+                    footnotes = candidate.analysis.footnotes
                 )
             }
             FootNote.Level.WARNING -> {
-                issue.status = IssueAddress.Status.Corrected
-                IssueAddressCheckRes(
-                    hasProblems = true,
-                    status = Status(maxFootNote.level.name, candidate.analysis.footnotes)
+                issue.status = IssueAddress.Status.Corrected(
+                    footnotes = candidate.analysis.footnotes
                 )
             }
             FootNote.Level.INFO -> {
-                issue.status = IssueAddress.Status.Confirmed
-                IssueAddressCheckRes(
-                    hasProblems = false,
-                    status = Status(maxFootNote.level.name, candidate.analysis.footnotes)
+                issue.status = IssueAddress.Status.Confirmed(
+                    footnotes = candidate.analysis.footnotes
                 )
             }
         }
     }
-
-    protected operator fun plusAssign(res: IssueAddressCheckRes?) {
-        if (res != null) {
-            if (res.hasProblems) statusProblems++
-            statusValues["status.values.address"] = res.status?.toDocument()
-        }
-    }
-
-    private fun caseRawStatusLoad() {
-        val status = casesRaw.find(caseIdFilter)
-            .projection(doc { doc["status"] = 1 })
-            .firstOrNull()
-        statusProblems = status?.opt("status", "problems") ?: 0 // TODO add calculation
-        statusValues.clear()
-        status?.opt<Document>("status", "values")?.forEach { key, value ->
-            statusValues[key] = value
-        }
-    }
-
-    protected fun caseRawStatusUpdate() {
-        casesRaw.updateOne(caseIdFilter, doc {
-            doc[`$set`] = doc {
-                doc["status.problems"] = statusProblems
-                if (statusProblems > 0)
-                    doc["status.value"] = "PROBLEMS"
-                statusValues.forEach { (key, value) ->
-                    if (value != null)
-                        doc[key] = value else
-                        doc -= key
-                }
-            }
-        })
-    }
-
 }
 
 
 internal class IssueCheckerAuto(
     usStreet: UsStreet = UsStreet(),
     payerLookup: PayerLookup = PayerLookup(),
-    casesRaw: MongoCollection<Document> = DBS.Collections.casesRaw(),
-    casesIssues: MongoCollection<Document> = DBS.Collections.casesIssues(),
+    cases: DocumentMongoCollection = DBS.Collections.cases(),
     private val case: Document
-) : IssueChecker(usStreet, payerLookup, casesRaw, casesIssues, case["_id"] as String) {
+) : IssueChecker(usStreet, payerLookup, cases) {
 
-    private val issue: Document? = casesIssues.find(caseIdFilter).firstOrNull()
+    private lateinit var caseHist: CaseHist
+    private var passed: Boolean = true
 
-    private lateinit var caseIssue: CaseIssue
-
-    fun check() {
-        if (issue != null) return
-        caseIssue = CaseIssue(
-            _id = caseId,
-            time = case.opt("date"),
-            patient = case.casePatient()
-        )
+    fun check(): Boolean {
+        caseHist = case.toCaseHist()
+        passed = true
+        val status =
+            (caseHist.status ?: CaseStatus()).copy(
+                checked = false,
+                passed = false
+            )
 
         val hasResultByResponsibilityMap: MutableMap<String, EligibilityCheckRes.HasResult> = mutableMapOf()
 
         checkNPI()
-        checkSubscriber(caseIssue.patient) { hasResult ->
+        checkSubscriber(caseHist.patient) { hasResult ->
             responsibility?.also { hasResultByResponsibilityMap[it] = hasResult }
         }
         checkAddress(
@@ -217,16 +271,23 @@ internal class IssueCheckerAuto(
                 .mapNotNull { hasResultByResponsibilityMap[it.name]?.findSubscriberAddress() }
                 .firstOrNull())
 
-        casesIssues.insertOne(caseIssue.toDocument())
-        caseRawStatusUpdate()
+        caseHist.update(
+            UpdateContext(
+                cases = cases,
+                message = "Checking"
+            ),
+            status = status.copy(
+                checked = true,
+                passed = passed
+            )
+        )
+        return passed
     }
 
     private fun checkNPI() {
         val provider = case<Document>("case", "Case", "OrderingProvider", "Provider")
         if (provider == null) {
-            caseIssue = caseIssue.copy(npi = listOf(IssueNPI(status = IssueNPI.Status.Unchecked)))
-            statusProblems += 1
-            statusValues["status.values.npi"] = Status("ERROR", "NPI not found").toDocument()
+            caseHist = caseHist.copy(npi = listOf(IssueNPI(status = IssueNPI.Status.Unchecked)))
         } else {
             val npi = provider<String>("npi")
             val originalNPI = IssueNPI(
@@ -277,17 +338,17 @@ internal class IssueCheckerAuto(
                     false -> IssueNPI.Status.Corrected
                 }
                 apiNPI.status = status
-                statusValues["status.values.npi"] = Status(status.name).toDocument()
 
             } catch (e: CheckingException) {
                 val status =
                     e.status as? IssueNPI.Status
                         ?: IssueNPI.Status.Error("Checking Error", e.message)
                 apiNPI.status = status
-                statusProblems += 1
-                statusValues["status.values.npi"] = Status(status.name, e.message).toDocument()
             }
-            caseIssue = caseIssue.copy(npi = listOf(originalNPI, apiNPI))
+            if (apiNPI.status?.passed != true) {
+                passed = false
+            }
+            caseHist = caseHist.copy(npi = listOf(originalNPI, apiNPI))
         }
     }
 
@@ -304,36 +365,32 @@ internal class IssueCheckerAuto(
         }
         if (issueEligibilityList.isNotEmpty()) {
             val eligibilityCheckContext = EligibilityCheckContext(payerLookup, patient, onHasResult)
-            val checkedEligibility = issueEligibilityList.map {
-                it.checkEligibility(eligibilityCheckContext)
+            val checkedEligibility =
+                issueEligibilityList.map { it.checkEligibility(eligibilityCheckContext) }
+            if (checkedEligibility.any { it.status?.passed != true }) {
+                passed = false
             }
-            caseIssue = caseIssue.copy(eligibility = issueEligibilityList + checkedEligibility)
-            if (checkedEligibility.any { it.status?.passed == false }) {
-                statusProblems += 1
-                statusValues["status.values.eligibility"] =
-                        Status("WARNING").toDocument()
+            caseHist = caseHist.copy().also {
+                it.eligibility = issueEligibilityList + checkedEligibility
             }
         } else {
-            caseIssue = caseIssue.copy(
-                eligibility = listOf(
+            caseHist = caseHist.copy().also {
+                it.eligibility = listOf(
                     IssueEligibility(
                         status = IssueEligibility.Status.Missing,
                         origin = "checking",
                         responsibility = ResponsibilityOrder.Primary.name
                     )
                 )
-            )
-            statusProblems += 1
-            statusValues["status.values.eligibility"] =
-                    Status("WARNING", "No Subscribers found").toDocument()
+            }
+            passed = false
         }
     }
 
     private fun checkAddress(subscriberAddress: IssueAddress?) {
         val person = case.findPatient()
         val history = mutableListOf<IssueAddress>()
-        var issue = IssueAddress(status = IssueAddress.Status.Unchecked)
-        var checkRes: IssueAddressCheckRes? = null
+        var issue = IssueAddress(status = IssueAddress.Status.Unchecked())
         try {
             if (person == null) throw CheckingException("Case Subscriber and Patient is null")
             issue.person = Person(
@@ -349,13 +406,13 @@ internal class IssueCheckerAuto(
             issue.city = person("city")
             issue.state = person("state")
 
-            history += issue.copy(status = IssueAddress.Status.Original)
+            history += issue.copy(status = IssueAddress.Status.Original())
 
             var hasProblems: Boolean
             try {
                 if (issue.address1.isNullOrBlank()) throw CheckingException("Address not found")
-                checkRes = checkIssueAddress(issue)
-                hasProblems = checkRes.hasProblems
+                checkIssueAddress(issue)
+                hasProblems = issue.status?.passed == false
             } catch (e: CheckingException) {
                 hasProblems = true
                 if (subscriberAddress == null) throw e
@@ -363,9 +420,9 @@ internal class IssueCheckerAuto(
             }
 
             if (hasProblems && subscriberAddress != null) {
-                history += subscriberAddress.copy(status = IssueAddress.Status.Corrected)
+                history += subscriberAddress.copy(status = IssueAddress.Status.Corrected(subscriberAddress.footnotes))
                 issue = subscriberAddress
-                checkRes = checkIssueAddress(issue)
+                checkIssueAddress(issue)
             }
 
         } catch (x: Throwable) {
@@ -377,13 +434,11 @@ internal class IssueCheckerAuto(
             val status = e.toStatus()
             issue.status = status
             issue.error = e.message
-            checkRes = IssueAddressCheckRes(
-                hasProblems = true,
-                status = Status(status.name, e.message)
-            )
         }
-        this += checkRes
-        caseIssue = caseIssue.copy(address = history + issue)
+        if (issue.status?.passed != true) {
+            passed = false
+        }
+        caseHist = caseHist.copy(address = history + issue)
     }
 
     private fun CheckingException.toStatus(): IssueAddress.Status =
@@ -534,8 +589,8 @@ private fun Subscriber.mergeFromPatient(context: EligibilityCheckContext) {
     }
 }
 
-private fun Document?.casePatient(): Person? =
-    this<Document>("case", "Case", "Patient")
+fun Document.casePatient(): Person? =
+    opt<Document>("case", "Case", "Patient")
         ?.let { patient ->
             Person(
                 firstName = patient("firstName"),
