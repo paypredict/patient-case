@@ -233,11 +233,10 @@ class CaseIssuesForm : Composite<Div>() {
         }
 
     private fun CaseAttr.openEligibilityDialog(selected: IssueEligibility) {
-        val readOnly = status?.passed == true
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
-            dialog += PatientEligibilityForm(readOnly).also { form ->
+            dialog += PatientEligibilityForm(readOnly = status?.value != "CHECKED").also { form ->
                 form.isPadding = false
                 form.width = "100%"
                 form.height = "100%"
@@ -286,16 +285,16 @@ class CaseIssuesForm : Composite<Div>() {
                     onValueChange?.invoke(this)
                     form.items = issuesEligibility.value
                 }
-                form.onPatientEligibilitySave = if (readOnly) null else { issue ->
+                form.onPatientEligibilitySave = { issue ->
                     addEligibilityIssue(issue, issue.status, "User Eligibility Saving")
                     onValueChange?.invoke(this)
                     form.items = issuesEligibility.value
                 }
-                form.onInsert = if (readOnly) null else { responsibility ->
+                form.onInsert = { responsibility ->
                     addEligibilityIssue(responsibility, message = "User Eligibility Saving")
                     form.items = issuesEligibility.value
                 }
-                form.onRemove = if (readOnly) null else { responsibility ->
+                form.onRemove = { responsibility ->
                     removeEligibilityIssue(responsibility)
                     form.items = issuesEligibility.value
                 }
@@ -351,11 +350,10 @@ class CaseIssuesForm : Composite<Div>() {
     }
 
     private fun CaseAttr.openAddressDialog(address: IssueAddress) {
-        val readOnly = status?.passed == true
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
-            dialog += AddressForm(readOnly).apply {
+            dialog += AddressForm(readOnly = status?.value != "CHECKED").apply {
                 setSizeFull()
                 isPadding = false
                 value = address
