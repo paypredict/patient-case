@@ -516,8 +516,9 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
     deepCopy().apply {
         var isPayerCheckable = false
         insurance?.run {
-            val payer = payerName?.let { context.payerLookup[it] }
-            zmPayerId = payer?.value
+            val payer: PayerId? = payerName?.let { context.payerLookup[it] }
+            zmPayerId = payer?._id
+            zmPayerName = payer?.payerName
             if (payer?.checkable == true) {
                 isPayerCheckable = true
             }

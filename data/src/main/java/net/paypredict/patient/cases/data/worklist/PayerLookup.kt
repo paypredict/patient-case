@@ -3,6 +3,7 @@ package net.paypredict.patient.cases.data.worklist
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.UpdateOptions
 import net.paypredict.patient.cases.mongo.*
+import net.paypredict.patient.cases.pokitdok.eligibility.PayersData
 import org.bson.Document
 
 /**
@@ -17,11 +18,25 @@ class PayerLookup {
         val filter = payerName.toPayerNameFilter()
         return usersCollection
             .find(filter)
-            .map { PayerId(value = it["payerId"] as? String, checkable = true) }
+            .map {
+                val _id = it["payerId"] as? String
+                PayerId(
+                    _id = _id,
+                    payerName = zirmedPayers[_id]?.payerName,
+                    checkable = true
+                )
+            }
             .firstOrNull()
             ?: systemCollection
                 .find(filter)
-                .map { PayerId(value = it["zmPayerId"] as? String, checkable = it.opt<Int>("try") == 1) }
+                .map {
+                    val _id = it["zmPayerId"] as? String
+                    PayerId(
+                        _id = _id,
+                        payerName = zirmedPayers[_id]?.payerName,
+                        checkable = it.opt<Int>("try") == 1
+                    )
+                }
                 .firstOrNull()
     }
 
@@ -42,7 +57,16 @@ class PayerLookup {
     companion object {
         private fun String.toPayerNameFilter(): Document =
             toLowerCase()._id()
+
+        private val zirmedPayers: Map<String, PayersData.ZirMedPayer> by lazy {
+            PayersData().zirmedPayers
+        }
+
     }
 }
 
-data class PayerId(val value: String?, val checkable: Boolean)
+data class PayerId(
+    val _id: String?,
+    val payerName: String?,
+    val checkable: Boolean
+)

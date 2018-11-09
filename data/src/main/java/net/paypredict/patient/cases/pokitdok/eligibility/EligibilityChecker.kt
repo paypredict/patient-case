@@ -171,7 +171,8 @@ private fun Any?.toWarning(): EligibilityCheckRes.Warning? =
 class PayersData {
     data class ZirMedPayer(
         override val _id: String,
-        val displayName: String
+        val displayName: String,
+        val payerName: String
     ) : Doc
 
     val zirmedPayers: Map<String, ZirMedPayer> by lazy {
@@ -180,7 +181,8 @@ class PayersData {
         ) { doc ->
             ZirMedPayer(
                 _id = doc["_id"] as String,
-                displayName = doc.opt<String>("displayName") ?: "???"
+                displayName = doc.opt<String>("displayName") ?: "???",
+                payerName = doc.opt<String>("Payer_Name") ?: "???"
             )
         }
     }

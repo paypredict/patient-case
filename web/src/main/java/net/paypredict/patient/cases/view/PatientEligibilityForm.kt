@@ -399,7 +399,7 @@ class PatientEligibilityForm(private val readOnly: Boolean = false) :
         val caseId = caseId ?: return
         val payerName = payerName ?: return
         val payerLookup = PayerLookup()
-        val oldPayerLookupId = payerLookup[payerName]?.value
+        val oldPayerLookupId = payerLookup[payerName]?._id
         payerLookup[payerName] = zmPayerId
         if (pokitDokPayerUpdated || zmPayerId != oldPayerLookupId) {
             payersRecheck.show(caseId, payerName, zmPayerId, onCasesUpdated)

@@ -54,7 +54,7 @@ class InsuranceForm(header: Component? = null, private val readOnly: Boolean = f
                 },
                 { insurance: Insurance, value ->
                     insurance.zmPayerId = value?.zmPayerId
-                    insurance.zmPayerName = value?.displayName
+                    insurance.zmPayerName = value?.payerName
                 }
             )
     }
@@ -127,7 +127,7 @@ class InsuranceForm(header: Component? = null, private val readOnly: Boolean = f
     val isPokitDokPayerNotAvailable: Boolean
         get() = pokitDokPayer.prefixComponent == payerNotAvailable
 
-    data class InsuranceItem(val zmPayerId: String, val displayName: String) {
+    data class InsuranceItem(val zmPayerId: String, val displayName: String, val payerName: String) {
         companion object
     }
 
@@ -148,7 +148,7 @@ class InsuranceForm(header: Component? = null, private val readOnly: Boolean = f
         InsuranceItem[payersData.zirmedPayers[zmPayerId]]
 
     private operator fun InsuranceItem.Companion.get(zirMedPayer: PayersData.ZirMedPayer?): InsuranceItem? =
-        zirMedPayer?.run { InsuranceItem(_id, displayName) }
+        zirMedPayer?.run { InsuranceItem(_id, displayName, payerName) }
 
     init {
         content.isPadding = false
@@ -165,7 +165,7 @@ class InsuranceForm(header: Component? = null, private val readOnly: Boolean = f
             this += Button("Find").apply {
                 isEnabled = !readOnly
                 addClickListener {
-                    val found = PayerLookup()[payerName.text]?.value
+                    val found = PayerLookup()[payerName.text]?._id
                     zmPayerId.value = InsuranceItem[found]
                 }
             }
