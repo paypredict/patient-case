@@ -281,7 +281,6 @@ data class IssueEligibility(
         object Original : Status("Original", false, IssuesStatus.Type.INFO)
         object Unchecked : Status("Unchecked", false, IssuesStatus.Type.WARN)
         object NotAvailable : Status("NotAvailable", true, IssuesStatus.Type.INFO)
-        object Corrected : Status("Corrected", true, IssuesStatus.Type.OK)
         object Confirmed : Status("Confirmed", true, IssuesStatus.Type.OK)
         class Problem(
             val error: String? = null,
@@ -308,7 +307,6 @@ data class IssueEligibility(
                     Unchecked -> -100
                     Original -> 0
                     NotAvailable -> 10
-                    Corrected -> 100
                     Confirmed -> 1000
                 }
         }
@@ -332,7 +330,6 @@ fun Document.toIssueEligibilityStatus(): IssueEligibility.Status? =
         IssueEligibility.Status.Original.name -> IssueEligibility.Status.Original
         IssueEligibility.Status.Unchecked.name -> IssueEligibility.Status.Unchecked
         IssueEligibility.Status.NotAvailable.name -> IssueEligibility.Status.NotAvailable
-        IssueEligibility.Status.Corrected.name -> IssueEligibility.Status.Corrected
         IssueEligibility.Status.Confirmed.name -> IssueEligibility.Status.Confirmed
         IssueEligibility.Status.Problem::class.java.simpleName -> IssueEligibility.Status.Problem(
             error = opt<String>("error"),
