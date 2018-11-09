@@ -50,8 +50,7 @@ object Import {
         override: Boolean = true,
         onNewFile: (digest: String) -> Unit = {}
     ): String? {
-        val fileAttributes = Files.readAttributes(xmlFile.toPath(), BasicFileAttributes::class.java)
-        val created = Date(fileAttributes.creationTime().toMillis())
+        val created = Date(xmlFile.created())
         if (skipByNameAndTime) {
             val filter = casesFileFilter(xmlFile.name, created)
             if (cases.count(filter, limitOne) > 0) return null
@@ -240,3 +239,9 @@ object Import {
         }
     }
 }
+
+fun File.created(): Long =
+    Files
+        .readAttributes<BasicFileAttributes>(toPath(), BasicFileAttributes::class.java)
+        .creationTime()
+        .toMillis()

@@ -10,6 +10,7 @@ import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.UsStreet
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
 import net.paypredict.patient.cases.data.cases.Import
+import net.paypredict.patient.cases.data.cases.created
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
@@ -51,15 +52,16 @@ private object ImportCasesAttempts {
             AtomicInteger(0)
         }.incrementAndGet()
     }
-
 }
 
 private fun DocumentMongoCollection.importCases(isInterrupted: () -> Boolean) {
+    val timeout: Long = timeOut().toEpochMilli()
     for (file in ordersSrcDir.walk()) {
         if (isInterrupted()) break
         if (!file.isFile) continue
-        if (ImportCasesAttempts[file] > ImportCasesAttempts.MAX) continue
         try {
+            if (file.created() < timeout) continue
+            if (ImportCasesAttempts[file] > ImportCasesAttempts.MAX) continue
             Import.importXmlFile(file, cases = this, skipByNameAndTime = true, override = false) { digest ->
                 val archiveFile = ordersArchiveFile(digest)
                 if (!archiveFile.exists())
@@ -96,14 +98,22 @@ private fun DocumentMongoCollection.checkCases(isInterrupted: () -> Boolean) {
     }
 }
 
+private val defaultTimeOut: LocalDateTime =
+    LocalDateTime.now() - Duration.ofDays(7)
+
+private fun timeOut(timeOutLDT: LocalDateTime = defaultTimeOut): Instant =
+    timeOutLDT
+        .atZone(ZoneId.systemDefault())
+        .toInstant()
+
 private fun DocumentMongoCollection.markTimeoutCases(
     isInterrupted: () -> Boolean,
-    timeOutDate: LocalDateTime = LocalDateTime.now() - Duration.ofDays(7)
+    timeOutLDT: LocalDateTime = defaultTimeOut
 ) {
-    val timeout = Date.from(timeOutDate.atZone(ZoneId.systemDefault()).toInstant())
+    val timeout: Date = Date.from(timeOut(timeOutLDT))
     val filter = doc {
         doc["status.value"] = "CHECKED"
-        doc["doc.created"] = doc { doc[`$lt`] = timeout }
+        doc["file.created"] = doc { doc[`$lt`] = timeout }
     }
     val items: List<Document> =
         find(filter)

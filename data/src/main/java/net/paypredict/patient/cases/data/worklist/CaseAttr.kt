@@ -22,7 +22,7 @@ data class CaseAttr(
     @set:Encode(DateToDateTimeBeanEncoder::class)
     @DataView(
         label = "Date.Time", order = 10,
-        docKey = "doc.created"
+        docKey = "file.created"
     )
     var date: Date? = null,
 
@@ -82,7 +82,7 @@ val CASE_ATTR_META_DATA_MAP: Map<String, MetaData<CaseAttr>> by lazy { metaDataM
 fun Document.toCaseAttr(): CaseAttr =
     CaseAttr(
         _id = get("_id").toString(),
-        date = opt<Date>("doc", "created"),
+        date = opt<Date>("file", "created"),
         accession = opt("case", "Case", "accessionNumber"),
         payerName = opt("attr", "insurancePrimary", "insurance", "payerName"),
         npi = opt<Document>("attr", "npi", "status")?.toIssueNPIStatus(),
