@@ -182,6 +182,7 @@ private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: Strin
                     out.updateSubscriber(issue)
                 }
                 IssueEligibility.Status.Confirmed -> {
+                    out.updateSubscriber(issue)
                     val eligibilityRes =
                         eligibilityCollection.toEligibilityCheckResPass(issue)?.result
                     if (eligibilityRes != null)
