@@ -541,14 +541,18 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
                     subscriber?.run {
                         checkRes.result.opt<Document>("data", "subscriber")
                             ?.also { res ->
-                                firstName = res("first_name")
-                                lastName = res("last_name")
-                                mi = res("middle_name")
-                                gender = res<String>("gender")?.capitalize()
-                                dob = res<String>("birth_date")?.convertDateTime(
-                                    EligibilityCheckRes.dateFormat,
-                                    Person.dateFormat
-                                )
+                                res<String>("first_name")?.ifValid { firstName = it }
+                                res<String>("last_name")?.ifValid { lastName = it }
+                                res<String>("middle_name")?.ifValid { mi = it }
+                                res<String>("gender")?.ifValid("Male", "Female") {
+                                    gender = it.capitalize()
+                                }
+                                res<String>("birth_date")?.ifValid {
+                                    dob = it.convertDateTime(
+                                        EligibilityCheckRes.dateFormat,
+                                        Person.dateFormat
+                                    )
+                                }
                             }
                     }
                     context.onHasResult?.invoke(this@checkEligibility, checkRes)
@@ -570,6 +574,12 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
             else -> IssueEligibility.Status.Unchecked
         }
     }
+
+private fun String.ifValid(vararg allowed: String, action: (String) -> Unit) {
+    if (isBlank()) return
+    if (allowed.isEmpty() || allowed.any { it.equals(this, ignoreCase = true) })
+        action(this)
+}
 
 private val reasonablePatientsDobYearsRange = 1901..LocalDate.now().year
 
