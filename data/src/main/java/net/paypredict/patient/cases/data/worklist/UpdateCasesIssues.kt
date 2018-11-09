@@ -55,7 +55,7 @@ private object ImportCasesAttempts {
 }
 
 private fun DocumentMongoCollection.importCases(isInterrupted: () -> Boolean) {
-    val timeout: Long = timeOut().toEpochMilli()
+    val timeout: Long = Import.Conf.timeOutDaysImport.toDaysBackLDT().toInstant().toEpochMilli()
     for (file in ordersSrcDir.walk()) {
         if (isInterrupted()) break
         if (!file.isFile) continue
@@ -98,19 +98,15 @@ private fun DocumentMongoCollection.checkCases(isInterrupted: () -> Boolean) {
     }
 }
 
-private val defaultTimeOut: LocalDateTime =
-    LocalDateTime.now() - Duration.ofDays(7)
+private fun Int.toDaysBackLDT(): LocalDateTime =
+    LocalDateTime.now() - Duration.ofDays(toLong())
 
-private fun timeOut(timeOutLDT: LocalDateTime = defaultTimeOut): Instant =
-    timeOutLDT
-        .atZone(ZoneId.systemDefault())
+private fun LocalDateTime.toInstant(): Instant =
+    atZone(ZoneId.systemDefault())
         .toInstant()
 
-private fun DocumentMongoCollection.markTimeoutCases(
-    isInterrupted: () -> Boolean,
-    timeOutLDT: LocalDateTime = defaultTimeOut
-) {
-    val timeout: Date = Date.from(timeOut(timeOutLDT))
+private fun DocumentMongoCollection.markTimeoutCases(isInterrupted: () -> Boolean) {
+    val timeout: Date = Date.from(Import.Conf.timeOutDaysMark.toDaysBackLDT().toInstant())
     val filter = doc {
         doc["status.value"] = "CHECKED"
         doc["file.created"] = doc { doc[`$lt`] = timeout }

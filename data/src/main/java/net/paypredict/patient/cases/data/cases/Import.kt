@@ -2,6 +2,7 @@ package net.paypredict.patient.cases.data.cases
 
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.CountOptions
+import net.paypredict.patient.cases.PatientCases.clientDir
 import net.paypredict.patient.cases.data.worklist.aName
 import net.paypredict.patient.cases.data.worklist.eName
 import net.paypredict.patient.cases.mongo.*
@@ -237,6 +238,16 @@ object Import {
             val _id = importXmlFile(xmlFile)
             println(" $_id")
         }
+    }
+
+    object Conf {
+        private val conf: Document by lazy {
+            val file = clientDir.resolve("conf").resolve("case.import.json")
+            if (file.exists()) Document.parse(file.readText()) else Document()
+        }
+
+        val timeOutDaysImport: Int by lazy { conf.opt<Int>("timeOutDaysImport") ?: 7 }
+        val timeOutDaysMark: Int by lazy { conf.opt<Int>("timeOutDaysMark") ?: 7 }
     }
 }
 
