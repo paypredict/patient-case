@@ -86,7 +86,7 @@ fun CaseHist.createOutXml() {
             )
     }
 
-    makeFixedCopies(fileName)
+    srcFile.makeFixedCopies(fileName)
     makeTestCopy(fileName)
 }
 
@@ -97,8 +97,8 @@ private val fixedOutDir: File by lazy {
     ordersDir.resolve("out-fixed").apply { mkdir() }
 }
 
-private fun makeFixedCopies(fileName: String) {
-    ordersSrcDir.resolve(fileName).makeFixedCopy(fixedSrcDir.resolve(fileName))
+private fun File.makeFixedCopies(fileName: String) {
+    makeFixedCopy(fixedSrcDir.resolve(fileName))
     ordersOutDir.resolve(fileName).makeFixedCopy(fixedOutDir.resolve(fileName))
 }
 
