@@ -123,7 +123,7 @@ private fun CaseHist.toEligibilityAttr(): IssueEligibility? =
     listOf(insurancePrimary, insuranceSecondary, insuranceTertiary)
         .mapNotNull { it.lastOrNull() }
         .sortedBy { it.status }
-        .lastOrNull()
+        .firstOrNull()
 
 interface IssueItem<S : IssuesStatus> {
     var status: S?
