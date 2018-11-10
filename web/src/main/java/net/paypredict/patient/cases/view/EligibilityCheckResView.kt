@@ -33,12 +33,12 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
     class TabPage(val tab: Tab, val page: Component)
 
     private val tabs = Tabs().apply {
-        addSelectedChangeListener { _ ->
+        addSelectedChangeListener {
             val tab = selectedTab
             pages.removeAll()
-            tabPageList.forEach {
-                if (it.tab === tab) {
-                    pages += it.page
+            tabPageList.forEach { tabPage ->
+                if (tabPage.tab === tab) {
+                    pages += tabPage.page
                 }
             }
         }
@@ -113,6 +113,7 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
             is EligibilityCheckRes.Pass -> showPass(this)
             is EligibilityCheckRes.Warn -> showWarn(this)
             is EligibilityCheckRes.Error -> showError(this)
+            EligibilityCheckRes.NotAvailable -> showError(null)
             null -> showError(null)
         }
     }
@@ -137,7 +138,7 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
 
     private fun showError(res: EligibilityCheckRes.Error?) {
         errPages.showPages()
-        errPage.rawText = res?.message ?: "Eligibility Check Error"
+        errPage.rawText = res?.message ?: "Eligibility Not Available"
     }
 
     private var Div.rawText: String

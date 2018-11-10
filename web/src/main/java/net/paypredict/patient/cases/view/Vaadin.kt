@@ -7,7 +7,6 @@ import com.vaadin.flow.component.UI
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.data.renderer.Renderer
 import com.vaadin.flow.data.renderer.TemplateRenderer
-import kotlin.coroutines.experimental.buildSequence
 
 /**
  * <p>
@@ -19,7 +18,7 @@ operator fun HasComponents.plusAssign(value: Component) {
 }
 
 val HasOrderedComponents<*>.components: Sequence<Component>
-    get() = buildSequence {
+    get() = sequence {
         for (i in 0 until componentCount) {
             yield(getComponentAt(i))
         }

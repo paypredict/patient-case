@@ -19,7 +19,6 @@ import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
-import kotlin.coroutines.experimental.buildSequence
 
 /**
  * <p>
@@ -39,7 +38,7 @@ val ordersOutDir: File by lazy {
     ordersDir.resolve("out").apply { mkdir() }
 }
 
-fun ordersArchiveFile(digest: String): File=
+fun ordersArchiveFile(digest: String): File =
     ordersArchiveDir
         .resolve(digest.take(4)).apply { mkdir() }
         .resolve(digest)
@@ -187,6 +186,12 @@ private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: Strin
                         eligibilityCollection.toEligibilityCheckResPass(issue)?.result
                     if (eligibilityRes != null)
                         out.updateSubscriber(eligibilityRes)
+                }
+
+                IssueEligibility.Status.Missing,
+                IssueEligibility.Status.Original,
+                is IssueEligibility.Status.Problem,
+                null -> {
                 }
             }
         }
@@ -451,7 +456,7 @@ private fun MongoCollection<Document>.toEligibilityCheckResPass(issue: IssueElig
     toEligibilityCheckRes(issue) as? EligibilityCheckRes.Pass
 
 
-private fun NodeList.toSequence(): Sequence<Node> = buildSequence {
+private fun NodeList.toSequence(): Sequence<Node> = sequence {
     for (i in 0 until length) {
         yield(item(i))
     }
