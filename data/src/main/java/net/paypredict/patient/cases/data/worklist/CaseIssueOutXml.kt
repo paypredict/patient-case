@@ -49,13 +49,12 @@ private val documentBuilderFactory: DocumentBuilderFactory by lazy { DocumentBui
 private val transformerFactory: TransformerFactory by lazy { TransformerFactory.newInstance() }
 
 fun CaseHist.createOutXml() {
-    val id = _id ?: throw CaseDataException("CaseHist._id required")
-    val case: Document = DBS.Collections.cases().find(id._id()).firstOrNull()
-        ?: throw CaseDataException("document $id not found in collection cases")
+    val case: Document = DBS.Collections.cases().find(_id._id()).firstOrNull()
+        ?: throw CaseDataException("document $_id not found in collection cases")
     val fileName: String = case.opt("file", "name")
-        ?: throw CaseDataException("file.name not found in collection cases $id")
+        ?: throw CaseDataException("file.name not found in collection cases $_id")
 
-    val srcFile = ordersArchiveFile(id).also {
+    val srcFile = ordersArchiveFile(_id).also {
         if (!it.isFile) throw CaseDataException("Orders Archive File $it not found")
     }
     val outFile = ordersOutDir.resolve(fileName).also {

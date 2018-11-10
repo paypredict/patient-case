@@ -137,8 +137,7 @@ val CaseAttr.isCheckedOnly: Boolean
     get() = status?.isCheckedOnly ?: false
 
 
-fun CaseAttr.resolve() {
-    val cases = DBS.Collections.cases()
+fun CaseAttr.resolve(cases: DocumentMongoCollection = DBS.Collections.cases()) {
     cases
         .find(_id._id())
         .firstOrNull()
@@ -146,8 +145,9 @@ fun CaseAttr.resolve() {
         ?.apply {
             update(
                 context = UpdateContext(
-                    cases = cases,
-                    message = "resolved"
+                    source = ".user",
+                    action = "case.resolve",
+                    cases = cases
                 ),
                 status = (status ?: CaseStatus()).copy(resolved = true)
             )

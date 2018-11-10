@@ -36,7 +36,7 @@ object UpdateEligibilitySum {
                     .forEach { issue ->
                         issue.eligibility?._id()?.also { filter ->
                             val caseId = casesIssue._id
-                            val caseAcn = caseId?.let { accessionById[it] }
+                            val caseAcn = accessionById[caseId]
                             val zmPayerId = issue.insurance?.zmPayerId
                             println("$caseAcn / $caseId / $zmPayerId")
                             executorService.submit {

@@ -8,6 +8,8 @@ import net.paypredict.patient.cases.VaadinBean
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
+import net.paypredict.patient.cases.data.cases.insert
+import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.metaDataMap
 import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
@@ -24,7 +26,7 @@ import java.util.*
 @VaadinBean
 data class CaseHist(
     @DataView("_id", isVisible = false)
-    val _id: String? = null,
+    val _id: String,
 
     @DataView(label = "Accession", isVisible = false)
     var accession: String? = null,
@@ -75,14 +77,19 @@ var CaseHist.eligibility: List<IssueEligibility>
     }
 
 class UpdateContext(
+    val source: String,
+    val action: String,
     val cases: MongoCollection<Document> = DBS.Collections.cases(),
     val casesLog: MongoCollection<Document> = DBS.Collections.casesLog(),
     val message: String? = null,
     val user: String? = null
 )
 
-fun CaseHist.update(context: UpdateContext = UpdateContext(), status: CaseStatus? = null) {
-    val filter = _id!!._id()
+fun CaseHist.update(
+    context: UpdateContext,
+    status: CaseStatus? = null
+) {
+    val filter = _id._id()
     context.cases.upsertOne(filter, doc {
         self[`$set`] = doc {
             self["hist.npi"] = npi.map { it.toDocument() }
@@ -107,16 +114,14 @@ fun CaseHist.update(context: UpdateContext = UpdateContext(), status: CaseStatus
             self["doc.updated"] = Date()
         }
     })
-    context.casesLog.insertOne(doc {
-        self["time"] = Date()
-        self["id"] = _id
-        self["accession"] = accession
-        self["message"] = context.message
-        self["user"] = context.user
-        if (status != null) {
-            self["status"] = status.toDocument()
-        }
-    })
+
+    toCasesLog(
+        source = context.source,
+        action = context.action,
+        message = context.message,
+        user = context.user,
+        status = status
+    ).insert(context.casesLog)
 }
 
 private fun CaseHist.toEligibilityAttr(): IssueEligibility? =
@@ -339,9 +344,7 @@ fun Document.toIssueEligibilityStatus(): IssueEligibility.Status? =
     }
 
 enum class ResponsibilityOrder {
-    Primary, Secondary, Tertiary,
-    Quaternary, Quinary, Senary,
-    Septenary, Octonary, Nonary, Denary
+    Primary, Secondary, Tertiary
 }
 
 /**
@@ -505,7 +508,7 @@ data class IssueAddress(
         override val name: String,
         override val passed: Boolean,
         override val type: IssuesStatus.Type,
-        private val footnotes: String? = null
+        val footnotes: String? = null
     ) :
         IssuesStatusExt {
         class Missing(footnotes: String? = null) : Status("Missing", false, IssuesStatus.Type.WARN, footnotes)

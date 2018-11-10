@@ -581,7 +581,13 @@ private class PayersRecheck : HorizontalLayout() {
                     }
                     .toList()
             item.caseHist.eligibility += checked
-            item.caseHist.update(UpdateContext(message = "Recheck related issues"))
+            item.caseHist.update(
+                UpdateContext(
+                    source = ".user",
+                    action = "hist.eligibility.add rechecked",
+                    message = "Recheck related issues"
+                )
+            )
         }
         onRecheckFinished?.invoke()
     }
@@ -609,7 +615,7 @@ private class PayersRecheck : HorizontalLayout() {
                     .forEach { eligibilityList: List<IssueEligibility> ->
                         eligibilityList.lastOrNull()?.let { it: IssueEligibility ->
                             items
-                                .getOrPut(case._id!!) { Item(case, zmPayerId) }
+                                .getOrPut(case._id) { Item(case, zmPayerId) }
                                 .eligibilityList += it
                         }
                     }

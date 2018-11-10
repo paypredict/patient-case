@@ -123,6 +123,8 @@ private fun DocumentMongoCollection.markTimeoutCases(isInterrupted: () -> Boolea
             ?.run {
                 update(
                     context = UpdateContext(
+                        source = ".system",
+                        action = "case.markTimeout",
                         cases = this@markTimeoutCases,
                         message = "timeout"
                     ),
@@ -147,6 +149,8 @@ private fun DocumentMongoCollection.sendCases(isInterrupted: () -> Boolean) {
                 createOutXml()
                 update(
                     context = UpdateContext(
+                        source = ".system",
+                        action = "case.send",
                         cases = this@sendCases,
                         message = "sent"
                     ),
@@ -277,15 +281,19 @@ internal class IssueCheckerAuto(
                 .mapNotNull { hasResultByResponsibilityMap[it.name]?.findSubscriberAddress() }
                 .firstOrNull())
 
-        caseHist.update(
-            UpdateContext(
-                cases = cases,
-                message = "Checking"
-            ),
-            status = status.copy(
+        val statusRes =
+            status.copy(
                 checked = true,
                 passed = passed
             )
+        caseHist.update(
+            UpdateContext(
+                source = ".system",
+                action = "case.check",
+                cases = cases,
+                message = statusRes.value
+            ),
+            status = statusRes
         )
         return passed
     }

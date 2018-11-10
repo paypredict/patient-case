@@ -240,7 +240,7 @@ class CaseIssuesForm : Composite<Div>() {
                             addEligibilityIssue(
                                 issue,
                                 IssueEligibility.Status.Confirmed,
-                                "User Eligibility Checking"
+                                "onPatientEligibilityChecked: Confirmed"
                             )
                         }
                         is EligibilityCheckRes.Warn -> {
@@ -250,21 +250,21 @@ class CaseIssuesForm : Composite<Div>() {
                                 IssueEligibility.Status.Problem(
                                     "Problem With Eligibility",
                                     res.warnings.joinToString { it.message }),
-                                "User Checking"
+                                "onPatientEligibilityChecked: Problem"
                             )
                         }
                         EligibilityCheckRes.NotAvailable -> {
                             addEligibilityIssue(
                                 issue,
                                 IssueEligibility.Status.NotAvailable,
-                                "User Eligibility Checking"
+                                "onPatientEligibilityChecked: NotAvailable"
                             )
                         }
                         is EligibilityCheckRes.Error -> {
                             addEligibilityIssue(
                                 issue,
                                 IssueEligibility.Status.Problem("Checking Error", res.message),
-                                "User Checking"
+                                "onPatientEligibilityChecked: Problem"
                             )
                             showError(res.message)
                         }
@@ -273,16 +273,16 @@ class CaseIssuesForm : Composite<Div>() {
                     form.items = issuesEligibility.value
                 }
                 form.onPatientEligibilitySave = { issue ->
-                    addEligibilityIssue(issue, issue.status, "User Eligibility Saving")
+                    addEligibilityIssue(issue, issue.status, "onPatientEligibilitySave")
                     onValueChange?.invoke(this)
                     form.items = issuesEligibility.value
                 }
                 form.onInsert = { responsibility ->
-                    addEligibilityIssue(responsibility, message = "User Eligibility Saving")
+                    addEligibilityIssue(responsibility, message = "onInsert")
                     form.items = issuesEligibility.value
                 }
                 form.onRemove = { responsibility ->
-                    removeEligibilityIssue(responsibility)
+                    removeEligibilityIssue(responsibility, "onRemove")
                     form.items = issuesEligibility.value
                 }
             }
@@ -291,6 +291,9 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
+    private fun IssueAddress.formatStatus(): String =
+        status?.run { "$name ${footnotes ?: ""}".trim() } ?: "invalid status"
+
     private fun EligibilityCheckRes.HasResult.fixAddress() {
         val caseStatus = value ?: return
         val caseId = caseStatus._id
@@ -298,9 +301,15 @@ class CaseIssuesForm : Composite<Div>() {
         fun addAddress() {
             findSubscriberAddress()
                 ?.also { issueAddress ->
-                    caseStatus.addAddressIssue(issueAddress.copy(status = IssueAddress.Status.Unchecked()))
+                    caseStatus.addAddressIssue(
+                        issueAddress.copy(status = IssueAddress.Status.Unchecked()),
+                        message = "fixAddress: Unchecked"
+                    )
                     IssueChecker().checkIssueAddressAndUpdateStatus(issueAddress)
-                    caseStatus.addAddressIssue(issueAddress)
+                    caseStatus.addAddressIssue(
+                        issueAddress,
+                        message = "fixAddress: " + issueAddress.formatStatus()
+                    )
                 }
         }
 
@@ -322,17 +331,32 @@ class CaseIssuesForm : Composite<Div>() {
         val caseHist: CaseHist = cases.find(byId).first().toCaseHist()
         val new = issue.copy(status = statusValue)
         caseHist.eligibility += new
-        caseHist.update(UpdateContext(message = message))
+        caseHist.update(
+            UpdateContext(
+                source = ".user",
+                action = "hist.eligibility.add",
+                message = message
+            )
+        )
         issuesEligibility.value = caseHist.eligibility
         value?.eligibility = new.status
     }
 
-    private fun CaseAttr.removeEligibilityIssue(predicate: (IssueEligibility) -> Boolean) {
+    private fun CaseAttr.removeEligibilityIssue(
+        predicate: (IssueEligibility) -> Boolean,
+        message: String
+    ) {
         val cases = DBS.Collections.cases()
         val byId = Document("_id", _id)
         val caseHist: CaseHist = cases.find(byId).first().toCaseHist()
         caseHist.eligibility = caseHist.eligibility.filterNot(predicate)
-        caseHist.update(UpdateContext(message = "Remove Insurance Record"))
+        caseHist.update(
+            UpdateContext(
+                source = ".user",
+                action = "hist.eligibility.remove",
+                message = message
+            )
+        )
         issuesEligibility.value = caseHist.eligibility
     }
 
@@ -374,22 +398,37 @@ class CaseIssuesForm : Composite<Div>() {
             IssueChecker()
                 .checkIssueAddressAndUpdateStatus(issueCopy)
             value = issueCopy
-            this@CaseIssuesForm.value?.addAddressIssue(issueCopy, issueCopy.status)
+            this@CaseIssuesForm.value?.addAddressIssue(
+                issueCopy,
+                issueCopy.status,
+                "checkAddress: " + issueCopy.formatStatus()
+            )
         } catch (e: CheckingException) {
             showError(e.message)
             this@CaseIssuesForm.value?.addAddressIssue(
                 issueCopy,
-                IssueAddress.Status.Error("Checking Error", e.message)
+                IssueAddress.Status.Error("Checking Error", e.message),
+                "checkAddress: Error (" + issueCopy.formatStatus() + ")"
             )
         }
     }
 
-    private fun CaseAttr.addAddressIssue(issue: IssueAddress, statusValue: IssueAddress.Status? = issue.status) {
+    private fun CaseAttr.addAddressIssue(
+        issue: IssueAddress,
+        statusValue: IssueAddress.Status? = issue.status,
+        message: String
+    ) {
         val cases = DBS.Collections.cases()
         val byId = Document("_id", _id)
         val caseHist: CaseHist = cases.find(byId).first().toCaseHist()
         caseHist.address += issue.copy(status = statusValue)
-        caseHist.update(UpdateContext(message = "User Update Address"))
+        caseHist.update(
+            UpdateContext(
+                source = ".user",
+                action = "hist.address.add",
+                message = message
+            )
+        )
         issuesAddress.value = caseHist.address
         value?.address = statusValue
         onValueChange?.invoke(value)
