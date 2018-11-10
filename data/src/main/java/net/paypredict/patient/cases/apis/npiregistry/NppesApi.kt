@@ -35,11 +35,11 @@ object NpiRegistry {
         val text = connection.inputStream.reader().readText()
         val response = Document.parse(text)
         DBS.Collections.npiRegistry().updateOne(doc {
-            doc["_id"] = npi
+            self["_id"] = npi
         }, doc {
-            doc[`$set`] = doc {
-                doc["response"] = response
-                doc["updated"] = Date()
+            self[`$set`] = doc {
+                self["response"] = response
+                self["updated"] = Date()
             }
         }, UpdateOptions().upsert(true))
 

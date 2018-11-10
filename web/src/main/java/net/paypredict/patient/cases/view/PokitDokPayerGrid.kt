@@ -64,10 +64,10 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
         doc {
             val expr = doc(builder)
             if (expr.isEmpty())
-                doc["data.supported_transactions"] = "270" else
-                doc[`$and`] = listOf(
+                self["data.supported_transactions"] = "270" else
+                self[`$and`] = listOf(
                     expr,
-                    doc { doc["data.supported_transactions"] = "270" }
+                    doc { self["data.supported_transactions"] = "270" }
                 )
         }
 
@@ -93,7 +93,7 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
                     addValueChangeListener {
                         filter = filterDoc {
                             if (!value.isNullOrBlank())
-                                doc[`$text`] = doc { doc[`$search`] = value }
+                                self[`$text`] = doc { self[`$search`] = value }
                         }
                         content.scrollTo(0)
                         updateDataProvider()
@@ -125,15 +125,15 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
     companion object {
         private val projectionName: Document by lazy {
             doc {
-                doc["data.name"] = 1
-                doc["data.payer_id"] = 1
+                self["data.name"] = 1
+                self["data.payer_id"] = 1
             }
         }
         private val projectionScore: Document by lazy {
             doc {
-                doc["data.name"] = 1
-                doc["data.payer_id"] = 1
-                doc["score"] = doc { doc[`$meta`] = "textScore" }
+                self["data.name"] = 1
+                self["data.payer_id"] = 1
+                self["score"] = doc { self[`$meta`] = "textScore" }
             }
         }
 
@@ -142,8 +142,8 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
 
         private fun collection(): MongoCollection<Document> =
             DBS.Collections.tradingPartners().apply {
-                createIndex(doc { doc["data.name"] = "text" })
-                createIndex(doc { doc["data.supported_transactions"] = 1 })
+                createIndex(doc { self["data.name"] = "text" })
+                createIndex(doc { self["data.supported_transactions"] = 1 })
             }
 
         private fun Document.toTradingPartnerItem(): TradingPartnerItem =
@@ -157,8 +157,8 @@ class PokitDokPayerGrid : Composite<Grid<TradingPartnerItem>>() {
             if (sortOrders.isEmpty()) {
                 if (filter.isEmpty()) return null
                 return doc {
-                    doc["score"] = doc {
-                        doc[`$meta`] = "textScore"
+                    self["score"] = doc {
+                        self[`$meta`] = "textScore"
                     }
                 }
             }

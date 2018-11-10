@@ -79,8 +79,8 @@ inline fun DocumentMongoCollection.upsertOne(
     onCreate: (filter: Bson) -> Unit = {}
 ) =
     upsertOne(filter, doc {
-        doc[`$set`] = doc {
-            fields.forEach { doc[it.first] = it.second }
+        self[`$set`] = doc {
+            fields.forEach { self[it.first] = it.second }
         }
     }, onCreate)
 
@@ -107,9 +107,9 @@ fun String._id() = Document("_id", this)
 
 fun Throwable.toDocument(): Document =
     doc {
-        doc["message"] = message
-        doc["class"] = this@toDocument.javaClass.name
-        doc["stackTrace"] = StringWriter()
+        self["message"] = message
+        self["class"] = this@toDocument.javaClass.name
+        self["stackTrace"] = StringWriter()
             .also { str -> PrintWriter(str).use { printStackTrace(it) } }
             .toString()
     }
@@ -152,14 +152,20 @@ inline fun <reified T> Document.opt(vararg path: String): T? {
 inline operator fun <reified T> Document?.invoke(vararg path: String): T? =
     this?.opt(*path)
 
-class DocBuilder(val doc: Document) {
-    fun opt(key: String, value: Any?) {
-        if (value != null) doc[key] = value
+@DslMarker
+annotation class DslDocMarker
+
+@DslDocMarker
+class DocBuilder(val self: Document) {
+    /** Set If Not Null */
+    fun sinn(key: String, value: Any?) {
+        if (value != null) self[key] = value
     }
 }
 
-fun doc(builder: DocBuilder.() -> Unit = {}): Document =
-    DocBuilder(Document()).apply(builder).doc
+
+inline fun doc(builder: DocBuilder.() -> Unit = {}): Document =
+    DocBuilder(Document()).apply(builder).self
 
 
 private object Conf {

@@ -44,7 +44,7 @@ class PayerLookup {
         usersCollection.updateOne(
             payerName.toPayerNameFilter(),
             doc {
-                doc[`$set`] = doc { doc["payerId"] = payerId }
+                self[`$set`] = doc { self["payerId"] = payerId }
             },
             UpdateOptions().upsert(true)
         )

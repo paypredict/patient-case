@@ -104,12 +104,12 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
         filter = when {
             viewOnlyUnresolved ->
                 doc {
-                    doc[`$and`] = listOf(
-                        doc { doc["status.value"] = "CHECKED" }
+                    self[`$and`] = listOf(
+                        doc { self["status.value"] = "CHECKED" }
                     )
                 }
             else ->
-                doc { doc["status.checked"] = true }
+                doc { self["status.checked"] = true }
         }
         refresh()
     }
@@ -158,14 +158,14 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
         private val projection =
             doc {
                 for (metaData in CASE_ATTR_META_DATA_MAP.values) {
-                    metaData.view.ifHasDocKey { doc[it] = 1 }
+                    metaData.view.ifHasDocKey { self[it] = 1 }
                 }
             }
 
         private fun collection() = cases().apply {
             for (metaData in CASE_ATTR_META_DATA_MAP.values) {
                 metaData.view.ifHasDocKey { docKey ->
-                    createIndex(doc { doc[docKey] = 1 })
+                    createIndex(doc { self[docKey] = 1 })
                 }
             }
         }
@@ -178,7 +178,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
             return doc {
                 sortOrders.forEach { sortOrder: QuerySortOrder ->
                     CASE_ATTR_META_DATA_MAP[sortOrder.sorted]?.view?.ifSortable { sortKey ->
-                        doc[sortKey] = when (sortOrder.direction) {
+                        self[sortKey] = when (sortOrder.direction) {
                             null,
                             SortDirection.ASCENDING -> 1
                             SortDirection.DESCENDING -> -1

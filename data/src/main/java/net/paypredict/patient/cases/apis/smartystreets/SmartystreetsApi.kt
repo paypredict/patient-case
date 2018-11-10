@@ -57,15 +57,15 @@ class UsStreet(private val autoRetryWithInvalid: Boolean = true) {
         }
 
         val meta = doc {
-            doc["time"] = Date()
+            self["time"] = Date()
         }
 
         fun updateCache0() {
             collection.updateOne(id._id(), doc {
-                doc[`$set`] = doc {
-                    doc["meta"] = meta
-                    doc["lookup"] = Document.parse(lookupJson)
-                    doc["result"] = (lookup.result ?: emptyList<Candidate>()).map {
+                self[`$set`] = doc {
+                    self["meta"] = meta
+                    self["lookup"] = Document.parse(lookupJson)
+                    self["result"] = (lookup.result ?: emptyList<Candidate>()).map {
                         Document.parse(jacksonFactory.toString(it))
                     }
                 }

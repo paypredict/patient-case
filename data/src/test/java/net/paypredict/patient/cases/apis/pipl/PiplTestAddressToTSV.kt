@@ -22,8 +22,8 @@ object PiplTestAddressToTSV {
                 .getCollection("piplTestAddress")
                 .find()
                 .projection(doc {
-                    doc["line"] = 1
-                    doc["response.warnings"] = 1
+                    self["line"] = 1
+                    self["response.warnings"] = 1
                 })
                 .forEach { doc ->
                     out.append(doc.opt<String>("line")).append('\t')

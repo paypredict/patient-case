@@ -84,37 +84,37 @@ class UpdateContext(
 fun CaseHist.update(context: UpdateContext = UpdateContext(), status: CaseStatus? = null) {
     val filter = _id!!._id()
     context.cases.upsertOne(filter, doc {
-        doc[`$set`] = doc {
-            doc["hist.npi"] = npi.map { it.toDocument() }
-            doc["hist.insurancePrimary"] = insurancePrimary.map { it.toDocument() }
-            doc["hist.insuranceSecondary"] = insuranceSecondary.map { it.toDocument() }
-            doc["hist.insuranceTertiary"] = insuranceTertiary.map { it.toDocument() }
-            doc["hist.address"] = address.map { it.toDocument() }
-            doc["hist.expert"] = expert.map { it.toDocument() }
+        self[`$set`] = doc {
+            self["hist.npi"] = npi.map { it.toDocument() }
+            self["hist.insurancePrimary"] = insurancePrimary.map { it.toDocument() }
+            self["hist.insuranceSecondary"] = insuranceSecondary.map { it.toDocument() }
+            self["hist.insuranceTertiary"] = insuranceTertiary.map { it.toDocument() }
+            self["hist.address"] = address.map { it.toDocument() }
+            self["hist.expert"] = expert.map { it.toDocument() }
 
-            doc["attr.npi"] = npi.lastOrNull()?.toDocument()
-            doc["attr.insurancePrimary"] = insurancePrimary.lastOrNull()?.toDocument()
-            doc["attr.insuranceSecondary"] = insuranceSecondary.lastOrNull()?.toDocument()
-            doc["attr.insuranceTertiary"] = insuranceTertiary.lastOrNull()?.toDocument()
-            doc["attr.eligibility"] = toEligibilityAttr()?.toDocument()
-            doc["attr.address"] = address.lastOrNull()?.toDocument()
-            doc["attr.expert"] = expert.lastOrNull()?.toDocument()
+            self["attr.npi"] = npi.lastOrNull()?.toDocument()
+            self["attr.insurancePrimary"] = insurancePrimary.lastOrNull()?.toDocument()
+            self["attr.insuranceSecondary"] = insuranceSecondary.lastOrNull()?.toDocument()
+            self["attr.insuranceTertiary"] = insuranceTertiary.lastOrNull()?.toDocument()
+            self["attr.eligibility"] = toEligibilityAttr()?.toDocument()
+            self["attr.address"] = address.lastOrNull()?.toDocument()
+            self["attr.expert"] = expert.lastOrNull()?.toDocument()
 
             if (status != null) {
-                doc["status"] = status.toDocument()
+                self["status"] = status.toDocument()
             }
 
-            doc["doc.updated"] = Date()
+            self["doc.updated"] = Date()
         }
     })
     context.casesLog.insertOne(doc {
-        doc["time"] = Date()
-        doc["id"] = _id
-        doc["accession"] = accession
-        doc["message"] = context.message
-        doc["user"] = context.user
+        self["time"] = Date()
+        self["id"] = _id
+        self["accession"] = accession
+        self["message"] = context.message
+        self["user"] = context.user
         if (status != null) {
-            doc["status"] = status.toDocument()
+            self["status"] = status.toDocument()
         }
     })
 }
@@ -153,11 +153,11 @@ fun IssuesStatus.toDocument(): Document = doc {
     val status = this@toDocument
     if (status is IssuesStatusExt) {
         status.ext.forEach { key, value ->
-            doc[key] = value
+            self[key] = value
         }
     }
-    doc["name"] = name
-    doc["passed"] = passed
+    self["name"] = name
+    self["passed"] = passed
 }
 
 fun <T : IssueItem<S>, S : IssuesStatus> List<T>.findPassed(): T? =
@@ -674,10 +674,10 @@ fun Document.toIssueNPI(): IssueNPI =
     )
 
 fun IssueNPI.toDocument(): Document = doc {
-    doc["status"] = status?.toDocument()
-    doc["npi"] = npi
-    doc["name"] = name?.toDocument()
-    opt("taxonomies", taxonomies.map { it.toDocument() })
+    self["status"] = status?.toDocument()
+    self["npi"] = npi
+    self["name"] = name?.toDocument()
+    sinn("taxonomies", taxonomies.map { it.toDocument() })
 }
 
 
@@ -691,11 +691,11 @@ fun Document.toTaxonomy(): IssueNPI.Taxonomy =
     )
 
 fun IssueNPI.Taxonomy.toDocument(): Document = doc {
-    opt("primary", primary)
-    opt("code", code)
-    opt("license", license)
-    opt("desc", desc)
-    opt("state", state)
+    sinn("primary", primary)
+    sinn("code", code)
+    sinn("license", license)
+    sinn("desc", desc)
+    sinn("state", state)
 }
 
 
@@ -711,22 +711,22 @@ private fun Document.toIssueEligibility(): IssueEligibility =
     )
 
 fun IssueEligibility.toDocument(): Document = doc {
-    doc["status"] = status?.toDocument()
-    doc["origin"] = origin
-    doc["responsibility"] = responsibility
-    doc["insurance"] = insurance?.toDocument()
-    doc["subscriber"] = subscriber?.toDocument()
-    doc["eligibility"] = eligibility
-    doc["subscriberRaw"] = subscriberRaw.toSubscriberRawDocument()
+    self["status"] = status?.toDocument()
+    self["origin"] = origin
+    self["responsibility"] = responsibility
+    self["insurance"] = insurance?.toDocument()
+    self["subscriber"] = subscriber?.toDocument()
+    self["eligibility"] = eligibility
+    self["subscriberRaw"] = subscriberRaw.toSubscriberRawDocument()
 }
 
 private fun Insurance.toDocument(): Document = doc {
-    doc["typeCode"] = typeCode
-    doc["payerId"] = payerId
-    doc["planCode"] = planCode
-    doc["payerName"] = payerName
-    doc["zmPayerId"] = zmPayerId
-    doc["zmPayerName"] = zmPayerName
+    self["typeCode"] = typeCode
+    self["payerId"] = payerId
+    self["planCode"] = planCode
+    self["payerName"] = payerName
+    self["zmPayerId"] = zmPayerId
+    self["zmPayerName"] = zmPayerName
 }
 
 private fun Document.toInsurance(): Insurance =
@@ -753,15 +753,15 @@ private fun Document.toSubscriber(): Subscriber =
     )
 
 private fun Subscriber.toDocument(): Document = doc {
-    doc["firstName"] = firstName
-    doc["lastName"] = lastName
-    opt("mi", mi)
-    opt("gender", gender)
-    opt("dob", dob)
-    opt("groupName", groupName)
-    opt("groupId", groupId)
-    opt("relationshipCode", relationshipCode)
-    doc["policyNumber"] = policyNumber
+    self["firstName"] = firstName
+    self["lastName"] = lastName
+    sinn("mi", mi)
+    sinn("gender", gender)
+    sinn("dob", dob)
+    sinn("groupName", groupName)
+    sinn("groupId", groupId)
+    sinn("relationshipCode", relationshipCode)
+    self["policyNumber"] = policyNumber
 }
 
 fun Document.toSubscriberRaw(): Map<String, String> =
@@ -786,11 +786,11 @@ fun Document.toPerson(): Person =
     )
 
 fun Person.toDocument(): Document = doc {
-    doc["firstName"] = firstName
-    doc["lastName"] = lastName
-    opt("mi", mi)
-    opt("gender", gender)
-    opt("dob", dob)
+    self["firstName"] = firstName
+    self["lastName"] = lastName
+    sinn("mi", mi)
+    sinn("gender", gender)
+    sinn("dob", dob)
 }
 
 private fun Document.toIssueAddress(): IssueAddress =
@@ -806,14 +806,14 @@ private fun Document.toIssueAddress(): IssueAddress =
     )
 
 fun IssueAddress.toDocument(): Document = doc {
-    doc["status"] = status?.toDocument()
-    doc["address1"] = address1
-    doc["address2"] = address2
-    doc["zip"] = zip
-    doc["city"] = city
-    doc["state"] = state
-    doc["footnotes"] = footnotes
-    doc["person"] = person?.toDocument()
+    self["status"] = status?.toDocument()
+    self["address1"] = address1
+    self["address2"] = address2
+    self["zip"] = zip
+    self["city"] = city
+    self["state"] = state
+    self["footnotes"] = footnotes
+    self["person"] = person?.toDocument()
 }
 
 internal fun Document.toIssueExpert(): IssueExpert =
@@ -824,8 +824,8 @@ internal fun Document.toIssueExpert(): IssueExpert =
     )
 
 internal fun IssueExpert.toDocument(): Document = doc {
-    doc["status"] = status?.toDocument()
-    doc["subject"] = subject
-    doc["text"] = text
+    self["status"] = status?.toDocument()
+    self["subject"] = subject
+    self["text"] = text
 }
 

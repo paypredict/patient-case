@@ -12,7 +12,7 @@ object TestIssueCheckerAuto {
     @JvmStatic
     fun main(args: Array<String>) {
         val cases: MongoCollection<Document> = cases()
-        val case = cases.find(doc { doc["case.Case.accessionNumber"] = args[0] }).first()
+        val case = cases.find(doc { self["case.Case.accessionNumber"] = args[0] }).first()
 
         val issueCheckerAuto =
             IssueCheckerAuto(

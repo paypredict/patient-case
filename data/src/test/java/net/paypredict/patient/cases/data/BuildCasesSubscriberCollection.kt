@@ -13,7 +13,7 @@ object BuildCasesSubscriberCollection {
     @JvmStatic
     fun main(args: Array<String>) {
         val subscriberArraysList = DBS.Collections.cases().find()
-            .projection(doc { doc["case.Case.SubscriberDetails.Subscriber"] = 1 })
+            .projection(doc { self["case.Case.SubscriberDetails.Subscriber"] = 1 })
             .toList()
 
         val casesSubscriber = DBS.orders()

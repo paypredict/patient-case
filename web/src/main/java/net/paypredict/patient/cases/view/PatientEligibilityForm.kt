@@ -598,7 +598,7 @@ private class PayersRecheck : HorizontalLayout() {
     private fun buildToRecheck(caseId: String, payerName: String, zmPayerId: String): List<Item> {
         val items = mutableMapOf<String, Item>()
         DBS.Collections.cases()
-            .find(doc { doc["hist.eligibility.insurance.payerName"] = payerName })
+            .find(doc { self["hist.eligibility.insurance.payerName"] = payerName })
             .map { it.toCaseHist() }
             .filterNot { caseId == it._id }
             .filter { it.status?.isCheckedOnly == true }

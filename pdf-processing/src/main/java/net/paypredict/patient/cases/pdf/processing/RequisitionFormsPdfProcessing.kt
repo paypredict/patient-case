@@ -61,9 +61,9 @@ class RequisitionFormsPdfProcessing(
                 val imageWriting = writeImage(image, formId)
 
                 requisitionForms.upsertOne(formId._id(), "pdf" to doc {
-                    doc["id"] = pdfFileId
-                    doc["page"] = pageIndex
-                    doc["name"] = pdfFile.name
+                    self["id"] = pdfFileId
+                    self["page"] = pageIndex
+                    self["name"] = pdfFile.name
                 })
 
                 try {
@@ -163,8 +163,8 @@ class RequisitionFormsPdfProcessing(
             }
             if (barcodeFoundSet.isNotEmpty()) {
                 val barcodeRange = doc {
-                    doc["min"] = barcodeFoundSet.min()
-                    doc["max"] = barcodeFoundSet.max()
+                    self["min"] = barcodeFoundSet.min()
+                    self["max"] = barcodeFoundSet.max()
                 }
                 requisitionPDFs.upsertOne(pdfFileId._id(), "barcodeRange" to barcodeRange)
             }
@@ -266,8 +266,8 @@ class RequisitionFormsPdfProcessing(
             for (file in options.requisitionPDFsDir.walk()) {
                 if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true) && file.isDateMatches()) {
                     println(file)
-                    files.deleteMany(doc { doc["name"] = file.name })
-                    forms.deleteMany(doc { doc["pdf.name"] = file.name })
+                    files.deleteMany(doc { self["name"] = file.name })
+                    forms.deleteMany(doc { self["pdf.name"] = file.name })
                 }
             }
         }
@@ -292,16 +292,16 @@ class RequisitionFormsPdfProcessing(
 
             forms.find()
                 .projection(doc {
-                    doc["barcode"] = 1
-                    doc["pdf.id"] = 1
+                    self["barcode"] = 1
+                    self["pdf.id"] = 1
                 })
                 .filter { (it["barcode"] as? String)?.endsWith("trial license.") == true }
                 .mapNotNull { it.opt<String>("pdf", "id") }
                 .toSet()
                 .forEach {
                     println("delete $it")
-                    files.deleteOne(doc { doc["_id"] = it })
-                    forms.deleteMany(doc { doc["pdf.id"] = it })
+                    files.deleteOne(doc { self["_id"] = it })
+                    forms.deleteMany(doc { self["pdf.id"] = it })
                 }
         }
     }

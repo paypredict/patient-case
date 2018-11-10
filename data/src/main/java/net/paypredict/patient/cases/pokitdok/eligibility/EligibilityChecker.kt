@@ -52,7 +52,7 @@ class EligibilityChecker(private val issue: IssueEligibility) {
         val digest = query.digest()
 
         val collection = DBS.Collections.eligibility()
-        val resFound = collection.find(doc { doc["_id"] = digest }).firstOrNull()
+        val resFound = collection.find(doc { self["_id"] = digest }).firstOrNull()
         if (resFound != null) return resFound.toEligibilityCheckRes()
 
         val res: Document = try {
@@ -69,19 +69,19 @@ class EligibilityChecker(private val issue: IssueEligibility) {
                 )
 
         collection.updateOne(
-            doc { doc["_id"] = digest },
+            doc { self["_id"] = digest },
             doc {
-                doc[`$set`] = doc {
-                    doc["status"] = when (result) {
+                self[`$set`] = doc {
+                    self["status"] = when (result) {
                         is EligibilityCheckRes.Pass -> "pass"
                         is EligibilityCheckRes.Warn -> "warn"
                         is EligibilityCheckRes.NotAvailable -> "ntav"
                         is EligibilityCheckRes.Error -> "error"
                     }
-                    doc["meta"] = res["meta"]
-                    doc["data"] = res["data"]
+                    self["meta"] = res["meta"]
+                    self["data"] = res["data"]
                     if (result is EligibilityCheckRes.Warn) {
-                        doc["warnings"] = result.warnings.map { it.message }
+                        self["warnings"] = result.warnings.map { it.message }
                     }
                 }
             },
@@ -252,8 +252,8 @@ class PayersData {
             collection = DBS.Collections.tradingPartners(),
             prepare = {
                 projection(doc {
-                    doc["data.name"] = 1
-                    doc["data.payer_id"] = 1
+                    self["data.name"] = 1
+                    self["data.payer_id"] = 1
                 })
             }
         ) { doc ->
@@ -284,12 +284,12 @@ class PayersData {
 
     fun updateUsersMatchPayersRecord(zmPayerId: String, pkdPayerId: String?, notAvailable: Boolean = false) {
         DBS.Collections.PPPayers.usersMatchPayers().updateOne(
-            doc { doc["_id"] = zmPayerId },
+            doc { self["_id"] = zmPayerId },
             doc {
-                doc[`$set`] = doc {
-                    doc["zmPayerId"] = zmPayerId
-                    doc["pkdPayerId"] = pkdPayerId
-                    doc["notAvailable"] = notAvailable
+                self[`$set`] = doc {
+                    self["zmPayerId"] = zmPayerId
+                    self["pkdPayerId"] = pkdPayerId
+                    self["notAvailable"] = notAvailable
                 }
             },
             UpdateOptions().upsert(true)
@@ -299,7 +299,7 @@ class PayersData {
 
     fun removeUsersMatchPayersRecord(zmPayerId: String) {
         DBS.Collections.PPPayers.usersMatchPayers().deleteOne(doc {
-            doc["_id"] = zmPayerId
+            self["_id"] = zmPayerId
         })
         usersData = UsersData()
     }

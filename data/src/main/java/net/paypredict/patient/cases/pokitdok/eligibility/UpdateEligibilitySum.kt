@@ -20,7 +20,7 @@ object UpdateEligibilitySum {
         val executorService: ExecutorService = Executors.newSingleThreadExecutor()
 
         val accessionById = cases.find()
-            .projection(doc { doc["case.Case.accessionNumber"] = 1 })
+            .projection(doc { self["case.Case.accessionNumber"] = 1 })
             .mapNotNull { case ->
                 case.opt<String>("case", "Case", "accessionNumber")
                     ?.let { case["_id"] as String to it }
@@ -43,10 +43,10 @@ object UpdateEligibilitySum {
                                 eligibility.upsertOne(
                                     filter,
                                     doc {
-                                        doc[`$set`] = doc {
-                                            doc["sum.caseId"] = caseId
-                                            doc["sum.caseAcn"] = caseAcn
-                                            doc["sum.zmPayerId"] = zmPayerId
+                                        self[`$set`] = doc {
+                                            self["sum.caseId"] = caseId
+                                            self["sum.caseAcn"] = caseAcn
+                                            self["sum.zmPayerId"] = zmPayerId
                                         }
                                     }
                                 )

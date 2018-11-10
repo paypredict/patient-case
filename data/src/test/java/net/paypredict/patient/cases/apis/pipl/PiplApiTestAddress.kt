@@ -75,11 +75,11 @@ object PiplApiTestAddress {
             val t1 = System.currentTimeMillis()
 
             collection.insertOne(doc {
-                doc["line"] = line
-                doc["dateTime"] = Date()
-                doc["apiTimeMs"] = (t1 - t0).toInt()
-                doc["person"] = Document.parse(Utils.toJson(person))
-                doc["response"] = Document.parse(response.json)
+                self["line"] = line
+                self["dateTime"] = Date()
+                self["apiTimeMs"] = (t1 - t0).toInt()
+                self["person"] = Document.parse(Utils.toJson(person))
+                self["response"] = Document.parse(response.json)
             })
 
         }

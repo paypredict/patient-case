@@ -79,8 +79,8 @@ private fun DocumentMongoCollection.importCases(isInterrupted: () -> Boolean) {
 }
 
 private fun DocumentMongoCollection.checkCases(isInterrupted: () -> Boolean) {
-    val items: List<Document> = find(doc { doc["status.checked"] = doc { doc[`$exists`] = false } })
-        .projection(doc { doc["_id"] = 1 })
+    val items: List<Document> = find(doc { self["status.checked"] = doc { self[`$exists`] = false } })
+        .projection(doc { self["_id"] = 1 })
         .toList()
     val usStreet = UsStreet()
     val payerLookup = PayerLookup()
@@ -108,12 +108,12 @@ private fun LocalDateTime.toInstant(): Instant =
 private fun DocumentMongoCollection.markTimeoutCases(isInterrupted: () -> Boolean) {
     val timeout: Date = Date.from(Import.Conf.timeOutDaysMark.toDaysBackLDT().toInstant())
     val filter = doc {
-        doc["status.value"] = "CHECKED"
-        doc["file.created"] = doc { doc[`$lt`] = timeout }
+        self["status.value"] = "CHECKED"
+        self["file.created"] = doc { self[`$lt`] = timeout }
     }
     val items: List<Document> =
         find(filter)
-            .projection(doc { doc["_id"] = 1 })
+            .projection(doc { self["_id"] = 1 })
             .toList()
 
     for (item in items) {
@@ -135,8 +135,8 @@ private fun DocumentMongoCollection.markTimeoutCases(isInterrupted: () -> Boolea
 
 private fun DocumentMongoCollection.sendCases(isInterrupted: () -> Boolean) {
     val items: List<Document> =
-        find(doc { doc["status.value"] = doc { doc[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") } })
-            .projection(doc { doc["_id"] = 1 })
+        find(doc { self["status.value"] = doc { self[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") } })
+            .projection(doc { self["_id"] = 1 })
             .toList()
 
     for (item in items) {

@@ -24,11 +24,11 @@ object UpdateTradingPartners {
             ?.forEach { data ->
                 val id: String = data["id"] as String
                 tradingPartners.updateOne(
-                    doc { doc["_id"] = id },
+                    doc { self["_id"] = id },
                     doc {
-                        doc[`$set`] = doc {
-                            doc["meta"] = meta
-                            doc["data"] = data
+                        self[`$set`] = doc {
+                            self["meta"] = meta
+                            self["data"] = data
                         }
                     },
                     UpdateOptions().upsert(true)

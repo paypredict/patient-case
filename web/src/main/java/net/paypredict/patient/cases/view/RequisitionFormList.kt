@@ -78,7 +78,7 @@ class RequisitionFormList(header: Component? = null) : Composite<VerticalLayout>
             ?: return emptyList()
         return DBS.Collections
             .requisitionForms()
-            .find(doc { doc["barcode"] = accession })
+            .find(doc { self["barcode"] = accession })
             .projection(doc {})
             .filterIsInstance<Document>()
             .mapNotNull { it.opt<String>("_id") }

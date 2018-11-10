@@ -108,13 +108,13 @@ object SmartyStreetsApiTestAddress {
                 println()
 
                 collection.insertOne(doc {
-                    doc["line"] = line
-                    doc["dateTime"] = Date()
-                    doc["apiTimeMs"] = (t1 - t0).toInt()
-                    doc["warnings"] = warnings
-                    doc["lookup"] = Document.parse(jacksonFactory.toString(lookup))
-                    doc["result"] = resultDocs
-                    doc["resultMode"] = resultMode
+                    self["line"] = line
+                    self["dateTime"] = Date()
+                    self["apiTimeMs"] = (t1 - t0).toInt()
+                    self["warnings"] = warnings
+                    self["lookup"] = Document.parse(jacksonFactory.toString(lookup))
+                    self["result"] = resultDocs
+                    self["resultMode"] = resultMode
                 })
 
                 if (limitCondition.exceeded()) break

@@ -17,11 +17,11 @@ fun main(args: Array<String>) {
     DBS.ptn().getCollection("ptn_837")
         .find()
         .projection(doc {
-            doc["sbrAdr1"] = 1
-            doc["sbrAdr2"] = 1
-            doc["sbrCity"] = 1
-            doc["sbrSt"] = 1
-            doc["sbrZIP"] = 1
+            self["sbrAdr1"] = 1
+            self["sbrAdr2"] = 1
+            self["sbrCity"] = 1
+            self["sbrSt"] = 1
+            self["sbrZIP"] = 1
         })
         .toList()
         .forEachIndexed { index: Int, ptn: Document ->

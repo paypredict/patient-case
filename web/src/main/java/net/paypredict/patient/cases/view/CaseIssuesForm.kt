@@ -64,7 +64,7 @@ class CaseIssuesForm : Composite<Div>() {
         requisitionFormsNotFound.isVisible = new?.accession?.let { accession ->
             DBS.Collections
                 .requisitionForms()
-                .count(doc { doc["barcode"] = accession }) == 0L
+                .count(doc { self["barcode"] = accession }) == 0L
         } ?: false
     }
 

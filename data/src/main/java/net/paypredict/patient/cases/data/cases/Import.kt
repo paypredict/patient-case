@@ -31,15 +31,15 @@ object Import {
     private val casesFileFilter: (name: String, created: Date) -> Document by lazy {
         DBS.Collections.cases().apply {
             createIndex(doc {
-                doc["file.name"] = 1
-                doc["file.created"] = 1
+                self["file.name"] = 1
+                self["file.created"] = 1
             })
         }
         fun(name: String, created: Date): Document =
             doc {
-                doc[`$and`] = listOf(
-                    doc { doc["file.name"] = name },
-                    doc { doc["file.created"] = created }
+                self[`$and`] = listOf(
+                    doc { self["file.name"] = name },
+                    doc { self["file.created"] = created }
                 )
             }
     }
@@ -67,18 +67,18 @@ object Import {
 
         val case = xmlFile.reader().use { it.toDocument() }
         val update = doc {
-            doc[`$set`] = doc {
-                doc["case"] = case
-                doc["file"] = doc {
-                    doc["name"] = xmlFile.name
-                    doc["size"] = xmlFile.length().toInt()
-                    doc["created"] = created
+            self[`$set`] = doc {
+                self["case"] = case
+                self["file"] = doc {
+                    self["name"] = xmlFile.name
+                    self["size"] = xmlFile.length().toInt()
+                    self["created"] = created
                 }
             }
         }
 
         cases.upsertOne(filter, update) {
-            cases.updateOne(it, doc { doc[`$set`] = doc { doc["doc.created"] = Date() } })
+            cases.updateOne(it, doc { self[`$set`] = doc { self["doc.created"] = Date() } })
         }
 
         return digest

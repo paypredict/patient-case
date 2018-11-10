@@ -122,12 +122,12 @@ fun Document.toCaseStatus(): CaseStatus =
 
 fun CaseStatus.toDocument(): Document =
     doc {
-        doc["checked"] = checked
-        doc["passed"] = passed
-        doc["resolved"] = resolved
-        doc["timeout"] = timeout
-        doc["sent"] = sent
-        doc["value"] = value
+        self["checked"] = checked
+        self["passed"] = passed
+        self["resolved"] = resolved
+        self["timeout"] = timeout
+        self["sent"] = sent
+        self["value"] = value
     }
 
 val CaseStatus.isCheckedOnly: Boolean
