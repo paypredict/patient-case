@@ -3,9 +3,9 @@ package net.paypredict.patient.cases.data.worklist
 import com.mongodb.client.MongoCollection
 import net.paypredict.patient.cases.PatientCases
 import net.paypredict.patient.cases.data.CaseDataException
-import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo._id
-import net.paypredict.patient.cases.mongo.opt
+import net.paypredict.patient.cases.data.cases.Import
+import net.paypredict.patient.cases.digest
+import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.toEligibilityCheckRes
 import org.bson.Document
@@ -43,13 +43,24 @@ fun ordersArchiveFile(digest: String): File =
         .resolve(digest.take(4)).apply { mkdir() }
         .resolve(digest)
 
+fun File.archive(digest: String = digest()): String {
+    val archiveFile = ordersArchiveFile(digest)
+    if (!archiveFile.exists())
+        copyTo(archiveFile)
+    return digest
+}
+
 typealias DomDocument = org.w3c.dom.Document
 
 private val documentBuilderFactory: DocumentBuilderFactory by lazy { DocumentBuilderFactory.newInstance() }
 private val transformerFactory: TransformerFactory by lazy { TransformerFactory.newInstance() }
 
-fun CaseHist.createOutXml() {
-    val case: Document = DBS.Collections.cases().find(_id._id()).firstOrNull()
+fun CaseHist.createOutXml(
+    cases: DocumentMongoCollection = DBS.Collections.cases(),
+    casesOut: DocumentMongoCollection = DBS.Collections.casesOut()
+): String? {
+    val caseFilter: Document = _id._id()
+    val case: Document = cases.find(caseFilter).firstOrNull()
         ?: throw CaseDataException("document $_id not found in collection cases")
     val fileName: String = case.opt("file", "name")
         ?: throw CaseDataException("file.name not found in collection cases $_id")
@@ -61,8 +72,10 @@ fun CaseHist.createOutXml() {
         if (it.exists() && !it.delete()) throw CaseDataException("Orders out XML file $it already exists")
     }
 
-    val domDocument: DomDocument = documentBuilderFactory.newDocumentBuilder()
-        .parse(srcFile.toInputSource())
+    val domDocument: DomDocument =
+        documentBuilderFactory
+            .newDocumentBuilder()
+            .parse(srcFile.toInputSource())
 
     updateSubscribers(domDocument, fileName)
 
@@ -84,8 +97,26 @@ fun CaseHist.createOutXml() {
             )
     }
 
-    srcFile.makeFixedCopies(fileName)
+    val outFileDigest: String? =
+        Import.importXmlFile(
+            xmlFile = outFile,
+            cases = casesOut,
+            skipByNameAndTime = false,
+            override = false,
+            onUpsertDoc = { self["ref.src"] = _id },
+            onNewFile = { outFile.archive(it) }
+        )
+
+    outFileDigest
+        ?.also {
+            cases.upsertOne(caseFilter, doc { self[`$set`] = doc { self["ref.out"] = it } })
+        }
+
+
+    makeFixedCopies(srcFile, outFile, fileName)
     makeTestCopy(fileName)
+
+    return outFileDigest
 }
 
 private val fixedSrcDir: File by lazy {
@@ -95,9 +126,9 @@ private val fixedOutDir: File by lazy {
     ordersDir.resolve("out-fixed").apply { mkdir() }
 }
 
-private fun File.makeFixedCopies(fileName: String) {
-    makeFixedCopy(fixedSrcDir.resolve(fileName))
-    ordersOutDir.resolve(fileName).makeFixedCopy(fixedOutDir.resolve(fileName))
+private fun makeFixedCopies(srcFile: File, outFile: File, fileName: String) {
+    srcFile.makeFixedCopy(fixedSrcDir.resolve(fileName))
+    outFile.makeFixedCopy(fixedOutDir.resolve(fileName))
 }
 
 private fun File.makeFixedCopy(dst: File) =

@@ -31,6 +31,9 @@ object DBS {
         fun casesLog(): DocumentMongoCollection =
             orders().getCollection("casesLog")
 
+        fun casesOut(): DocumentMongoCollection =
+            orders().getCollection("casesOut")
+
         fun requisitionForms(): DocumentMongoCollection =
             orders().getCollection("requisitionForms")
 

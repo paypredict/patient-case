@@ -62,11 +62,13 @@ private fun DocumentMongoCollection.importCases(isInterrupted: () -> Boolean) {
         try {
             if (file.created() < timeout) continue
             if (ImportCasesAttempts[file] > ImportCasesAttempts.MAX) continue
-            Import.importXmlFile(file, cases = this, skipByNameAndTime = true, override = false) { digest ->
-                val archiveFile = ordersArchiveFile(digest)
-                if (!archiveFile.exists())
-                    file.copyTo(archiveFile)
-            }
+            Import.importXmlFile(
+                xmlFile = file,
+                cases = this,
+                skipByNameAndTime = true,
+                override = false,
+                onNewFile = { file.archive(it) }
+            )
         } catch (e: Throwable) {
             ImportCasesAttempts(file) {
                 Logger

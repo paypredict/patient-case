@@ -5,6 +5,7 @@ import com.mongodb.client.model.CountOptions
 import net.paypredict.patient.cases.PatientCases.clientDir
 import net.paypredict.patient.cases.data.worklist.aName
 import net.paypredict.patient.cases.data.worklist.eName
+import net.paypredict.patient.cases.digest
 import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import org.xml.sax.Attributes
@@ -15,7 +16,6 @@ import java.io.FileFilter
 import java.io.Reader
 import java.nio.file.Files
 import java.nio.file.attribute.BasicFileAttributes
-import java.security.MessageDigest
 import java.util.*
 import javax.xml.parsers.SAXParserFactory
 import kotlin.collections.set
@@ -49,6 +49,7 @@ object Import {
         cases: MongoCollection<Document> = DBS.Collections.cases(),
         skipByNameAndTime: Boolean = false,
         override: Boolean = true,
+        onUpsertDoc: DocBuilder.() -> Unit = {},
         onNewFile: (digest: String) -> Unit = {}
     ): String? {
         val created = Date(xmlFile.created())
@@ -62,12 +63,13 @@ object Import {
         if (cases.count(filter, limitOne) == 0L) {
             onNewFile(digest)
         } else {
-            if (!override) return null
+            if (!override) return digest
         }
 
         val case = xmlFile.reader().use { it.toDocument() }
         val update = doc {
             self[`$set`] = doc {
+                onUpsertDoc()
                 self["case"] = case
                 self["file"] = doc {
                     self["name"] = xmlFile.name
@@ -174,24 +176,6 @@ object Import {
         }
         folding.forEach { (key, value) ->
             this[key] = value
-        }
-    }
-
-    private fun File.digest(): String {
-        val digest = MessageDigest.getInstance("SHA")
-        inputStream().use { inputStream ->
-            val bytes = ByteArray(4096)
-            while (true) {
-                val res = inputStream.read(bytes)
-                if (res == -1) break
-                digest.update(bytes, 0, res)
-            }
-        }
-        val bytes = digest.digest()
-        return bytes.joinToString(separator = "") {
-            (it.toInt() and 0xff)
-                .toString(16)
-                .padStart(2, '0')
         }
     }
 

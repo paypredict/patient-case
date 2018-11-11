@@ -22,6 +22,9 @@ fun File.toDigest(): MessageDigest =
 fun JsonObject.toDigest(): MessageDigest =
     sha().also { updateDigest(it) }
 
+fun File.digest(): String =
+    toDigest().toHexString()
+
 private fun JsonValue?.updateDigest(digest: MessageDigest) {
     when (this) {
         null -> {
