@@ -165,6 +165,16 @@ fun IssuesStatus.toDocument(): Document = doc {
     self["passed"] = passed
 }
 
+fun List<IssueEligibility>.findBest(caseStatus: CaseStatus): IssueEligibility? =
+    when {
+        caseStatus.timeout -> null // == use original xml
+        caseStatus.resolved ->
+            findPassed()
+                ?: reversed().firstOrNull { it.status?.notEmpty == true }
+        else ->
+            findPassed()
+    }
+
 fun <T : IssueItem<S>, S : IssuesStatus> List<T>.findPassed(): T? =
     reversed().firstOrNull { it.status?.passed == true }
 
@@ -280,10 +290,11 @@ data class IssueEligibility(
     sealed class Status(
         override val name: String,
         override val passed: Boolean,
-        override val type: IssuesStatus.Type
+        override val type: IssuesStatus.Type,
+        val notEmpty: Boolean = true
     ) : IssuesStatus, Comparable<Status> {
-        object Missing : Status("Missing", false, IssuesStatus.Type.QUESTION)
-        object Original : Status("Original", false, IssuesStatus.Type.INFO)
+        object Missing : Status("Missing", false, IssuesStatus.Type.QUESTION, false)
+        object Original : Status("Original", false, IssuesStatus.Type.INFO, false)
         object Unchecked : Status("Unchecked", false, IssuesStatus.Type.WARN)
         object NotAvailable : Status("NotAvailable", true, IssuesStatus.Type.INFO)
         object Confirmed : Status("Confirmed", true, IssuesStatus.Type.OK)

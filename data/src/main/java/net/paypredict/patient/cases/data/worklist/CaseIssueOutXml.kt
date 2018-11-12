@@ -200,27 +200,14 @@ private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: Strin
 
     val eligibilityCollection: MongoCollection<Document> by lazy { DBS.Collections.eligibility() }
 
+    val caseStatus = status ?: CaseStatus()
     domSubscribersByResponsibilityCode.forEach { responsibility, out: Element ->
         val issue: IssueEligibility? = eligibility
             .filter { it.responsibility == responsibility.name }
-            .findPassed()
+            .findBest(caseStatus)
         if (issue != null) {
-            when (issue.status) {
-                IssueEligibility.Status.NotAvailable,
-                IssueEligibility.Status.Unchecked -> {
-                    out.updateSubscriber(issue)
-                }
-                IssueEligibility.Status.Confirmed -> {
-                    out.updateSubscriber(eligibilityCollection, issue)
-                    out.updateSubscriber(issue)
-                }
-
-                IssueEligibility.Status.Missing,
-                IssueEligibility.Status.Original,
-                is IssueEligibility.Status.Problem,
-                null -> {
-                }
-            }
+            out.updateSubscriber(eligibilityCollection, issue)
+            out.updateSubscriber(issue)
         }
     }
 
@@ -230,7 +217,7 @@ private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: Strin
             eligibility.asSequence()
                 .filter { it.responsibility != null }
                 .groupBy { ResponsibilityOrder.valueOf(it.responsibility!!) }
-                .mapValues { it.value.findPassed() }
+                .mapValues { it.value.findBest(caseStatus) }
                 .values
                 .filterNotNull()
 
@@ -257,8 +244,7 @@ private fun Element.fillNewSubscriber(
     eligibilityCollection: MongoCollection<Document>,
     issue: IssueEligibility
 ) {
-    if (issue.status is IssueEligibility.Status.Confirmed)
-        updateSubscriber(eligibilityCollection, issue)
+    updateSubscriber(eligibilityCollection, issue)
     updateSubscriber(issue)
     SubscriberAttr.values()
         .filterNot { hasAttribute(it.name) }
@@ -269,13 +255,9 @@ private fun Element.updateSubscriber(
     eligibility: MongoCollection<Document>,
     issue: IssueEligibility
 ) {
-    fun applyEligibilityRes(
-        eligibilityRes: Document) {
+    fun applyEligibilityRes(eligibilityRes: Document) {
 
-        fun updateElement(
-            document: Document,
-            rules: List<Pair<String, String>>
-        ) {
+        fun updateElement(document: Document, rules: List<Pair<String, String>>) {
             for ((attrName, docPath) in rules) {
                 val keys = docPath.split('.')
                 val lastKey = keys.last()
