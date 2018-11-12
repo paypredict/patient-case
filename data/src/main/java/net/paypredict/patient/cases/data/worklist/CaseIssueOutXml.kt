@@ -211,11 +211,11 @@ private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: Strin
                     out.updateSubscriber(issue)
                 }
                 IssueEligibility.Status.Confirmed -> {
-                    out.updateSubscriber(issue)
                     val eligibilityRes =
                         eligibilityCollection.toEligibilityCheckResPass(issue)?.result
                     if (eligibilityRes != null)
                         out.updateSubscriber(eligibilityRes)
+                    out.updateSubscriber(issue)
                 }
 
                 IssueEligibility.Status.Missing,
@@ -337,7 +337,7 @@ private enum class SubscriberAttr(val eligibilityPath: String = "", val default:
     InsuranceType,
     IsElectronicPayer,
     RelationshipCode,
-    PayerId("data.payer.id"),
+    PayerId,
     GroupOrPlanNumber("data.coverage.group_number"),
     GroupOrPlanName("data.coverage.plan_description"),
     SubscriberPolicyNumber("data.subscriber.id"),
