@@ -211,10 +211,7 @@ private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: Strin
                     out.updateSubscriber(issue)
                 }
                 IssueEligibility.Status.Confirmed -> {
-                    val eligibilityRes =
-                        eligibilityCollection.toEligibilityCheckResPass(issue)?.result
-                    if (eligibilityRes != null)
-                        out.updateSubscriber(eligibilityRes)
+                    out.updateSubscriber(eligibilityCollection, issue)
                     out.updateSubscriber(issue)
                 }
 
@@ -249,29 +246,65 @@ private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: Strin
         eligibilityList.forEach { issue ->
             val subscriber: Element = domDocument.createElement("Subscriber")
             subscriber[SubscriberAttr.RelationshipCode] = issue.responsibility
-            subscriber.fillSubscriber(issue, eligibilityCollection)
+            subscriber.fillNewSubscriber(eligibilityCollection, issue)
             domSubscriberDetails.appendChild(subscriber)
         }
     }
 }
 
-private fun Element.fillSubscriber(
-    issue: IssueEligibility,
-    eligibilityCollection: MongoCollection<Document>
+
+private fun Element.fillNewSubscriber(
+    eligibilityCollection: MongoCollection<Document>,
+    issue: IssueEligibility
 ) {
-    val eligibilityRes: Document? =
-        if (issue.status is IssueEligibility.Status.Confirmed)
-            eligibilityCollection.toEligibilityCheckResPass(issue)?.result else
-            null
-
-    if (eligibilityRes != null)
-        updateSubscriber(eligibilityRes) else
-        updateSubscriber(issue)
-
-
+    if (issue.status is IssueEligibility.Status.Confirmed)
+        updateSubscriber(eligibilityCollection, issue)
+    updateSubscriber(issue)
     SubscriberAttr.values()
         .filterNot { hasAttribute(it.name) }
         .forEach { this[it] = it.default }
+}
+
+private fun Element.updateSubscriber(
+    eligibility: MongoCollection<Document>,
+    issue: IssueEligibility
+) {
+    fun applyEligibilityRes(
+        eligibilityRes: Document) {
+
+        fun updateElement(
+            document: Document,
+            rules: List<Pair<String, String>>
+        ) {
+            for ((attrName, docPath) in rules) {
+                val keys = docPath.split('.')
+                val lastKey = keys.last()
+                val value =
+                    (if (lastKey.endsWith("]")) {
+                        val index = lastKey.removeSurrounding("[", "]").toInt()
+                        document.opt<List<*>>(*keys.dropLast(1).toTypedArray())?.getOrNull(index) as? String
+                    } else {
+                        document.opt<String>(*keys.toTypedArray())
+                    })
+
+                if (value != null)
+                    setAttribute(attrName, value)
+            }
+        }
+
+
+        val rules = SubscriberAttr.values()
+            .filter { it.eligibilityPath.isNotEmpty() }
+            .map { it.name to it.eligibilityPath }
+
+        updateElement(eligibilityRes, rules)
+        if (eligibilityRes.opt<Boolean>("data", "coverage", "active") == true)
+            this[SubscriberAttr.IsElectronicPayer] = "Yes"
+    }
+
+    eligibility.toEligibilityCheckResPass(issue)
+        ?.result
+        ?.also { applyEligibilityRes(it) }
 }
 
 private fun Element.updateSubscriber(issue: IssueEligibility) {
@@ -297,35 +330,6 @@ private fun Element.setIfNotNullOrBlank(attr: SubscriberAttr, value: String?) {
 
 private operator fun Element.set(attr: SubscriberAttr, value: String?) {
     setAttribute(attr.name, value ?: attr.default)
-}
-
-private fun Element.updateSubscriber(eligibilityRes: Document) {
-    val rules = SubscriberAttr.values()
-        .filter { it.eligibilityPath.isNotEmpty() }
-        .map { it.name to it.eligibilityPath }
-    update(eligibilityRes, rules)
-    if (eligibilityRes.opt<Boolean>("data", "coverage", "active") == true)
-        this[SubscriberAttr.IsElectronicPayer] = "Yes"
-}
-
-private fun Element.update(
-    document: Document,
-    rules: List<Pair<String, String>>
-) {
-    for (rule in rules) {
-        val keys = rule.second.split('.')
-        val lastKey = keys.last()
-        val value =
-            (if (lastKey.endsWith("]")) {
-                val index = lastKey.removeSurrounding("[", "]").toInt()
-                document.opt<List<*>>(*keys.dropLast(1).toTypedArray())?.getOrNull(index) as? String
-            } else {
-                document.opt<String>(*keys.toTypedArray())
-            })
-
-        if (value != null)
-            setAttribute(rule.first, value)
-    }
 }
 
 private enum class SubscriberAttr(val eligibilityPath: String = "", val default: String = "") {
