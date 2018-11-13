@@ -577,6 +577,7 @@ private class PayersRecheck : HorizontalLayout() {
                     .map { it.deepCopy() }
                     .map {
                         it.insurance?.zmPayerId = item.zmPayerId
+                        // TODO is zmPayerName required?
                         it.checkEligibility(eligibilityCheckContext)
                     }
                     .toList()
