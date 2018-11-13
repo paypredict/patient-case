@@ -26,8 +26,10 @@ object PringEligibilityStat {
             follow_up_action.add("follow_up_action", data)
         }
 
-        reject_reason.print("******************** reject_reason ***********************")
-        reject_reason.print("******************** follow_up_action ********************")
+        reject_reason.print(
+            "******************** reject_reason ***********************")
+        follow_up_action.print(
+            "******************** follow_up_action ********************")
     }
 
     private fun MutableMap<String, AtomicInteger>.print(message: String) {
