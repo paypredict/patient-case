@@ -1,6 +1,8 @@
 package net.paypredict.patient.cases.data.worklist
 
 import com.mongodb.client.MongoCollection
+import com.mongodb.client.model.FindOneAndUpdateOptions
+import com.mongodb.client.model.ReturnDocument
 import net.paypredict.patient.cases.PatientCases
 import net.paypredict.patient.cases.data.CaseDataException
 import net.paypredict.patient.cases.data.cases.Import
@@ -14,11 +16,13 @@ import org.w3c.dom.Node
 import org.w3c.dom.NodeList
 import org.xml.sax.InputSource
 import java.io.File
+import java.util.*
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
+import kotlin.streams.toList
 
 /**
  * <p>
@@ -141,15 +145,59 @@ private val testOutDir: File by lazy {
 private fun makeTestCopy(fileName: String) {
     val domDocument: DomDocument = documentBuilderFactory.newDocumentBuilder()
         .parse(fixedOutDir.resolve(fileName))
+
+    val randomCaseGUID: String = UUID.randomUUID().toString().toUpperCase()
+
+    fun nextInt(name: String): Int =
+        DBS.Collections.settings()
+            .findOneAndUpdate(
+                name._id(),
+                doc { self[`$inc`] = doc { self["value"] = 1 } },
+                FindOneAndUpdateOptions()
+                    .upsert(true)
+                    .returnDocument(ReturnDocument.AFTER)
+            )
+            ?.opt<Int>("value")
+            ?: throw AssertionError("nextInt($name) failed")
+
+    (domDocument.firstChild as Element).also { element ->
+        val prefix = element
+            .getAttribute("AccessionNumber")
+            .substringBefore('-')
+        val next = nextInt("test_nextAccessionNumber")
+            .toString()
+            .padStart(4, '0')
+        element.setAttribute("AccessionNumber", "$prefix-pp$next")
+    }
+
+    domDocument.getElementsByTagName("*")
+        .toSequence()
+        .filterIsInstance<Element>()
+        .forEach {
+            if (it.hasAttribute("CaseGUID")) {
+                it.setAttribute("CaseGUID", randomCaseGUID)
+            }
+        }
+
+    val nextName: String =
+        "BILL " + nextInt("text_nextName")
+            .toString().chars().toList().joinToString(separator = "") { (it + 16).toChar().toString() }
+
     domDocument.getElementsByTagName("Patient")
         .toSequence()
         .filterIsInstance<Element>()
         .forEach {
-            it.setIfNotNullOrBlank(PatientAttr.Name, "DONOT BILL")
+            it.setIfNotNullOrBlank(PatientAttr.Name, "DONOT $nextName")
             it.setIfNotNullOrBlank(PatientAttr.FirstName, "DONOT")
-            it.setIfNotNullOrBlank(PatientAttr.LastName, "BILL")
+            it.setIfNotNullOrBlank(PatientAttr.LastName, nextName)
             it.setIfNotNullOrBlank(PatientAttr.MiddleInitials, "")
+
+            it.setIfNotNullOrBlank(PatientAttr.GuarantorName, "DONOT $nextName")
+            it.setIfNotNullOrBlank(PatientAttr.GuarantorFirstName, "DONOT")
+            it.setIfNotNullOrBlank(PatientAttr.GuarantorLastName, nextName)
+            it.setIfNotNullOrBlank(PatientAttr.GuarantorMiddleInitials, "")
         }
+
     domDocument.getElementsByTagName("Subscriber")
         .toSequence()
         .filterIsInstance<Element>()
@@ -159,15 +207,19 @@ private fun makeTestCopy(fileName: String) {
             it.setIfNotNullOrBlank(SubscriberAttr.MiddleInitial, "")
         }
 
-    transformerFactory
-        .newTransformer()
-        .apply {
-            setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
-        }
-        .transform(
-            DOMSource(domDocument),
-            StreamResult(testOutDir.resolve(fileName))
-        )
+    testOutDir.resolve(fileName).writer().use { writer ->
+        writer.write(XML_PREFIX)
+
+        transformerFactory
+            .newTransformer()
+            .apply {
+                setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
+            }
+            .transform(
+                DOMSource(domDocument),
+                StreamResult(writer)
+            )
+    }
 }
 
 private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: String) {

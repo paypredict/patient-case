@@ -34,6 +34,9 @@ object DBS {
         fun casesOut(): DocumentMongoCollection =
             orders().getCollection("casesOut")
 
+        fun settings(): DocumentMongoCollection =
+            orders().getCollection("settings")
+
         fun requisitionForms(): DocumentMongoCollection =
             orders().getCollection("requisitionForms")
 
@@ -122,6 +125,8 @@ const val `$`: String = "$"
 @Suppress("ObjectPropertyName", "unused")
 const val `$set`: String = "$" + "set"
 @Suppress("ObjectPropertyName", "unused")
+const val `$setOnInsert`: String = "$" + "setOnInsert"
+@Suppress("ObjectPropertyName", "unused")
 const val `$text`: String = "$" + "text"
 @Suppress("ObjectPropertyName", "unused")
 const val `$search`: String = "$" + "search"
@@ -143,6 +148,8 @@ const val `$or`: String = "$" + "or"
 const val `$and`: String = "$" + "and"
 @Suppress("ObjectPropertyName", "unused")
 const val `$push`: String = "$" + "push"
+@Suppress("ObjectPropertyName", "unused")
+const val `$inc`: String = "$" + "inc"
 
 inline fun <reified T> Document.opt(vararg path: String): T? {
     var result: Any? = this
