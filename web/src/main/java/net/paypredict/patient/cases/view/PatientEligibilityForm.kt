@@ -18,6 +18,8 @@ import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
 import com.vaadin.flow.shared.Registration
+import net.paypredict.patient.cases.data.cases.CasesLog
+import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.html.ImgPanZoom
 import net.paypredict.patient.cases.mongo.DBS
@@ -34,7 +36,10 @@ import net.paypredict.patient.cases.toTitleCase
  * Created by alexei.vylegzhanin@gmail.com on 8/25/2018.
  */
 @Route("eligibility")
-class PatientEligibilityForm(private val readOnly: Boolean = false) :
+class PatientEligibilityForm(
+    private val readOnly: Boolean = false,
+    private val newCasesLog: () -> CasesLog
+) :
     Composite<HorizontalLayout>(),
     HasSize,
     ThemableLayout {
@@ -287,7 +292,7 @@ class PatientEligibilityForm(private val readOnly: Boolean = false) :
                             subscriber = subscriberForm.value,
                             eligibility = null
                         )
-                val res = EligibilityChecker(issue).check()
+                val res = EligibilityChecker(issue, newCasesLog).check()
                 issue.eligibility = (res as? EligibilityCheckRes.HasResult)?.id
                 applyEligibilityCheckRes(res)
                 onPatientEligibilityChecked?.invoke(issue, res)
@@ -570,7 +575,10 @@ private class PayersRecheck : HorizontalLayout() {
         isVisible = false
         val payerLookup = PayerLookup()
         forEach { item ->
-            val eligibilityCheckContext = EligibilityCheckContext(payerLookup)
+            val eligibilityCheckContext =
+                EligibilityCheckContext(
+                    payerLookup = payerLookup,
+                    newCasesLog = { item.caseHist.toCasesLog() })
             val checked =
                 item.eligibilityList
                     .asSequence()

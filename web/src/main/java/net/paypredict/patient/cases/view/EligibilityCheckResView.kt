@@ -132,7 +132,7 @@ class EligibilityCheckResView : Composite<VerticalLayout>(), HasSize, ThemableLa
     private fun showWarn(res: EligibilityCheckRes.Warn) {
         warnPages.showPages()
         binder.readBean(res.result)
-        warnPage.rawText = res.warnings.joinToString(separator = "\n") { it.message }
+        warnPage.rawText = res.message + ":\n" + res.warnings.joinToString(separator = "\n") { it.message }
         jsonPage.rawText = res.result.toJson(JsonWriterSettings(JsonMode.SHELL, true))
     }
 

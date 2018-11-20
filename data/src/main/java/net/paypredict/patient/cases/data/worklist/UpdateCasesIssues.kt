@@ -9,8 +9,10 @@ import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.UsStreet
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
+import net.paypredict.patient.cases.data.cases.CasesLog
 import net.paypredict.patient.cases.data.cases.Import
 import net.paypredict.patient.cases.data.cases.created
+import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
@@ -380,7 +382,11 @@ internal class IssueCheckerAuto(
             )
         }
         if (issueEligibilityList.isNotEmpty()) {
-            val eligibilityCheckContext = EligibilityCheckContext(payerLookup, patient, onHasResult)
+            val eligibilityCheckContext = EligibilityCheckContext(
+                payerLookup = payerLookup,
+                patient = patient,
+                onHasResult = onHasResult,
+                newCasesLog = { caseHist.toCasesLog() })
             val checkedEligibility =
                 issueEligibilityList.map { it.checkEligibility(eligibilityCheckContext) }
             if (checkedEligibility.any { it.status?.passed != true }) {
@@ -519,7 +525,8 @@ typealias OnHasResult = IssueEligibility.(EligibilityCheckRes.HasResult) -> Unit
 class EligibilityCheckContext(
     val payerLookup: PayerLookup,
     val patient: Person? = null,
-    val onHasResult: OnHasResult? = null
+    val onHasResult: OnHasResult? = null,
+    val newCasesLog: () -> CasesLog
 )
 
 fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEligibility =
@@ -546,7 +553,7 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
         val checkable: Boolean = isPayerCheckable && isSubscriberCheckable
         status = when {
             checkable -> {
-                val checkRes = EligibilityChecker(this).check()
+                val checkRes = EligibilityChecker(this, context.newCasesLog).check()
                 if (checkRes is EligibilityCheckRes.HasResult) {
                     eligibility = checkRes.id
                     subscriber?.run {
@@ -574,7 +581,7 @@ fun IssueEligibility.checkEligibility(context: EligibilityCheckContext): IssueEl
                 when (checkRes) {
                     is EligibilityCheckRes.Pass -> IssueEligibility.Status.Confirmed
                     is EligibilityCheckRes.Warn -> IssueEligibility.Status.Problem(
-                        "Problem With Eligibility", checkRes.warnings.joinToString { it.message }
+                        checkRes.message, checkRes.warnings.joinToString { it.message }
                     )
                     EligibilityCheckRes.NotAvailable -> IssueEligibility.Status.NotAvailable
                     is EligibilityCheckRes.Error -> IssueEligibility.Status.Problem(

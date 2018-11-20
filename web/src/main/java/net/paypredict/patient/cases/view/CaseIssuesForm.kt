@@ -17,6 +17,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.server.VaadinSession
+import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.DBS
 import net.paypredict.patient.cases.mongo._id
@@ -223,69 +224,72 @@ class CaseIssuesForm : Composite<Div>() {
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
-            dialog += PatientEligibilityForm(readOnly = status?.value != "CHECKED").also { form ->
-                form.isPadding = false
-                form.width = "100%"
-                form.height = "100%"
-                form.caseId = _id
-                form.selectedItem = selected
-                form.items = issuesEligibility.value
-                form.onCasesUpdated = onCasesUpdated
-                form.onClose = { dialog.close() }
-                form.onPatientEligibilityChecked = { issue, res ->
-                    @Suppress("UNUSED_VARIABLE")
-                    val ignore = when (res) {
-                        is EligibilityCheckRes.Pass -> {
-                            res.fixAddress()
-                            addEligibilityIssue(
-                                issue,
-                                IssueEligibility.Status.Confirmed,
-                                "onPatientEligibilityChecked: Confirmed"
-                            )
+            dialog += PatientEligibilityForm(
+                readOnly = status?.value != "CHECKED",
+                newCasesLog = { toCasesLog() })
+                .also { form ->
+                    form.isPadding = false
+                    form.width = "100%"
+                    form.height = "100%"
+                    form.caseId = _id
+                    form.selectedItem = selected
+                    form.items = issuesEligibility.value
+                    form.onCasesUpdated = onCasesUpdated
+                    form.onClose = { dialog.close() }
+                    form.onPatientEligibilityChecked = { issue, res ->
+                        @Suppress("UNUSED_VARIABLE")
+                        val ignore = when (res) {
+                            is EligibilityCheckRes.Pass -> {
+                                res.fixAddress()
+                                addEligibilityIssue(
+                                    issue,
+                                    IssueEligibility.Status.Confirmed,
+                                    "onPatientEligibilityChecked: Confirmed"
+                                )
+                            }
+                            is EligibilityCheckRes.Warn -> {
+                                res.fixAddress()
+                                addEligibilityIssue(
+                                    issue,
+                                    IssueEligibility.Status.Problem(
+                                        res.message,
+                                        res.warnings.joinToString { it.message }),
+                                    "onPatientEligibilityChecked: Problem"
+                                )
+                            }
+                            EligibilityCheckRes.NotAvailable -> {
+                                addEligibilityIssue(
+                                    issue,
+                                    IssueEligibility.Status.NotAvailable,
+                                    "onPatientEligibilityChecked: NotAvailable"
+                                )
+                            }
+                            is EligibilityCheckRes.Error -> {
+                                addEligibilityIssue(
+                                    issue,
+                                    IssueEligibility.Status.Problem("Checking Error", res.message),
+                                    "onPatientEligibilityChecked: Problem"
+                                )
+                                showError(res.message)
+                            }
                         }
-                        is EligibilityCheckRes.Warn -> {
-                            res.fixAddress()
-                            addEligibilityIssue(
-                                issue,
-                                IssueEligibility.Status.Problem(
-                                    "Problem With Eligibility",
-                                    res.warnings.joinToString { it.message }),
-                                "onPatientEligibilityChecked: Problem"
-                            )
-                        }
-                        EligibilityCheckRes.NotAvailable -> {
-                            addEligibilityIssue(
-                                issue,
-                                IssueEligibility.Status.NotAvailable,
-                                "onPatientEligibilityChecked: NotAvailable"
-                            )
-                        }
-                        is EligibilityCheckRes.Error -> {
-                            addEligibilityIssue(
-                                issue,
-                                IssueEligibility.Status.Problem("Checking Error", res.message),
-                                "onPatientEligibilityChecked: Problem"
-                            )
-                            showError(res.message)
-                        }
+                        onValueChange?.invoke(this)
+                        form.items = issuesEligibility.value
                     }
-                    onValueChange?.invoke(this)
-                    form.items = issuesEligibility.value
+                    form.onPatientEligibilitySave = { issue ->
+                        addEligibilityIssue(issue, issue.status, "onPatientEligibilitySave")
+                        onValueChange?.invoke(this)
+                        form.items = issuesEligibility.value
+                    }
+                    form.onInsert = { responsibility ->
+                        addEligibilityIssue(responsibility, message = "onInsert")
+                        form.items = issuesEligibility.value
+                    }
+                    form.onRemove = { responsibility ->
+                        removeEligibilityIssue(responsibility, "onRemove")
+                        form.items = issuesEligibility.value
+                    }
                 }
-                form.onPatientEligibilitySave = { issue ->
-                    addEligibilityIssue(issue, issue.status, "onPatientEligibilitySave")
-                    onValueChange?.invoke(this)
-                    form.items = issuesEligibility.value
-                }
-                form.onInsert = { responsibility ->
-                    addEligibilityIssue(responsibility, message = "onInsert")
-                    form.items = issuesEligibility.value
-                }
-                form.onRemove = { responsibility ->
-                    removeEligibilityIssue(responsibility, "onRemove")
-                    form.items = issuesEligibility.value
-                }
-            }
             dialog.isCloseOnOutsideClick = false
             dialog.open()
         }

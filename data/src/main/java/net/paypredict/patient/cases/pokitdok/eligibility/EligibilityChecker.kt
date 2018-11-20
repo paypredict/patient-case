@@ -3,6 +3,9 @@ package net.paypredict.patient.cases.pokitdok.eligibility
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.UpdateOptions
+import net.paypredict.patient.cases.data.cases.CasesLog
+import net.paypredict.patient.cases.data.cases.LogLevel
+import net.paypredict.patient.cases.data.cases.insert
 import net.paypredict.patient.cases.data.worklist.IssueEligibility
 import net.paypredict.patient.cases.data.worklist.formatAs
 import net.paypredict.patient.cases.mongo.DBS
@@ -13,6 +16,7 @@ import net.paypredict.patient.cases.pokitdok.client.EligibilityQuery
 import net.paypredict.patient.cases.pokitdok.client.PokitDokApiException
 import net.paypredict.patient.cases.pokitdok.client.digest
 import net.paypredict.patient.cases.pokitdok.client.query
+import net.paypredict.patient.cases.toTitleCase
 import org.bson.Document
 import java.time.format.DateTimeFormatter
 
@@ -20,7 +24,7 @@ import java.time.format.DateTimeFormatter
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 9/2/2018.
  */
-class EligibilityChecker(private val issue: IssueEligibility) {
+class EligibilityChecker(private val issue: IssueEligibility, private val newCasesLog: () -> CasesLog) {
 
     fun check(): EligibilityCheckRes {
         val subscriber = issue.subscriber ?: return EligibilityCheckRes.Error.subscriberIsRequired
@@ -52,8 +56,45 @@ class EligibilityChecker(private val issue: IssueEligibility) {
         val digest = query.digest()
 
         val collection = DBS.Collections.eligibility()
-        val resFound = collection.find(doc { self["_id"] = digest }).firstOrNull()
-        if (resFound != null) return resFound.toEligibilityCheckRes()
+
+        val foundRes =
+            collection
+                .find(doc { self["_id"] = digest })
+                .firstOrNull()
+                ?.toEligibilityCheckRes()
+        when {
+            foundRes is EligibilityCheckRes.Warn -> {
+                val rejectReason = RejectReason.from(foundRes.result)
+                if (rejectReason?.cacheable == true)
+                    return foundRes
+                if (rejectReason == null) {
+                    val rejectReasonValue = RejectReason.optRejectReason(foundRes.result)
+                    if (rejectReasonValue != null)
+                        newCasesLog()
+                            .copy(
+                                level = LogLevel.WARNING,
+                                source = ".system",
+                                action = "EligibilityChecker.check",
+                                message = "unknown data.reject_reason: $rejectReasonValue",
+                                ext = foundRes.result
+                            )
+                            .insert()
+                }
+            }
+            foundRes is EligibilityCheckRes.Error -> {
+                newCasesLog()
+                    .copy(
+                        level = LogLevel.ERROR,
+                        source = ".system",
+                        action = "EligibilityChecker.check -> error",
+                        message = foundRes.message
+                    )
+                    .insert()
+            }
+
+            foundRes != null ->
+                return foundRes
+        }
 
         val res: Document = try {
             query.query { Document.parse(it.readText()) }
@@ -61,12 +102,7 @@ class EligibilityChecker(private val issue: IssueEligibility) {
             return EligibilityCheckRes.Error.apiCallError(e)
         }
         val result: EligibilityCheckRes =
-            if (res.opt<Boolean>("data", "coverage", "active") == true)
-                EligibilityCheckRes.Pass(digest, res) else
-                EligibilityCheckRes.Warn(
-                    digest, res,
-                    listOf(EligibilityCheckRes.Warning("Coverage isn't active"))
-                )
+            res.eligibilityCheckResFromAPI(digest)
 
         collection.updateOne(
             doc { self["_id"] = digest },
@@ -81,6 +117,7 @@ class EligibilityChecker(private val issue: IssueEligibility) {
                     self["meta"] = res["meta"]
                     self["data"] = res["data"]
                     if (result is EligibilityCheckRes.Warn) {
+                        self["message"] = result.message
                         self["warnings"] = result.warnings.map { it.message }
                     }
                 }
@@ -91,16 +128,66 @@ class EligibilityChecker(private val issue: IssueEligibility) {
         return result
     }
 
+    private fun Document.eligibilityCheckResFromAPI(digest: String): EligibilityCheckRes {
+        if (opt<Boolean>("data", "coverage", "active") == true)
+            return EligibilityCheckRes.Pass(digest, this)
+        val rejectReason: String? = opt("data", "reject_reason")
+        return EligibilityCheckRes.Warn(
+            digest, this,
+            rejectReason?.toTitleCase() ?: "Coverage isn't active",
+            emptyList()
+        )
+    }
+
+}
+
+@Suppress("EnumEntryName")
+enum class RejectReason(val cacheable: Boolean = true) {
+    invalid_subscriber_insured_id,
+    patient_birth_date_mismatch,
+    provider_not_on_file,
+    invalid_subscriber_insured_name,
+    subscriber_insured_not_found,
+    no_response_transaction_terminated(cacheable = false),
+    invalid_participant_id,
+    unable_to_respond_now(cacheable = false),
+    invalid_provider_id,
+    subscriber_insured_not_in_group_plan,
+    invalid_subscriber_insured_gender,
+    invalid_date_of_service,
+    input_errors(cacheable = false);
+
+    companion object {
+
+        fun from(name: String?): RejectReason? =
+            try {
+                name?.let { RejectReason.valueOf(it) }
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+
+        fun from(apiRes: Document?): RejectReason? =
+            from(optRejectReason(apiRes))
+
+        fun optRejectReason(apiRes: Document?) =
+            apiRes?.opt<String>("data", "reject_reason")
+    }
 }
 
 sealed class EligibilityCheckRes {
-    class Pass(override val id: String, override val result: Document) :
+    class Pass(
+        override val id: String, override val result: Document
+    ) :
         EligibilityCheckRes(), HasResult
 
-    class Warn(override val id: String, override val result: Document, val warnings: List<Warning>) :
+    class Warn(
+        override val id: String, override val result: Document,
+        val message: String,
+        val warnings: List<Warning>
+    ) :
         EligibilityCheckRes(), HasResult
 
-    object NotAvailable: EligibilityCheckRes()
+    object NotAvailable : EligibilityCheckRes()
 
     class Error(val message: String) : EligibilityCheckRes() {
         companion object {
@@ -148,6 +235,7 @@ fun Document.toEligibilityCheckRes(): EligibilityCheckRes =
         "pass" -> EligibilityCheckRes.Pass(get("_id") as String, this)
 
         "warn" -> EligibilityCheckRes.Warn(get("_id") as String, this,
+            opt("message") ?: "Warnings",
             opt<List<*>>("warnings")?.mapNotNull { it.toWarning() } ?: emptyList()
         )
 
