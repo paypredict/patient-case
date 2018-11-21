@@ -5,7 +5,7 @@ import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.ReturnDocument
 import net.paypredict.patient.cases.PatientCases
 import net.paypredict.patient.cases.data.CaseDataException
-import net.paypredict.patient.cases.data.cases.Import
+import net.paypredict.patient.cases.Import
 import net.paypredict.patient.cases.digest
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
@@ -536,12 +536,3 @@ private const val XML_PREFIX = """<?xml version="1.0" encoding="utf-16" standalo
 
 private fun File.toInputSource(): InputSource =
     InputSource(readText().removePrefix(XML_PREFIX).reader())
-
-internal val String.aName: String
-    get() = when {
-        all { it.isUpperCase() } -> toLowerCase()
-        else -> decapitalize()
-    }
-
-internal val String.eName: String
-    get() = capitalize()

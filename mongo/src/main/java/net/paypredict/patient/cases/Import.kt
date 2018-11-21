@@ -1,11 +1,8 @@
-package net.paypredict.patient.cases.data.cases
+package net.paypredict.patient.cases
 
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.CountOptions
 import net.paypredict.patient.cases.PatientCases.clientDir
-import net.paypredict.patient.cases.data.worklist.aName
-import net.paypredict.patient.cases.data.worklist.eName
-import net.paypredict.patient.cases.digest
 import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import org.xml.sax.Attributes
@@ -66,7 +63,7 @@ object Import {
             if (!override) return digest
         }
 
-        val case = xmlFile.reader().use { it.toDocument() }
+        val case = readXmlCaseAsDocument(xmlFile)
         val update = doc {
             self[`$set`] = doc {
                 onUpsertDoc()
@@ -85,6 +82,8 @@ object Import {
 
         return digest
     }
+
+    fun readXmlCaseAsDocument(xmlFile: File) = xmlFile.reader().use { it.toDocument() }
 
     private class Box(
         val doc: Document
@@ -240,3 +239,12 @@ fun File.created(): Long =
         .readAttributes<BasicFileAttributes>(toPath(), BasicFileAttributes::class.java)
         .creationTime()
         .toMillis()
+
+internal val String.aName: String
+    get() = when {
+        all { it.isUpperCase() } -> toLowerCase()
+        else -> decapitalize()
+    }
+
+internal val String.eName: String
+    get() = capitalize()

@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Class-Path: mongodb-driver-core-3.4.2.jar bson-3.4.2.jar kotlin-stdlib
+ -common-1.3.0.jar javax.json-api-1.0.jar mongodb-driver-3.4.2.jar jav
+ ax.json-1.0.4.jar kotlin-reflect-1.3.0.jar annotations-13.0.jar kotli
+ n-stdlib-jdk8-1.3.0.jar kotlin-stdlib-jdk7-1.3.0.jar kotlin-stdlib-1.
+ 3.0.jar
+

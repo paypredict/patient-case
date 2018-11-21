@@ -10,8 +10,8 @@ import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.UsStreet
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
 import net.paypredict.patient.cases.data.cases.CasesLog
-import net.paypredict.patient.cases.data.cases.Import
-import net.paypredict.patient.cases.data.cases.created
+import net.paypredict.patient.cases.Import
+import net.paypredict.patient.cases.created
 import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes

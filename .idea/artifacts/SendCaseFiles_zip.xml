@@ -1,0 +1,11 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="SendCaseFiles:zip">
+    <output-path>$PROJECT_DIR$/out/artifacts/SendCaseFiles_zip</output-path>
+    <root id="archive" name="SendCaseFiles.zip">
+      <element id="directory" name="lib">
+        <element id="artifact" artifact-name="cases-utils:jar" />
+      </element>
+      <element id="file-copy" path="$PROJECT_DIR$/mongo/src/SendCaseFiles.cmd" />
+    </root>
+  </artifact>
+</component>
