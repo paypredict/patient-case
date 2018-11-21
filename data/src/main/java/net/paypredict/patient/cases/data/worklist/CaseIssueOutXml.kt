@@ -179,22 +179,24 @@ private fun makeTestCopy(fileName: String) {
             }
         }
 
-    val nextName: String =
-        "BILL " + nextInt("text_nextName")
+    val nextFirstName: String =
+        "Bill" + nextInt("text_nextName")
             .toString().chars().toList().joinToString(separator = "") { (it + 16).toChar().toString() }
+    val nextLastName = "DONOT"
+    val nextName = "$nextFirstName $nextLastName"
 
     domDocument.getElementsByTagName("Patient")
         .toSequence()
         .filterIsInstance<Element>()
         .forEach {
-            it.setIfNotNullOrBlank(PatientAttr.Name, "DONOT $nextName")
-            it.setIfNotNullOrBlank(PatientAttr.FirstName, "DONOT")
-            it.setIfNotNullOrBlank(PatientAttr.LastName, nextName)
+            it.setIfNotNullOrBlank(PatientAttr.Name, nextName)
+            it.setIfNotNullOrBlank(PatientAttr.FirstName, nextFirstName)
+            it.setIfNotNullOrBlank(PatientAttr.LastName, nextLastName)
             it.setIfNotNullOrBlank(PatientAttr.MiddleInitials, "")
 
-            it.setIfNotNullOrBlank(PatientAttr.GuarantorName, "DONOT $nextName")
-            it.setIfNotNullOrBlank(PatientAttr.GuarantorFirstName, "DONOT")
-            it.setIfNotNullOrBlank(PatientAttr.GuarantorLastName, nextName)
+            it.setIfNotNullOrBlank(PatientAttr.GuarantorName, nextName)
+            it.setIfNotNullOrBlank(PatientAttr.GuarantorFirstName, nextFirstName)
+            it.setIfNotNullOrBlank(PatientAttr.GuarantorLastName, nextLastName)
             it.setIfNotNullOrBlank(PatientAttr.GuarantorMiddleInitials, "")
         }
 
@@ -202,8 +204,8 @@ private fun makeTestCopy(fileName: String) {
         .toSequence()
         .filterIsInstance<Element>()
         .forEach {
-            it.setIfNotNullOrBlank(SubscriberAttr.FirstName, "DONOT")
-            it.setIfNotNullOrBlank(SubscriberAttr.OrganizationNameOrLastName, "BILL")
+            it.setIfNotNullOrBlank(SubscriberAttr.FirstName, nextFirstName)
+            it.setIfNotNullOrBlank(SubscriberAttr.OrganizationNameOrLastName, nextLastName)
             it.setIfNotNullOrBlank(SubscriberAttr.MiddleInitial, "")
         }
 
