@@ -466,8 +466,31 @@ private fun CaseHist.updatePatient(domDocument: DomDocument) {
     domPatient.setIfNotNullOrBlank(PatientAttr.City, issue.city)
     domPatient.setIfNotNullOrBlank(PatientAttr.State, issue.state)
 
+    domPatient.replaceEmpty(
+        PatientAttr.GuarantorFirstName,
+        PatientAttr.FirstName
+    )
+    domPatient.replaceEmpty(
+        PatientAttr.GuarantorLastName,
+        PatientAttr.LastName
+    )
+    domPatient.replaceEmpty(
+        PatientAttr.GuarantorMiddleInitials,
+        PatientAttr.MiddleInitials
+    )
+    domPatient.replaceEmpty(
+        PatientAttr.GuarantorName,
+        PatientAttr.Name
+    )
+
     PatientAttr.values().forEach { attr ->
         if (!domPatient.hasAttribute(attr.name)) domPatient[attr] = attr.default
+    }
+}
+
+private fun Element.replaceEmpty(dst: PatientAttr, src: PatientAttr) {
+    if (getAttribute(dst.name).isNullOrBlank() && hasAttribute(src.name)) {
+        setAttribute(dst.name, getAttribute(src.name))
     }
 }
 
