@@ -329,7 +329,8 @@ class PayersData {
     data class TradingPartner(
         override val _id: String,
         val name: String?,
-        val payerId: String?
+        val payerId: String?,
+        val supportedTransactions: Set<String>
     ) : Doc {
         val displayName: String?
             get() = payerId?.let { "$name [ $it ]" } ?: name
@@ -342,13 +343,18 @@ class PayersData {
                 projection(doc {
                     self["data.name"] = 1
                     self["data.payer_id"] = 1
+                    self["data.supported_transactions"] = 1
                 })
             }
         ) { doc ->
             TradingPartner(
                 _id = doc["_id"] as String,
                 name = doc.opt<String>("data", "name"),
-                payerId = doc.opt<String>("data", "payer_id")
+                payerId = doc.opt<String>("data", "payer_id"),
+                supportedTransactions = doc.opt<List<*>>("data", "supported_transactions")
+                    ?.filterIsInstance<String>()
+                    ?.toSet()
+                    ?: emptySet()
             )
         }
     }
@@ -361,10 +367,17 @@ class PayersData {
     fun findPkdPayer(zmPayerId: String?): PkdPayer? {
         val usersMatchPayer =
             usersData.usersMatchPayersByZmPayerId[zmPayerId]
-        if (usersMatchPayer != null) {
-            return PkdPayer(usersMatchPayer.pkdPayerId, usersMatchPayer.notAvailable)
+        val pkdPayer =
+            if (usersMatchPayer != null)
+                PkdPayer(usersMatchPayer.pkdPayerId, usersMatchPayer.notAvailable) else
+                PkdPayer(matchPayersByZmPayerId[zmPayerId]?._id)
+
+        val tradingPartner = tradingPartners[pkdPayer.id]
+        if (tradingPartner != null) {
+            if ("270" !in tradingPartner.supportedTransactions)
+                return pkdPayer.copy(notAvailable = true)
         }
-        return PkdPayer(matchPayersByZmPayerId[zmPayerId]?._id)
+        return pkdPayer
     }
 
     fun findPkdPayerId(zmPayerId: String?): String? =
