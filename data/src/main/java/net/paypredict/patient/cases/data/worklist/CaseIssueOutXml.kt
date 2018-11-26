@@ -9,7 +9,6 @@ import net.paypredict.patient.cases.data.CaseDataException
 import net.paypredict.patient.cases.data.cases.BackupMode
 import net.paypredict.patient.cases.data.cases.archiveCaseFile
 import net.paypredict.patient.cases.data.cases.casesArchiveFile
-import net.paypredict.patient.cases.data.cases.readCreationTime
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.toEligibilityCheckRes
@@ -97,7 +96,7 @@ fun CaseHist.createOutXml(
             override = false,
             onUpsertDoc = { self["ref.src"] = _id },
             onNewFile = {
-                outFile.archiveCaseFile(it, BackupMode.OUT(srcFile.readCreationTime()))
+                outFile.archiveCaseFile(it, BackupMode.OUT)
             }
         )
 

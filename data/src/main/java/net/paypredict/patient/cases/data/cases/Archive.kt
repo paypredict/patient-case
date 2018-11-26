@@ -48,7 +48,7 @@ fun File.archiveCaseFile(
 sealed class BackupMode {
     object NONE : BackupMode()
     object SRC : BackupMode()
-    class OUT(val creationTime: FileTime) : BackupMode()
+    object OUT : BackupMode()
 }
 
 private fun File.backup(backupMode: BackupMode) {
@@ -74,8 +74,8 @@ private fun File.backup(backupMode: BackupMode) {
 private fun BackupMode.toCreationTime(file: File): FileTime? =
     when (this) {
         BackupMode.NONE -> null
-        BackupMode.SRC -> file.readCreationTime()
-        is BackupMode.OUT -> creationTime
+        BackupMode.SRC,
+        BackupMode.OUT -> file.readCreationTime()
     }
 
 private fun FileTime?.formatAsDateSafeFileName(file: File): String =
@@ -94,7 +94,7 @@ private fun File.copyToWithCreationTime(target: File, creationTime: FileTime? = 
     )
 }
 
-fun File.readCreationTime(): FileTime =
+private fun File.readCreationTime(): FileTime =
     toPath().readCreationTime()
 
 private fun Path.readCreationTime(): FileTime =
