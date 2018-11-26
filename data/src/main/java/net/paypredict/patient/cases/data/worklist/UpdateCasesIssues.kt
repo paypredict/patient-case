@@ -12,6 +12,8 @@ import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
 import net.paypredict.patient.cases.data.cases.CasesLog
 import net.paypredict.patient.cases.Import
 import net.paypredict.patient.cases.created
+import net.paypredict.patient.cases.data.cases.BackupMode
+import net.paypredict.patient.cases.data.cases.archiveCaseFile
 import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
@@ -69,7 +71,7 @@ private fun DocumentMongoCollection.importCases(isInterrupted: () -> Boolean) {
                 cases = this,
                 skipByNameAndTime = true,
                 override = false,
-                onNewFile = { file.archive(it) }
+                onNewFile = { file.archiveCaseFile(it, BackupMode.SRC) }
             )
         } catch (e: Throwable) {
             ImportCasesAttempts(file) {

@@ -57,11 +57,8 @@ object Import {
 
         val digest = xmlFile.digest()
         val filter = digest._id()
-        if (cases.count(filter, limitOne) == 0L) {
-            onNewFile(digest)
-        } else {
-            if (!override) return digest
-        }
+        val isNewFile = cases.count(filter, limitOne) == 0L
+        if (!isNewFile && !override) return digest
 
         val case = readXmlCaseAsDocument(xmlFile)
         val update = doc {
@@ -79,6 +76,9 @@ object Import {
         cases.upsertOne(filter, update) {
             cases.updateOne(it, doc { self[`$set`] = doc { self["doc.created"] = Date() } })
         }
+
+        if (isNewFile)
+            onNewFile(digest)
 
         return digest
     }

@@ -3,10 +3,13 @@ package net.paypredict.patient.cases.data.worklist
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.ReturnDocument
+import net.paypredict.patient.cases.Import
 import net.paypredict.patient.cases.PatientCases
 import net.paypredict.patient.cases.data.CaseDataException
-import net.paypredict.patient.cases.Import
-import net.paypredict.patient.cases.digest
+import net.paypredict.patient.cases.data.cases.BackupMode
+import net.paypredict.patient.cases.data.cases.archiveCaseFile
+import net.paypredict.patient.cases.data.cases.casesArchiveFile
+import net.paypredict.patient.cases.data.cases.readCreationTime
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.toEligibilityCheckRes
@@ -35,23 +38,8 @@ val ordersSrcDir: File by lazy {
         if (!it.isDirectory) throw CaseDataException("Orders source directory $it not found")
     }
 }
-val ordersArchiveDir: File by lazy {
-    ordersDir.resolve("archive").apply { mkdir() }
-}
 val ordersOutDir: File by lazy {
     ordersDir.resolve("out").apply { mkdir() }
-}
-
-fun ordersArchiveFile(digest: String): File =
-    ordersArchiveDir
-        .resolve(digest.take(4)).apply { mkdir() }
-        .resolve(digest)
-
-fun File.archive(digest: String = digest()): String {
-    val archiveFile = ordersArchiveFile(digest)
-    if (!archiveFile.exists())
-        copyTo(archiveFile)
-    return digest
 }
 
 typealias DomDocument = org.w3c.dom.Document
@@ -69,7 +57,7 @@ fun CaseHist.createOutXml(
     val fileName: String = case.opt("file", "name")
         ?: throw CaseDataException("file.name not found in collection cases $_id")
 
-    val srcFile = ordersArchiveFile(_id).also {
+    val srcFile = casesArchiveFile(_id).also {
         if (!it.isFile) throw CaseDataException("Orders Archive File $it not found")
     }
     val outFile = ordersOutDir.resolve(fileName).also {
@@ -108,7 +96,9 @@ fun CaseHist.createOutXml(
             skipByNameAndTime = false,
             override = false,
             onUpsertDoc = { self["ref.src"] = _id },
-            onNewFile = { outFile.archive(it) }
+            onNewFile = {
+                outFile.archiveCaseFile(it, BackupMode.OUT(srcFile.readCreationTime()))
+            }
         )
 
     outFileDigest
