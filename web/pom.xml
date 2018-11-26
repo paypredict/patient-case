@@ -66,6 +66,15 @@
             <version>3.1.0</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Auth0 Java MVC Commons -->
+        <!-- Java library that simplifies the use of Auth0 for server-side MVC web apps -->
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>mvc-auth-commons</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+
     </dependencies>
 
     <build>

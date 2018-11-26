@@ -12,12 +12,16 @@ import javax.servlet.http.HttpServletResponse
  *
  * Created by alexei.vylegzhanin@gmail.com on 9/24/2018.
  */
-@WebServlet(name = "RequisitionForm Servlet", urlPatterns = ["/requisition-form/*"], loadOnStartup = 1)
+@WebServlet(
+    name = "RequisitionForm Servlet",
+    urlPatterns = ["/portal/requisition-form/*"],
+    loadOnStartup = 1
+)
 class RequisitionFormServlet : HttpServlet() {
 
     override fun init(config: ServletConfig?) {
         super.init(config)
-        _baseUrl = servletContext.contextPath.removeSuffix("/") + "/requisition-form"
+        baseUrl_ = servletContext.contextPath.removeSuffix("/") + "/portal/requisition-form"
     }
 
     override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
@@ -51,9 +55,8 @@ class RequisitionFormServlet : HttpServlet() {
 
     companion object {
         private val dir: File by lazy { PatientCases.clientDir.resolve("requisitionForms") }
-        private var _baseUrl: String = "/requisition-form"
-        val baseUrl: String get() = _baseUrl
-
+        private var baseUrl_: String = "/requisition-form"
+        val baseUrl: String get() = baseUrl_
     }
 }
 

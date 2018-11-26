@@ -1,22 +1,23 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="web" type="#com.intellij.j2ee.web.tomcat.TomcatRunConfigurationFactory" factoryName="Local" APPLICATION_SERVER_NAME="Tomcat 8.5.6" ALTERNATIVE_JRE_ENABLED="true" ALTERNATIVE_JRE_PATH="$PROJECT_DIR$/../../bin/jdk1.8.0_112">
+    <option name="OPEN_IN_BROWSER_URL" value="http://localhost:8080/test/" />
     <option name="SHOW_DIALOG_ON_UPDATE" value="false" />
     <option name="UPDATING_POLICY" value="redeploy-artifacts" />
     <deployment>
       <artifact name="web:war exploded">
         <settings>
-          <option name="CONTEXT_PATH" value="/" />
+          <option name="CONTEXT_PATH" value="/test" />
         </settings>
       </artifact>
     </deployment>
     <server-settings>
       <option name="BASE_DIRECTORY_NAME" value="Unnamed_patient-case" />
     </server-settings>
-    <predefined_log_file id="Tomcat" enabled="true" />
-    <predefined_log_file id="Tomcat Catalina" enabled="true" />
-    <predefined_log_file id="Tomcat Manager" enabled="false" />
-    <predefined_log_file id="Tomcat Host Manager" enabled="false" />
-    <predefined_log_file id="Tomcat Localhost Access" enabled="false" />
+    <predefined_log_file enabled="true" id="Tomcat" />
+    <predefined_log_file enabled="true" id="Tomcat Catalina" />
+    <predefined_log_file id="Tomcat Manager" />
+    <predefined_log_file id="Tomcat Host Manager" />
+    <predefined_log_file id="Tomcat Localhost Access" />
     <RunnerSettings RunnerId="Debug">
       <option name="DEBUG_PORT" value="javadebug" />
     </RunnerSettings>

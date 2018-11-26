@@ -12,10 +12,7 @@ import com.vaadin.flow.router.Route
  * The main view contains a button and a template element.
  */
 @HtmlImport("styles/shared-styles.html")
-@Route("")
+@Route("portal/work-list")
 @Push
 @PageTitle("WorkList")
-class MainView : Composite<WorkListView>(), BeforeEnterObserver {
-    override fun beforeEnter(event: BeforeEnterEvent) =
-        checkUserOnBeforeEnterEvent<MainView>(event)
-}
+class WorkListPage : Composite<WorkListView>()
