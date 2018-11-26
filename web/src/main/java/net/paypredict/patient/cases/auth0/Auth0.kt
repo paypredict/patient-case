@@ -23,4 +23,7 @@ object Auth0 {
 }
 
 fun HttpServletRequest.resolve(path: String): String =
-    "/" + (contextPath.removePrefix("/")) + "/" + (path.removePrefix("/"))
+    when (val context = contextPath.removePrefix("/")) {
+        "" -> "/" + (path.removePrefix("/"))
+        else -> "/" + context + "/" + (path.removePrefix("/"))
+    }

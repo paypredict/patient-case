@@ -16,7 +16,7 @@ class LogoutServlet : HttpServlet() {
             request.session.invalidate()
         }
         request.contextPath
-        response.sendRedirect(request.resolve("login"))
+        response.sendRedirect(request.resolve("/"))
     }
 
 }

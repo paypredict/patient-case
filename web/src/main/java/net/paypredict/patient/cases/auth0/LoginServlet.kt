@@ -33,8 +33,19 @@ class LoginServlet : HttpServlet() {
     override fun doGet(req: HttpServletRequest, res: HttpServletResponse) {
         val redirectUri: String =
             with(req) {
-                val context = "/" + contextPath.removePrefix("/")
-                "$scheme://$serverName:$serverPort$context/callback"
+                val context: String =
+                    when (val it = contextPath.removePrefix("/")) {
+                        "" -> it
+                        else -> "/$it"
+                    }
+                val port: String =
+                    when {
+                        scheme == "http" && serverPort == 80 || serverPort == -1 -> ""
+                        scheme == "https" && serverPort == 443 || serverPort == -1 -> ""
+                        else -> ":$serverPort"
+                    }
+
+                "$scheme://$serverName$port$context/callback"
             }
 
         val authorizeUrl: String =
