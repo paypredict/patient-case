@@ -15,6 +15,7 @@ import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.shared.Registration
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.ifHasDocKey
+import net.paypredict.patient.cases.ifHasFilterKeys
 import net.paypredict.patient.cases.ifSortable
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.mongo.DBS.Collections.cases
@@ -33,7 +34,6 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     override fun initContent(): Grid<CaseAttr> =
         Grid(CaseAttr::class.java)
 
-    // TODO add window
     private var filter = doc { }
 
     init {
@@ -105,12 +105,13 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
         filter = when {
             viewOnlyUnresolved ->
                 doc {
-                    self[`$and`] = listOf(
-                        doc { self["status.value"] = "CHECKED" }
-                    )
+                    self["status.value"] = "CHECKED"
                 }
             else ->
-                doc { self["status.checked"] = true }
+                doc {
+                    self["status.checked"] = true
+                    self["status.timeout"] = false
+                }
         }
         refresh()
     }
@@ -167,6 +168,9 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
             for (metaData in CASE_ATTR_META_DATA_MAP.values) {
                 metaData.view.ifHasDocKey { docKey ->
                     createIndex(doc { self[docKey] = 1 })
+                }
+                metaData.view.ifHasFilterKeys { filterKeys ->
+                    createIndex(doc { filterKeys.forEach { self[it] = 1 } })
                 }
             }
         }

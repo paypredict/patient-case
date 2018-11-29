@@ -122,7 +122,7 @@ private fun DocumentMongoCollection.markTimeoutCases(
 ) {
     val timeout: Date = Date.from(Import.Conf.timeOutDaysMark.toDaysBackLDT().toInstant())
     val filter = doc {
-        self["status.value"] = "CHECKED"
+        self["status.timeout"] = false
         self["file.created"] = doc { self[`$lt`] = timeout }
     }
     val items: List<Document> =

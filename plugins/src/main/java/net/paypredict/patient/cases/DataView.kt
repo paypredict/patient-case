@@ -13,12 +13,17 @@ annotation class DataView(
     val order: Int = -1,
     val docKey: String = "",
     val srtKey: String = "",
+    val filterKeys: Array<String> = [],
     val sortable: Boolean = true,
     val flexGrow: Int = 1
 )
 
 inline fun DataView.ifHasDocKey(action: (docKey: String) -> Unit) {
     if (docKey.isNotEmpty()) action(docKey)
+}
+
+inline fun DataView.ifHasFilterKeys(action: (filterKeys: Array<String>) -> Unit) {
+    if (filterKeys.isNotEmpty()) action(filterKeys)
 }
 
 inline fun DataView.ifSortable(action: (sortKey: String) -> Unit) {

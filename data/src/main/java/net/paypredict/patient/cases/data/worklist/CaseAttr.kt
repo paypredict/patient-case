@@ -68,6 +68,13 @@ data class CaseAttr(
         label = "Status", order = 100,
         docKey = "status",
         srtKey = "status.value",
+        filterKeys = [
+            "status.checked",
+            "status.passed",
+            "status.resolved",
+            "status.timeout",
+            "status.sent"
+        ],
         isVisible = false
     )
     var status: CaseStatus? = null
