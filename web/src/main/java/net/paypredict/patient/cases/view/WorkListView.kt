@@ -4,10 +4,12 @@ import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.icon.VaadinIcon
+import com.vaadin.flow.component.notification.Notification
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.splitlayout.SplitLayout
+import net.paypredict.patient.cases.casesUser
 
 class WorkListView : Composite<SplitLayout>() {
     private val grid = CaseAttrGrid().apply {
@@ -44,7 +46,9 @@ class WorkListView : Composite<SplitLayout>() {
                 this += Button("Archive All")
                 this += Button("History")
                 this += Button("Subscribe")
-                this += Button("Filter", VaadinIcon.SEARCH.create())
+                this += Button("Filter", VaadinIcon.SEARCH.create()) {
+                    ui.ifPresent { ui -> Notification.show(ui.casesUser.toString()) }
+                }
             }
             this += grid
         }

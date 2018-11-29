@@ -33,6 +33,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     override fun initContent(): Grid<CaseAttr> =
         Grid(CaseAttr::class.java)
 
+    // TODO add window
     private var filter = doc { }
 
     init {

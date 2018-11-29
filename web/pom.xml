@@ -75,6 +75,12 @@
             <version>1.0.2</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>auth0</artifactId>
+            <version>1.9.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -1,9 +1,7 @@
 package net.paypredict.patient.cases.auth0
 
 import com.auth0.AuthenticationController
-import java.io.UnsupportedEncodingException
 import javax.servlet.ServletConfig
-import javax.servlet.ServletException
 import javax.servlet.annotation.WebServlet
 import javax.servlet.http.HttpServlet
 import javax.servlet.http.HttpServletRequest
@@ -15,19 +13,11 @@ import javax.servlet.http.HttpServletResponse
 )
 class LoginServlet : HttpServlet() {
 
-    private val domain: String? = Auth0.domain
     private lateinit var authenticationController: AuthenticationController
 
     override fun init(config: ServletConfig) {
         super.init(config)
-        try {
-            authenticationController = Auth0.buildAuthenticationController()
-        } catch (e: UnsupportedEncodingException) {
-            throw ServletException(
-                "Couldn't create the AuthenticationController instance. Check the configuration.",
-                e
-            )
-        }
+        authenticationController = Auth0.App.Web.authenticationController()
     }
 
     override fun doGet(req: HttpServletRequest, res: HttpServletResponse) {
@@ -51,7 +41,7 @@ class LoginServlet : HttpServlet() {
         val authorizeUrl: String =
             authenticationController
                 .buildAuthorizeUrl(req, redirectUri)
-                .withAudience("https://$domain/userinfo")
+                .withAudience("https://${Auth0.domain}/userinfo")
                 .build()
 
         res.sendRedirect(authorizeUrl)
