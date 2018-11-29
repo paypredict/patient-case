@@ -1,11 +1,8 @@
 package net.paypredict.patient.cases.data.worklist
 
 import com.vaadin.flow.templatemodel.Encode
-import net.paypredict.patient.cases.DataView
-import net.paypredict.patient.cases.MetaData
-import net.paypredict.patient.cases.VaadinBean
+import net.paypredict.patient.cases.*
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
-import net.paypredict.patient.cases.metaDataMap
 import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import java.util.*
@@ -137,7 +134,10 @@ val CaseAttr.isCheckedOnly: Boolean
     get() = status?.isCheckedOnly ?: false
 
 
-fun CaseAttr.resolve(cases: DocumentMongoCollection = DBS.Collections.cases()) {
+fun CaseAttr.resolve(
+    user: CasesUser?,
+    cases: DocumentMongoCollection = DBS.Collections.cases()
+) {
     cases
         .find(_id._id())
         .firstOrNull()
@@ -147,7 +147,8 @@ fun CaseAttr.resolve(cases: DocumentMongoCollection = DBS.Collections.cases()) {
                 context = UpdateContext(
                     source = ".user",
                     action = "case.resolve",
-                    cases = cases
+                    cases = cases,
+                    user = user?.email
                 ),
                 status = (status ?: CaseStatus()).copy(resolved = true)
             )

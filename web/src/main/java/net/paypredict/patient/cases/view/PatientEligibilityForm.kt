@@ -18,6 +18,7 @@ import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import com.vaadin.flow.router.Route
 import com.vaadin.flow.shared.Registration
+import net.paypredict.patient.cases.casesUser
 import net.paypredict.patient.cases.data.cases.CasesLog
 import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.data.worklist.*
@@ -594,7 +595,8 @@ private class PayersRecheck : HorizontalLayout() {
                 UpdateContext(
                     source = ".user",
                     action = "hist.eligibility.add rechecked",
-                    message = "Recheck related issues"
+                    message = "Recheck related issues",
+                    user = ui.orElse(null)?.casesUser?.email
                 )
             )
         }

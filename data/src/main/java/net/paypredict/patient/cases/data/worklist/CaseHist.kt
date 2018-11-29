@@ -82,7 +82,7 @@ class UpdateContext(
     val cases: MongoCollection<Document> = DBS.Collections.cases(),
     val casesLog: MongoCollection<Document> = DBS.Collections.casesLog(),
     val message: String? = null,
-    val user: String? = null
+    val user: String?
 )
 
 fun CaseHist.update(

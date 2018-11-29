@@ -4,6 +4,7 @@ import com.smartystreets.api.exceptions.BadRequestException
 import com.smartystreets.api.exceptions.SmartyException
 import com.smartystreets.api.us_street.Lookup
 import com.smartystreets.api.us_street.MatchType
+import net.paypredict.patient.cases.CasesUser
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistry
 import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
@@ -35,10 +36,10 @@ import kotlin.concurrent.withLock
 
 fun updateCasesIssues(isInterrupted: () -> Boolean = { false }) {
     val cases = DBS.Collections.cases()
-    cases.importCases(isInterrupted)
-    cases.checkCases(isInterrupted)
-    cases.markTimeoutCases(isInterrupted)
-    cases.sendCases(isInterrupted)
+    cases.importCases(isInterrupted = isInterrupted)
+    cases.checkCases(isInterrupted = isInterrupted)
+    cases.markTimeoutCases(isInterrupted = isInterrupted)
+    cases.sendCases(isInterrupted = isInterrupted)
 }
 
 private object ImportCasesAttempts {
@@ -84,7 +85,10 @@ private fun DocumentMongoCollection.importCases(isInterrupted: () -> Boolean) {
     }
 }
 
-private fun DocumentMongoCollection.checkCases(isInterrupted: () -> Boolean) {
+private fun DocumentMongoCollection.checkCases(
+    user: CasesUser? = null,
+    isInterrupted: () -> Boolean
+) {
     val items: List<Document> = find(doc { self["status.checked"] = doc { self[`$exists`] = false } })
         .projection(doc { self["_id"] = 1 })
         .toList()
@@ -97,7 +101,8 @@ private fun DocumentMongoCollection.checkCases(isInterrupted: () -> Boolean) {
                 usStreet = usStreet,
                 payerLookup = payerLookup,
                 cases = this,
-                case = case
+                case = case,
+                user = user
             )
         issueCheckerAuto.check()
         if (isInterrupted()) break
@@ -111,7 +116,10 @@ private fun LocalDateTime.toInstant(): Instant =
     atZone(ZoneId.systemDefault())
         .toInstant()
 
-private fun DocumentMongoCollection.markTimeoutCases(isInterrupted: () -> Boolean) {
+private fun DocumentMongoCollection.markTimeoutCases(
+    user: CasesUser? = null,
+    isInterrupted: () -> Boolean
+) {
     val timeout: Date = Date.from(Import.Conf.timeOutDaysMark.toDaysBackLDT().toInstant())
     val filter = doc {
         self["status.value"] = "CHECKED"
@@ -132,7 +140,8 @@ private fun DocumentMongoCollection.markTimeoutCases(isInterrupted: () -> Boolea
                         source = ".system",
                         action = "case.markTimeout",
                         cases = this@markTimeoutCases,
-                        message = "timeout"
+                        message = "timeout",
+                        user = user?.email
                     ),
                     status = (status ?: CaseStatus()).copy(timeout = true)
                 )
@@ -141,7 +150,10 @@ private fun DocumentMongoCollection.markTimeoutCases(isInterrupted: () -> Boolea
     }
 }
 
-private fun DocumentMongoCollection.sendCases(isInterrupted: () -> Boolean) {
+private fun DocumentMongoCollection.sendCases(
+    user: CasesUser? = null,
+    isInterrupted: () -> Boolean
+) {
     val items: List<Document> =
         find(doc { self["status.value"] = doc { self[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") } })
             .projection(doc { self["_id"] = 1 })
@@ -158,7 +170,8 @@ private fun DocumentMongoCollection.sendCases(isInterrupted: () -> Boolean) {
                         source = ".system",
                         action = "case.send",
                         cases = this@sendCases,
-                        message = "sent"
+                        message = "sent",
+                        user = user?.email
                     ),
                     status = (status ?: CaseStatus()).copy(sent = true)
                 )
@@ -260,7 +273,8 @@ internal class IssueCheckerAuto(
     usStreet: UsStreet = UsStreet(),
     payerLookup: PayerLookup = PayerLookup(),
     cases: DocumentMongoCollection = DBS.Collections.cases(),
-    private val case: Document
+    private val case: Document,
+    private val user: CasesUser? = null
 ) : IssueChecker(usStreet, payerLookup, cases) {
 
     private lateinit var caseHist: CaseHist
@@ -297,7 +311,8 @@ internal class IssueCheckerAuto(
                 source = ".system",
                 action = "case.check",
                 cases = cases,
-                message = statusRes.value
+                message = statusRes.value,
+                user = user?.email
             ),
             status = statusRes
         )

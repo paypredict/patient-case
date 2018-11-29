@@ -17,6 +17,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import com.vaadin.flow.server.VaadinSession
+import net.paypredict.patient.cases.casesUser
 import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.DBS
@@ -94,7 +95,7 @@ class CaseIssuesForm : Composite<Div>() {
                         if (event.value) {
                             confirmResolved(
                                 confirmed = {
-                                    caseAttr.resolve()
+                                    caseAttr.resolve(user = ui.get().casesUser)
                                     checkbox.isEnabled = false
                                     onResolved?.invoke(caseAttr)
                                 },
@@ -339,7 +340,8 @@ class CaseIssuesForm : Composite<Div>() {
             UpdateContext(
                 source = ".user",
                 action = "hist.eligibility.add",
-                message = message
+                message = message,
+                user = ui.orElse(null)?.casesUser?.email
             )
         )
         issuesEligibility.value = caseHist.eligibility
@@ -358,7 +360,8 @@ class CaseIssuesForm : Composite<Div>() {
             UpdateContext(
                 source = ".user",
                 action = "hist.eligibility.remove",
-                message = message
+                message = message,
+                user = ui.orElse(null)?.casesUser?.email
             )
         )
         issuesEligibility.value = caseHist.eligibility
@@ -430,7 +433,8 @@ class CaseIssuesForm : Composite<Div>() {
             UpdateContext(
                 source = ".user",
                 action = "hist.address.add",
-                message = message
+                message = message,
+                user = ui.orElse(null)?.casesUser?.email
             )
         )
         issuesAddress.value = caseHist.address
