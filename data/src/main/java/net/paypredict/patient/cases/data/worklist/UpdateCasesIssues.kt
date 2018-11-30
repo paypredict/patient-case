@@ -154,30 +154,41 @@ private fun DocumentMongoCollection.sendCases(
     user: CasesUser? = null,
     isInterrupted: () -> Boolean
 ) {
-    val items: List<Document> =
-        find(doc { self["status.value"] = doc { self[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") } })
-            .projection(doc { self["_id"] = 1 })
-            .toList()
+    val items: List<Document> = this
+        .find(
+            doc {
+                self["status.sent"] = false
+                self["status.value"] = doc { self[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") }
+            })
+        .projection(doc { self["_id"] = 1 })
+        .toList()
 
     for (item in items) {
-        find(item)
+        this
+            .find(item)
             .firstOrNull()
             ?.toCaseHist()
-            ?.run {
-                createOutXml()
-                update(
-                    context = UpdateContext(
-                        source = ".system",
-                        action = "case.send",
-                        cases = this@sendCases,
-                        message = "sent",
-                        user = user?.email
-                    ),
-                    status = (status ?: CaseStatus()).copy(sent = true)
-                )
-            }
+            ?.send(cases = this, user = user)
         if (isInterrupted()) break
     }
+}
+
+private fun CaseHist.send(
+    cases: DocumentMongoCollection,
+    user: CasesUser? = null
+) {
+    if (status?.sent == true) return
+    createOutXml()
+    update(
+        context = UpdateContext(
+            source = ".system",
+            action = "case.send",
+            cases = cases,
+            message = "sent",
+            user = user?.email
+        ),
+        status = (status ?: CaseStatus()).copy(sent = true)
+    )
 }
 
 class CheckingException(override val message: String, var status: IssuesStatus? = null) : Exception()
