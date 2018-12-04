@@ -194,9 +194,9 @@ class CaseSearchForm(val onCancel: () -> Unit, val onFound: (filter: Document) -
                 .find()
                 .projection(doc { expressions.forEach { self[it.name] = 1 } })
                 .sort(doc { self["doc.created"] = -1 })
-                .limit(50)
                 .filter(::matches)
                 .map { it["_id"] as String }
+                .take(50)
 
         onFound(doc { self["_id"] = doc { self[`$in`] = ids } })
     }
