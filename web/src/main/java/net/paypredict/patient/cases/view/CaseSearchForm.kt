@@ -25,17 +25,21 @@ import java.time.format.DateTimeFormatter
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 12/4/2018.
  */
-class CaseSearchForm(val onCancel: () -> Unit, val onFound: (filter: Document) -> Unit) :
-    Composite<VerticalLayout>() {
+class CaseSearchForm(
+    searchParameters: SearchParameters? = null,
+    val onCancel: () -> Unit,
+    val onFound: (SearchResult) -> Unit
+) : Composite<VerticalLayout>() {
 
-    private val patientName: TextField = textField("Patient Name Contains")
-    private val serviceDate: DatePicker = DatePicker("Date of Service").apply { width = "100%" }
-    private val payerOriginal: TextField = textField("Original Payer Contains")
-    private val payerFinal: TextField = textField("Final Payer Contains")
-    private val accession: TextField = textField("Accession Contains")
+    private val patientName: TextField = textField("Patient Name Contains", searchParameters?.patientName)
+    private val serviceDate: DatePicker =
+        DatePicker("Date of Service", searchParameters?.serviceDate).apply { width = "100%" }
+    private val payerOriginal: TextField = textField("Original Payer Contains", searchParameters?.payerOriginal)
+    private val payerFinal: TextField = textField("Final Payer Contains", searchParameters?.payerFinal)
+    private val accession: TextField = textField("Accession Contains", searchParameters?.accession)
 
-    private fun textField(label: String): TextField =
-        TextField(label)
+    private fun textField(label: String, initialValue: String?): TextField =
+        TextField(label, initialValue ?: "", "")
             .apply { width = "100%" }
 
     init {
@@ -175,29 +179,56 @@ class CaseSearchForm(val onCancel: () -> Unit, val onFound: (filter: Document) -
     }
 
     private fun search() {
-        val expressions: List<Expr> =
-            listOfNotNull(
-                Expr.Accession.parse(accession.value),
-                Expr.PatientName.parse(patientName.value),
-                Expr.ServiceDate.parse(serviceDate.value),
-                Expr.PayerOriginal.parse(payerOriginal.value),
-                Expr.PayerFinal.parse(payerFinal.value)
+        val searchParameters =
+            SearchParameters(
+                patientName = patientName.value,
+                serviceDate = serviceDate.value,
+                payerOriginal = payerOriginal.value,
+                payerFinal = payerFinal.value,
+                accession = accession.value
             )
 
-        fun matches(doc: Document): Boolean =
-            expressions.all { it.matches(doc) }
-
-        val cases = DBS.Collections.cases()
+        val expressions: List<Expr> =
+            listOfNotNull(
+                Expr.Accession.parse(searchParameters.accession),
+                Expr.PatientName.parse(searchParameters.patientName),
+                Expr.ServiceDate.parse(searchParameters.serviceDate),
+                Expr.PayerOriginal.parse(searchParameters.payerOriginal),
+                Expr.PayerFinal.parse(searchParameters.payerFinal)
+            )
 
         val ids: List<String> =
-            cases
-                .find()
-                .projection(doc { expressions.forEach { self[it.name] = 1 } })
-                .sort(doc { self["doc.created"] = -1 })
-                .filter(::matches)
-                .map { it["_id"] as String }
-                .take(50)
+            if (expressions.isNotEmpty())
+                DBS.Collections.cases()
+                    .find()
+                    .projection(doc { expressions.forEach { self[it.name] = 1 } })
+                    .sort(doc { self["doc.created"] = -1 })
+                    .filter { doc -> expressions.all { it.matches(doc) } }
+                    .map { it["_id"] as String }
+                    .take(50)
+            else
+                emptyList()
 
-        onFound(doc { self["_id"] = doc { self[`$in`] = ids } })
+        onFound(
+            SearchResult(
+                size = ids.size,
+                filter = doc { self["_id"] = doc { self[`$in`] = ids } },
+                parameters = searchParameters
+            )
+        )
     }
 }
+
+data class SearchParameters(
+    val patientName: String? = null,
+    val serviceDate: LocalDate? = null,
+    val payerOriginal: String? = null,
+    val payerFinal: String? = null,
+    val accession: String? = null
+)
+
+data class SearchResult(
+    val size: Int,
+    val filter: Document,
+    val parameters: SearchParameters? = null
+)

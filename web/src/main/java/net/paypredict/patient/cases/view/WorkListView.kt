@@ -5,12 +5,12 @@ import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.dialog.Dialog
+import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.splitlayout.SplitLayout
-import org.bson.Document
 
 class WorkListView : Composite<SplitLayout>() {
     private val grid = CaseAttrGrid().apply {
@@ -46,15 +46,22 @@ class WorkListView : Composite<SplitLayout>() {
                 }
             }
 
+
+    private var searchParameters: SearchParameters? = null
+    private val searchResultLabel = Span().apply { element.style["font-weight"] = "500" }
     private val searchResultHeader: HorizontalLayout =
         HorizontalLayout()
             .apply {
                 isPadding = true
-                defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
                 width = "100%"
-                this += Button("Search", VaadinIcon.SEARCH.create()) { showSearchDialog() }
-                    .apply { width = "100%" }
-                this += Button("Clear") { cancelSearch() }
+                this += VaadinIcon.SEARCH.create()
+                this += searchResultLabel
+                this += HorizontalLayout().apply {
+                    isPadding = false
+                    this += Button("Change") { showSearchDialog(searchParameters) }
+                    this += Button("Clear") { cancelSearch() }
+                }
+                setFlexGrow(1.0, searchResultLabel)
             }
 
     private val header: HorizontalLayout =
@@ -92,9 +99,11 @@ class WorkListView : Composite<SplitLayout>() {
         this += newContent
     }
 
-    private fun showSearchResult(filter: Document) {
+    private fun showSearchResult(result: SearchResult) {
+        searchParameters = result.parameters
+        searchResultLabel.text = "Search Result: " + result.size
         header.replaceContent(searchResultHeader)
-        grid.filter(newFilter = filter)
+        grid.filter(newFilter = result.filter)
     }
 
     private fun cancelSearch() {
@@ -102,15 +111,16 @@ class WorkListView : Composite<SplitLayout>() {
         grid.filter(viewOnlyUnresolved = viewOnlyUnresolved.value)
     }
 
-    private fun showSearchDialog() =
+    private fun showSearchDialog(searchParameters: SearchParameters? = null) =
         Dialog()
             .also { dialog ->
                 dialog += CaseSearchForm(
+                    searchParameters = searchParameters,
                     onCancel = {
                         dialog.close()
                     },
-                    onFound = { filter ->
-                        showSearchResult(filter)
+                    onFound = {
+                        showSearchResult(it)
                         dialog.close()
                     }
                 )
