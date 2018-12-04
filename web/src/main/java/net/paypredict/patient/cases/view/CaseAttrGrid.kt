@@ -34,7 +34,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     override fun initContent(): Grid<CaseAttr> =
         Grid(CaseAttr::class.java)
 
-    private var filter = doc { }
+    private var filter: Document = doc { }
 
     init {
         content.setColumns(*CASE_ATTR_META_DATA_MAP.entries
@@ -100,9 +100,12 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     }
 
     fun filter(
-        viewOnlyUnresolved: Boolean = false
+        viewOnlyUnresolved: Boolean = false,
+        newFilter: Document? = null
     ) {
         filter = when {
+            newFilter != null ->
+                newFilter
             viewOnlyUnresolved ->
                 doc {
                     self["status.value"] = "CHECKED"
