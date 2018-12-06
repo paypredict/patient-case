@@ -87,6 +87,7 @@ class UpdateContext(
 
 fun CaseHist.update(
     context: UpdateContext,
+    comment: String? = null,
     status: CaseStatus? = null
 ) {
     val filter = _id._id()
@@ -106,6 +107,8 @@ fun CaseHist.update(
             self["attr.eligibility"] = toEligibilityAttr()?.toDocument()
             self["attr.address"] = address.lastOrNull()?.toDocument()
             self["attr.expert"] = expert.lastOrNull()?.toDocument()
+
+            self["comment"] = comment
 
             if (status != null) {
                 self["status"] = status.toDocument()

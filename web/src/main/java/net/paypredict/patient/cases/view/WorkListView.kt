@@ -23,7 +23,7 @@ class WorkListView : Composite<SplitLayout>() {
     private val form = CaseIssuesForm().apply {
         onValueChange = { caseStatus -> if (caseStatus != null) grid.refreshItem(caseStatus) }
         onCasesUpdated = { grid.refresh() }
-        onResolved = { grid.refresh() }
+        onOneCaseUpdated = { grid.refresh(it) }
     }
 
     private val viewOnlyUnsent: Checkbox =

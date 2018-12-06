@@ -12,6 +12,7 @@ import com.vaadin.flow.data.provider.SortDirection
 import com.vaadin.flow.data.renderer.IconRenderer
 import com.vaadin.flow.data.renderer.LocalDateTimeRenderer
 import com.vaadin.flow.data.selection.SelectionEvent
+import com.vaadin.flow.data.selection.SingleSelectionEvent
 import com.vaadin.flow.shared.Registration
 import net.paypredict.patient.cases.data.worklist.CASE_ATTR_META_DATA_MAP
 import net.paypredict.patient.cases.data.worklist.CaseAttr
@@ -21,12 +22,14 @@ import net.paypredict.patient.cases.ifHasDocKey
 import net.paypredict.patient.cases.ifHasFilterKeys
 import net.paypredict.patient.cases.ifSortable
 import net.paypredict.patient.cases.mongo.DBS.Collections.cases
+import net.paypredict.patient.cases.mongo._id
 import net.paypredict.patient.cases.mongo.doc
 import org.bson.Document
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.collections.set
+import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.jvm.javaType
 
 /**
@@ -123,11 +126,40 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     }
 
 
-    fun addSelectionListener(listener: (SelectionEvent<Grid<CaseAttr>, CaseAttr>) -> Unit): Registration =
-        content.addSelectionListener(listener)
+    private val listeners =
+        mutableListOf<(SelectionEvent<Grid<CaseAttr>, CaseAttr>) -> Unit>()
+
+    fun addSelectionListener(listener: (SelectionEvent<Grid<CaseAttr>, CaseAttr>) -> Unit): Registration {
+        listeners += listener
+        return content.addSelectionListener(listener)
+    }
+
 
     fun refreshItem(item: CaseAttr) {
         content.dataProvider.refreshItem(item)
+    }
+
+    fun refresh(item: CaseAttr) {
+        val new =
+            collection()
+                .find(item._id._id())
+                .projection(projection)
+                .first()
+                .toCaseAttr()
+        CASE_ATTR_META_DATA_MAP.entries.forEach {
+            @Suppress("UNCHECKED_CAST")
+            (it.value.prop as? KMutableProperty1<CaseAttr, Any?>)?.run {
+                val value = get(new)
+                set(item, value)
+            }
+        }
+        content.dataProvider.refreshItem(item)
+        val event = SingleSelectionEvent<Grid<CaseAttr>, CaseAttr>(
+            content,
+            content.asSingleSelect(),
+            null,
+            false)
+        listeners.forEach { it(event) }
     }
 
     fun refresh() {

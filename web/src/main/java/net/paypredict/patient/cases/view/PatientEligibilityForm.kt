@@ -618,7 +618,7 @@ private class PayersRecheck : HorizontalLayout() {
             .find(doc { self["hist.eligibility.insurance.payerName"] = payerName })
             .map { it.toCaseHist() }
             .filterNot { caseId == it._id }
-            .filter { it.status?.isCheckedOnly == true }
+            .filter { it.status?.isEditable == true }
             .forEach { case: CaseHist ->
                 case.eligibility
                     .groupBy { it.responsibility }

@@ -154,12 +154,12 @@ private fun DocumentMongoCollection.sendCases(
     user: CasesUser? = null,
     isInterrupted: () -> Boolean
 ) {
+    val filter = doc {
+        self["status.sent"] = false
+        self["status.value"] = doc { self[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") }
+    }
     val items: List<Document> = this
-        .find(
-            doc {
-                self["status.sent"] = false
-                self["status.value"] = doc { self[`$in`] = listOf("RESOLVED", "PASSED", "TIMEOUT") }
-            })
+        .find(filter)
         .projection(doc { self["_id"] = 1 })
         .toList()
 

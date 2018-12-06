@@ -1,7 +1,9 @@
 package net.paypredict.patient.cases.view
 
 import com.pipl.api.search.SearchAPIError
+import com.vaadin.flow.component.ComponentEventListener
 import com.vaadin.flow.component.Composite
+import com.vaadin.flow.component.Key
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.datepicker.DatePicker
@@ -39,7 +41,7 @@ class CaseIssuesForm : Composite<Div>() {
             }
     var onValueChange: ((CaseAttr?) -> Unit)? = null
     var onCasesUpdated: (() -> Unit)? = null
-    var onResolved: ((CaseAttr) -> Unit)? = null
+    var onOneCaseUpdated: ((CaseAttr) -> Unit)? = null
 
     private fun update(new: CaseAttr?) {
         accession.value = new?.accession ?: ""
@@ -60,8 +62,16 @@ class CaseIssuesForm : Composite<Div>() {
         issuesExpert.value = caseHist?.expert
 
         issueActions.isVisible = new != null
+
         issueResolved.value = new?.status?.resolved == true
-        issueResolved.isEnabled = new?.status?.isCheckedOnly == true
+        issueResolved.isEnabled = new?.status?.isEditable == true
+
+        holdForever.value = new?.status?.hold == true
+        holdForever.isEnabled = new?.status?.run { !sent && !resolved } ?: false
+
+        comment.value = new?.comment ?: ""
+        comment.suffixComponent = null
+        comment.blur()
 
         requisitionFormsNotFound.isVisible = new?.accession?.let { accession ->
             DBS.Collections
@@ -87,17 +97,48 @@ class CaseIssuesForm : Composite<Div>() {
     }
     private val issuesExpert = IssuesFormNote(IssueExpert)
 
-    private val issueResolved = Checkbox("Issue resolved").also { checkbox ->
+    private val holdForever = Checkbox("Hold Forever").also { checkbox ->
+        checkbox.addValueChangeListener { event ->
+            if (event.isFromClient) {
+                value?.also { caseAttr ->
+                    caseAttr.hold(hold = checkbox.value, user = ui.get().casesUser)
+                    onOneCaseUpdated?.invoke(caseAttr)
+                }
+            }
+        }
+    }
+
+    private val comment = TextField(null, "Comment").also { field ->
+        fun save() {
+            value?.also { caseAttr ->
+                caseAttr.comment(comment = field.value, user = ui.get().casesUser)
+                onOneCaseUpdated?.invoke(caseAttr)
+            }
+        }
+
+        val saveComment = Button(VaadinIcon.ARROW_CIRCLE_RIGHT.create()).apply {
+            style["padding"] = "0"
+            style["color"] = "var(--lumo-contrast-60pct)"
+            element.setAttribute("theme", "icon small contrast tertiary")
+            element.setAttribute("title", "Save comment (Enter)")
+            addClickListener { save() }
+        }
+
+        field.addKeyPressListener(Key.ENTER, ComponentEventListener { save() })
+        field.addFocusListener { field.suffixComponent = saveComment }
+    }
+
+    private val issueResolved = Checkbox("Issue Resolved").also { checkbox ->
         checkbox.addValueChangeListener { event ->
             if (event.isFromClient) {
                 value?.let { caseAttr ->
-                    if (caseAttr.isCheckedOnly) {
+                    if (caseAttr.isEditable) {
                         if (event.value) {
                             confirmResolved(
                                 confirmed = {
                                     caseAttr.resolve(user = ui.get().casesUser)
                                     checkbox.isEnabled = false
-                                    onResolved?.invoke(caseAttr)
+                                    onOneCaseUpdated?.invoke(caseAttr)
                                 },
                                 canceled = {
                                     checkbox.value = false
@@ -114,9 +155,11 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private val issueActions = HorizontalLayout(issueResolved).apply {
+    private val issueActions = HorizontalLayout(holdForever, comment, issueResolved).apply {
         isVisible = false
         isPadding = false
+        defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
+        setFlexGrow(1.0, comment)
     }
 
     private val requisitionFormsNotFound = VaadinIcon.FILE_REMOVE.create().apply {
@@ -158,10 +201,10 @@ class CaseIssuesForm : Composite<Div>() {
                 this += patientDOB
 
             }
-            this += VerticalLayout(issuesNPI, issuesEligibility, issuesAddress, issuesExpert, issueActions).apply {
+            this += VerticalLayout(issueActions, issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
                 isPadding = false
                 height = null
-                setHorizontalComponentAlignment(FlexComponent.Alignment.END, issueActions)
+                setHorizontalComponentAlignment(FlexComponent.Alignment.STRETCH, issueActions)
             }
         }
     }
@@ -226,7 +269,7 @@ class CaseIssuesForm : Composite<Div>() {
             dialog.width = "90vw"
             dialog.height = "90vh"
             dialog += PatientEligibilityForm(
-                readOnly = status?.value != "CHECKED",
+                readOnly = status?.isEditable != true,
                 newCasesLog = { toCasesLog() })
                 .also { form ->
                     form.isPadding = false
@@ -371,7 +414,7 @@ class CaseIssuesForm : Composite<Div>() {
         Dialog().also { dialog ->
             dialog.width = "90vw"
             dialog.height = "90vh"
-            dialog += AddressForm(readOnly = status?.value != "CHECKED").apply {
+            dialog += AddressForm(readOnly = status?.isEditable != true).apply {
                 setSizeFull()
                 isPadding = false
                 value = address

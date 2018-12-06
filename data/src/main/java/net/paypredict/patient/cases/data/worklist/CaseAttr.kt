@@ -65,6 +65,13 @@ data class CaseAttr(
     var expert: IssueExpert.Status? = null,
 
     @DataView(
+        label = "Comment", order = 90,
+        docKey = "comment",
+        isVisible = false
+    )
+    var comment: String? = null,
+
+    @DataView(
         label = "Status", order = 100,
         docKey = "status",
         srtKey = "status.value",
@@ -93,6 +100,7 @@ fun Document.toCaseAttr(): CaseAttr =
         eligibility = opt<Document>("attr", "eligibility", "status")?.toIssueEligibilityStatus(),
         address = opt<Document>("attr", "address", "status")?.toIssueAddressStatus(),
         expert = opt<Document>("attr", "expert", "status")?.toIssueExpertStatus(),
+        comment = opt("comment"),
         status = opt<Document>("status")?.toCaseStatus()
     )
 
@@ -102,11 +110,13 @@ data class CaseStatus(
     val passed: Boolean = false,
     val resolved: Boolean = false,
     val timeout: Boolean = false,
+    val hold: Boolean = false,
     val sent: Boolean = false
 ) {
     val value: String
         get() = when {
             sent -> "SENT"
+            hold -> "HOLD"
             timeout -> "TIMEOUT"
             resolved -> "RESOLVED"
             passed -> "PASSED"
@@ -121,6 +131,7 @@ fun Document.toCaseStatus(): CaseStatus =
         passed = opt("passed") ?: false,
         resolved = opt("resolved") ?: false,
         timeout = opt("timeout") ?: false,
+        hold = opt("hold") ?: false,
         sent = opt("sent") ?: false
     )
 
@@ -130,16 +141,40 @@ fun CaseStatus.toDocument(): Document =
         self["passed"] = passed
         self["resolved"] = resolved
         self["timeout"] = timeout
+        self["hold"] = hold
         self["sent"] = sent
         self["value"] = value
     }
 
-val CaseStatus.isCheckedOnly: Boolean
-    get() = checked && !resolved && !passed && !timeout && !sent
+val CaseStatus.isEditable: Boolean
+    get() = value == "CHECKED" || value == "HOLD"
 
-val CaseAttr.isCheckedOnly: Boolean
-    get() = status?.isCheckedOnly ?: false
+val CaseAttr.isEditable: Boolean
+    get() = status?.isEditable ?: false
 
+
+fun CaseAttr.hold(
+    hold: Boolean,
+    user: CasesUser?,
+    cases: DocumentMongoCollection = DBS.Collections.cases()
+) {
+    cases
+        .find(_id._id())
+        .firstOrNull()
+        ?.toCaseHist()
+        ?.apply {
+            update(
+                context = UpdateContext(
+                    source = ".user",
+                    action = "case.hold",
+                    message = "hold = $hold",
+                    cases = cases,
+                    user = user?.email
+                ),
+                status = (status ?: CaseStatus()).copy(hold = hold)
+            )
+        }
+}
 
 fun CaseAttr.resolve(
     user: CasesUser?,
@@ -157,7 +192,29 @@ fun CaseAttr.resolve(
                     cases = cases,
                     user = user?.email
                 ),
-                status = (status ?: CaseStatus()).copy(resolved = true)
+                status = (status ?: CaseStatus()).copy(resolved = true, hold = false)
+            )
+        }
+}
+
+fun CaseAttr.comment(
+    comment: String?,
+    user: CasesUser?,
+    cases: DocumentMongoCollection = DBS.Collections.cases()
+) {
+    cases
+        .find(_id._id())
+        .firstOrNull()
+        ?.toCaseHist()
+        ?.apply {
+            update(
+                context = UpdateContext(
+                    source = ".user",
+                    action = "case.comment",
+                    cases = cases,
+                    user = user?.email
+                ),
+                comment = comment
             )
         }
 }
