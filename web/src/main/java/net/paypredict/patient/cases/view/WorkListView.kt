@@ -27,7 +27,7 @@ class WorkListView : Composite<SplitLayout>() {
     }
 
     private val viewOnlyUnsent: Checkbox =
-        Checkbox("Unsent Issues Only", false)
+        Checkbox("Unsent Cases Only", false)
             .apply {
                 addValueChangeListener {
                     grid.filter(viewOnlyUnsent = value)
