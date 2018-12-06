@@ -201,7 +201,7 @@ data class IssueNPI(
     ) : IssuesStatus {
         object Original : Status("Original", false, IssuesStatus.Type.WARN)
         object Unchecked : Status("Unchecked", false, IssuesStatus.Type.WARN)
-        object Corrected : Status("Corrected", true, IssuesStatus.Type.INFO)
+        object Corrected : Status("Corrected", false, IssuesStatus.Type.WARN)
         object Confirmed : Status("Confirmed", true, IssuesStatus.Type.OK)
         class Error(
             val error: String? = null,
