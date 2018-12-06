@@ -17,7 +17,7 @@ class WorkListView : Composite<SplitLayout>() {
         height = "100%"
         element.style["border-left"] = "none"
         element.style["border-right"] = "none"
-        filter(viewOnlyUnresolved = true)
+        filter(viewOnlyUnsent = false)
     }
 
     private val form = CaseIssuesForm().apply {
@@ -26,11 +26,11 @@ class WorkListView : Composite<SplitLayout>() {
         onResolved = { grid.refresh() }
     }
 
-    private val viewOnlyUnresolved: Checkbox =
-        Checkbox("View only unresolved issues", true)
+    private val viewOnlyUnsent: Checkbox =
+        Checkbox("Unsent Issues Only", false)
             .apply {
                 addValueChangeListener {
-                    grid.filter(viewOnlyUnresolved = value)
+                    grid.filter(viewOnlyUnsent = value)
                 }
             }
 
@@ -40,10 +40,10 @@ class WorkListView : Composite<SplitLayout>() {
                 isPadding = true
                 defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
                 width = "100%"
-                this += viewOnlyUnresolved
                 this += Button("Search", VaadinIcon.SEARCH.create()) {
                     showSearchDialog()
                 }
+                this += viewOnlyUnsent
             }
 
 
@@ -108,7 +108,7 @@ class WorkListView : Composite<SplitLayout>() {
 
     private fun cancelSearch() {
         header.replaceContent(defaultHeader)
-        grid.filter(viewOnlyUnresolved = viewOnlyUnresolved.value)
+        grid.filter(viewOnlyUnsent = viewOnlyUnsent.value)
     }
 
     private fun showSearchDialog(searchParameters: SearchParameters? = null) =

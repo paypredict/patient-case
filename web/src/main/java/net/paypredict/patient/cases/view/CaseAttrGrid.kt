@@ -100,13 +100,13 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     }
 
     fun filter(
-        viewOnlyUnresolved: Boolean = false,
+        viewOnlyUnsent: Boolean = false,
         newFilter: Document? = null
     ) {
         filter = when {
             newFilter != null ->
                 newFilter
-            viewOnlyUnresolved ->
+            viewOnlyUnsent ->
                 doc {
                     self["status.value"] = "CHECKED"
                 }
