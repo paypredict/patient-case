@@ -13,14 +13,17 @@ import com.vaadin.flow.data.renderer.IconRenderer
 import com.vaadin.flow.data.renderer.LocalDateTimeRenderer
 import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.shared.Registration
-import net.paypredict.patient.cases.data.worklist.*
+import net.paypredict.patient.cases.data.worklist.CASE_ATTR_META_DATA_MAP
+import net.paypredict.patient.cases.data.worklist.CaseAttr
+import net.paypredict.patient.cases.data.worklist.IssuesStatus
+import net.paypredict.patient.cases.data.worklist.toCaseAttr
 import net.paypredict.patient.cases.ifHasDocKey
 import net.paypredict.patient.cases.ifHasFilterKeys
 import net.paypredict.patient.cases.ifSortable
-import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.mongo.DBS.Collections.cases
+import net.paypredict.patient.cases.mongo.doc
 import org.bson.Document
-import java.time.ZoneOffset
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.collections.set
@@ -55,7 +58,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
                     column.isVisible = false
                     content.addColumn(
                         LocalDateTimeRenderer(
-                            { it.date?.toInstant()?.atZone(ZoneOffset.UTC)?.toLocalDateTime() },
+                            { it.date?.toInstant()?.atZone(systemZoneId)?.toLocalDateTime() },
                             dateTimeFormat
                         )
                     ).apply {
@@ -158,6 +161,8 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
         }
 
     companion object {
+        private val systemZoneId = ZoneId.systemDefault()
+
         private val dateTimeFormat: DateTimeFormatter =
             DateTimeFormatter.ofPattern("MMM dd yyyy hh:mm")
         private val projection =
