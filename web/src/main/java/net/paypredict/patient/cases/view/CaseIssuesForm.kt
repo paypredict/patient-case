@@ -63,12 +63,16 @@ class CaseIssuesForm : Composite<Div>() {
 
         issueActions.isVisible = new != null
 
+        val isEditable = new?.status?.isEditable == true
+        val isHoldable = new?.status?.run { !sent && !resolved } ?: false
+
+        issueResolved.isEnabled = isEditable
         issueResolved.value = new?.status?.resolved == true
-        issueResolved.isEnabled = new?.status?.isEditable == true
 
+        holdForever.isEnabled = isHoldable
         holdForever.value = new?.status?.hold == true
-        holdForever.isEnabled = new?.status?.run { !sent && !resolved } ?: false
 
+        comment.isReadOnly = !isEditable
         comment.value = new?.comment ?: ""
         comment.suffixComponent = null
         comment.blur()
@@ -108,7 +112,7 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private val comment = TextField(null, "Comment").also { field ->
+    private val comment = TextField().also { field ->
         fun save() {
             value?.also { caseAttr ->
                 caseAttr.comment(comment = field.value, user = ui.get().casesUser)
@@ -155,7 +159,7 @@ class CaseIssuesForm : Composite<Div>() {
         }
     }
 
-    private val issueActions = HorizontalLayout(holdForever, comment, issueResolved).apply {
+    private val issueActions = HorizontalLayout(issueResolved, holdForever, comment).apply {
         isVisible = false
         isPadding = false
         defaultVerticalComponentAlignment = FlexComponent.Alignment.BASELINE
@@ -201,7 +205,12 @@ class CaseIssuesForm : Composite<Div>() {
                 this += patientDOB
 
             }
-            this += VerticalLayout(issueActions, issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
+            val separator = Div().apply {
+                width = "100%"
+                height = "0.5em"
+                style["border-top"] = "1pt solid #dbdfe4"
+            }
+            this += VerticalLayout(issueActions, separator, issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
                 isPadding = false
                 height = null
                 setHorizontalComponentAlignment(FlexComponent.Alignment.STRETCH, issueActions)
