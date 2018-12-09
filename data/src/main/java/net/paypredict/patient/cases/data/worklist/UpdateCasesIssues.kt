@@ -10,12 +10,9 @@ import net.paypredict.patient.cases.apis.npiregistry.NpiRegistryException
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.UsStreet
 import net.paypredict.patient.cases.apis.smartystreets.footNoteSet
-import net.paypredict.patient.cases.data.cases.CasesLog
 import net.paypredict.patient.cases.Import
 import net.paypredict.patient.cases.created
-import net.paypredict.patient.cases.data.cases.BackupMode
-import net.paypredict.patient.cases.data.cases.archiveCaseFile
-import net.paypredict.patient.cases.data.cases.toCasesLog
+import net.paypredict.patient.cases.data.cases.*
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityCheckRes
 import net.paypredict.patient.cases.pokitdok.eligibility.EligibilityChecker
@@ -168,8 +165,35 @@ private fun DocumentMongoCollection.sendCases(
             .find(item)
             .firstOrNull()
             ?.toCaseHist()
-            ?.send(cases = this, user = user)
+            ?.safeCall(action = "case.send", user = user) {
+                send(cases = this@sendCases, user = user)
+            }
         if (isInterrupted()) break
+    }
+}
+
+private inline fun CaseHist.safeCall(
+    action: String,
+    user: CasesUser? = null,
+    function: CaseHist.() -> Unit
+) {
+    try {
+        function()
+    } catch (e: Exception) {
+        Logger
+            .getLogger("CaseHist.$action")
+            .log(Level.WARNING, "error on $_id ($accession) $action: ${e.message}")
+
+        updateStatus(
+            context = UpdateContext(
+                source = if (user == null) ".system" else ".user",
+                action = action,
+                message = e.javaClass.name + ": " + e.message,
+                user = user?.email
+            ),
+            logLevel = LogLevel.ERROR,
+            status = (status ?: CaseStatus()).copy(error = true)
+        )
     }
 }
 

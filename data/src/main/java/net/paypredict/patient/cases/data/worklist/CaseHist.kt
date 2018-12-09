@@ -8,6 +8,7 @@ import net.paypredict.patient.cases.VaadinBean
 import net.paypredict.patient.cases.apis.smartystreets.FootNote
 import net.paypredict.patient.cases.apis.smartystreets.FootNoteSet
 import net.paypredict.patient.cases.data.DateToDateTimeBeanEncoder
+import net.paypredict.patient.cases.data.cases.LogLevel
 import net.paypredict.patient.cases.data.cases.insert
 import net.paypredict.patient.cases.data.cases.toCasesLog
 import net.paypredict.patient.cases.metaDataMap
@@ -121,6 +122,29 @@ fun CaseHist.update(
     })
 
     toCasesLog(
+        source = context.source,
+        action = context.action,
+        message = context.message,
+        user = context.user,
+        status = status
+    ).insert(context.casesLog)
+}
+
+fun CaseHist.updateStatus(
+    context: UpdateContext,
+    logLevel: LogLevel = LogLevel.INFO,
+    status: CaseStatus
+) {
+    val filter = _id._id()
+    context.cases.upsertOne(filter, doc {
+        self[`$set`] = doc {
+            self["status"] = status.toDocument()
+            self["doc.updated"] = Date()
+        }
+    })
+
+    toCasesLog(
+        level = logLevel,
         source = context.source,
         action = context.action,
         message = context.message,

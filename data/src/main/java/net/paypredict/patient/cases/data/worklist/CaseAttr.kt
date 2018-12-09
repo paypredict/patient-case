@@ -112,10 +112,12 @@ data class CaseStatus(
     val resolved: Boolean = false,
     val timeout: Boolean = false,
     val hold: Boolean = false,
-    val sent: Boolean = false
+    val sent: Boolean = false,
+    val error: Boolean = false
 ) {
     val value: String
         get() = when {
+            error -> "ERROR"
             sent -> "SENT"
             hold -> "HOLD"
             timeout -> "TIMEOUT"
@@ -133,7 +135,8 @@ fun Document.toCaseStatus(): CaseStatus =
         resolved = opt("resolved") ?: false,
         timeout = opt("timeout") ?: false,
         hold = opt("hold") ?: false,
-        sent = opt("sent") ?: false
+        sent = opt("sent") ?: false,
+        error = opt("error") ?: false
     )
 
 fun CaseStatus.toDocument(): Document =
@@ -144,6 +147,7 @@ fun CaseStatus.toDocument(): Document =
         self["timeout"] = timeout
         self["hold"] = hold
         self["sent"] = sent
+        self["error"] = error
         self["value"] = value
     }
 
