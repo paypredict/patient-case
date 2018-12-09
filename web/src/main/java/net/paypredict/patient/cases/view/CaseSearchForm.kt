@@ -13,10 +13,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.textfield.TextField
 import net.paypredict.patient.cases.data.worklist.formatAs
-import net.paypredict.patient.cases.mongo.DBS
-import net.paypredict.patient.cases.mongo.`$in`
-import net.paypredict.patient.cases.mongo.doc
-import net.paypredict.patient.cases.mongo.opt
+import net.paypredict.patient.cases.mongo.*
 import org.bson.Document
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -199,7 +196,7 @@ class CaseSearchForm(
 
         val ids: List<String> =
             if (expressions.isNotEmpty())
-                DBS.Collections.cases()
+                cases()
                     .find()
                     .projection(doc { expressions.forEach { self[it.name] = 1 } })
                     .sort(doc { self["doc.created"] = -1 })
@@ -216,6 +213,20 @@ class CaseSearchForm(
                 parameters = searchParameters
             )
         )
+    }
+
+    companion object {
+        private var firstTime = true
+
+        private fun cases(): DocumentMongoCollection =
+            DBS.Collections
+                .cases()
+                .also {
+                    if (firstTime) {
+                        firstTime = false
+                        it.createIndex(doc { self["doc.created"] = 1 })
+                    }
+                }
     }
 }
 
