@@ -14,14 +14,8 @@ import com.vaadin.flow.data.renderer.LocalDateTimeRenderer
 import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.data.selection.SingleSelectionEvent
 import com.vaadin.flow.shared.Registration
-import net.paypredict.patient.cases.data.worklist.CASE_ATTR_META_DATA_MAP
-import net.paypredict.patient.cases.data.worklist.CaseAttr
-import net.paypredict.patient.cases.data.worklist.IssuesStatus
-import net.paypredict.patient.cases.data.worklist.toCaseAttr
-import net.paypredict.patient.cases.ifHasDocKey
-import net.paypredict.patient.cases.ifHasFilterKeys
-import net.paypredict.patient.cases.ifHasProjectionKeys
-import net.paypredict.patient.cases.ifSortable
+import net.paypredict.patient.cases.*
+import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.DBS.Collections.cases
 import net.paypredict.patient.cases.mongo._id
 import net.paypredict.patient.cases.mongo.doc
@@ -44,35 +38,65 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     private var filter: Document = doc { }
 
     init {
-        content.setColumns(*CASE_ATTR_META_DATA_MAP.entries
+
+        for (columnKey in content.columns.map { it.key }) {
+            content.removeColumnByKey(columnKey)
+        }
+
+        val columnKeys = CASE_ATTR_META_DATA_MAP.entries
             .asSequence()
+            .filter { it.value.view.isVisible }
             .sortedBy { it.value.view.order }
             .map { it.key }
             .toList()
-            .toTypedArray())
-        for (column in content.columns) {
-            val meta = CASE_ATTR_META_DATA_MAP[column.key] ?: continue
-            column.isVisible = meta.view.isVisible
-            column.flexGrow = meta.view.flexGrow
-            if (meta.view.sortable)
-                column.setSortProperty(meta.prop.name)
+
+        for (columnKey in columnKeys) {
+            val meta: MetaData<CaseAttr> = CASE_ATTR_META_DATA_MAP[columnKey] ?: continue
             val propJavaType = meta.prop.returnType.javaType
             when {
+                meta.prop == CaseAttr::status -> {
+                    content.addColumn(
+                        IconRenderer(
+                            {
+                                Icon(VaadinIcon.DOT_CIRCLE).apply {
+                                    val statusSum = it.status?.sum
+                                    color = when (statusSum) {
+                                        CaseStatus.Sum.ERROR -> "PURPLE"
+                                        CaseStatus.Sum.SENT -> "GREEN"
+                                        CaseStatus.Sum.HOLD -> "RED"
+                                        CaseStatus.Sum.TIMEOUT -> "WHITE"
+                                        CaseStatus.Sum.RESOLVED -> "WHITE"
+                                        CaseStatus.Sum.PASSED -> "WHITE"
+                                        CaseStatus.Sum.CHECKED -> "WHITE"
+                                        null -> "WHITE"
+                                    }
+                                    isVisible = color != "WHITE"
+                                    setSize("11px")
+                                    element.setAttribute("title", "$statusSum")
+                                }
+                            },
+                            { "" })
+                    ).apply {
+                        key = columnKey
+                        setHeader("")
+                        flexGrow = 0
+                        width = "28px"
+                    }
+                }
                 propJavaType == Date::class.javaObjectType -> {
-                    column.isVisible = false
                     content.addColumn(
                         LocalDateTimeRenderer(
                             { it.date?.toInstant()?.atZone(systemZoneId)?.toLocalDateTime() },
                             dateTimeFormat
                         )
                     ).apply {
+                        key = columnKey
                         setHeader(meta.view.label)
                         if (meta.view.sortable)
                             setSortProperty(meta.prop.name)
                     }
                 }
                 IssuesStatus::class.java.isAssignableFrom(propJavaType as Class<*>) -> {
-                    column.isVisible = false
                     content.addColumn(
                         IconRenderer(
                             {
@@ -94,6 +118,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
                             },
                             { "" })
                     ).apply {
+                        key = columnKey
                         setHeader(meta.view.label)
                         if (meta.view.sortable)
                             setSortProperty(meta.prop.name)
@@ -101,8 +126,16 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
                         width = "75px"
                     }
                 }
+                else -> {
+                    content.addColumn(columnKey).apply {
+                        flexGrow = meta.view.flexGrow
+                        if (meta.view.sortable)
+                            setSortProperty(meta.prop.name)
+                    }
+                }
             }
         }
+
         refresh()
     }
 
@@ -159,7 +192,8 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
             content,
             content.asSingleSelect(),
             null,
-            false)
+            false
+        )
         listeners.forEach { it(event) }
     }
 

@@ -18,13 +18,13 @@ data class CaseAttr(
 
     @set:Encode(DateToDateTimeBeanEncoder::class)
     @DataView(
-        label = "Date.Time", order = 10,
+        label = "Date.Time", order = 20,
         docKey = "file.created"
     )
     var date: Date? = null,
 
     @DataView(
-        label = "Accession", order = 20,
+        label = "Accession", order = 10,
         docKey = "case.Case.accessionNumber"
     )
     var accession: String? = null,
@@ -73,7 +73,7 @@ data class CaseAttr(
     var comment: String? = null,
 
     @DataView(
-        label = "Status", order = 100,
+        label = "Status", order = 1,
         docKey = "status",
         srtKey = "status.value",
         filterKeys = [
@@ -82,8 +82,7 @@ data class CaseAttr(
             "status.resolved",
             "status.timeout",
             "status.sent"
-        ],
-        isVisible = false
+        ]
     )
     var status: CaseStatus? = null
 
@@ -116,16 +115,23 @@ data class CaseStatus(
     val error: Boolean = false
 ) {
     val value: String
+        get() = sum?.name ?: ""
+
+    val sum: Sum?
         get() = when {
-            error -> "ERROR"
-            sent -> "SENT"
-            hold -> "HOLD"
-            timeout -> "TIMEOUT"
-            resolved -> "RESOLVED"
-            passed -> "PASSED"
-            checked -> "CHECKED"
-            else -> ""
+            error -> Sum.ERROR
+            sent -> Sum.SENT
+            hold -> Sum.HOLD
+            timeout -> Sum.TIMEOUT
+            resolved -> Sum.RESOLVED
+            passed -> Sum.PASSED
+            checked -> Sum.CHECKED
+            else -> null
         }
+
+    enum class Sum {
+        ERROR, SENT, HOLD, TIMEOUT, RESOLVED, PASSED, CHECKED
+    }
 }
 
 fun Document.toCaseStatus(): CaseStatus =
