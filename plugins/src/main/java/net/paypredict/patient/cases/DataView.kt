@@ -13,6 +13,7 @@ annotation class DataView(
     val order: Int = -1,
     val docKey: String = "",
     val srtKey: String = "",
+    val projectionKeys: Array<String> = [],
     val filterKeys: Array<String> = [],
     val sortable: Boolean = true,
     val flexGrow: Int = 1
@@ -20,6 +21,10 @@ annotation class DataView(
 
 inline fun DataView.ifHasDocKey(action: (docKey: String) -> Unit) {
     if (docKey.isNotEmpty()) action(docKey)
+}
+
+inline fun DataView.ifHasProjectionKeys(action: (filterKeys: Array<String>) -> Unit) {
+    if (projectionKeys.isNotEmpty()) action(projectionKeys)
 }
 
 inline fun DataView.ifHasFilterKeys(action: (filterKeys: Array<String>) -> Unit) {

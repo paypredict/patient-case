@@ -68,6 +68,8 @@ fun CaseHist.createOutXml(
             .newDocumentBuilder()
             .parse(srcFile.toInputSource())
 
+    updateCaseComments(domDocument)
+
     updateSubscribers(domDocument, fileName)
 
     updatePatient(domDocument)
@@ -211,6 +213,17 @@ private fun makeTestCopy(fileName: String) {
                 StreamResult(writer)
             )
     }
+}
+
+private fun CaseHist.updateCaseComments(domDocument: DomDocument) {
+    val comment = comment ?: return
+    if (comment.isBlank()) return
+    domDocument
+        .getElementsByTagName("Case")
+        .toSequence()
+        .filterIsInstance<Element>()
+        .firstOrNull()
+        ?.setAttribute("CaseComments", comment)
 }
 
 private fun CaseHist.updateSubscribers(domDocument: DomDocument, fileName: String) {

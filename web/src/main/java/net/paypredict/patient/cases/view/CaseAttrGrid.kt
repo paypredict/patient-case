@@ -20,6 +20,7 @@ import net.paypredict.patient.cases.data.worklist.IssuesStatus
 import net.paypredict.patient.cases.data.worklist.toCaseAttr
 import net.paypredict.patient.cases.ifHasDocKey
 import net.paypredict.patient.cases.ifHasFilterKeys
+import net.paypredict.patient.cases.ifHasProjectionKeys
 import net.paypredict.patient.cases.ifSortable
 import net.paypredict.patient.cases.mongo.DBS.Collections.cases
 import net.paypredict.patient.cases.mongo._id
@@ -201,6 +202,9 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
             doc {
                 for (metaData in CASE_ATTR_META_DATA_MAP.values) {
                     metaData.view.ifHasDocKey { self[it] = 1 }
+                    metaData.view.ifHasProjectionKeys { keys ->
+                        keys.forEach { self[it] = 1 }
+                    }
                 }
             }
 

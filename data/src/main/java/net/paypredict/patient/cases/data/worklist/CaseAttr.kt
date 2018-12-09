@@ -67,6 +67,7 @@ data class CaseAttr(
     @DataView(
         label = "Comment", order = 90,
         docKey = "comment",
+        projectionKeys = ["case.Case.caseComments"],
         isVisible = false
     )
     var comment: String? = null,
@@ -100,7 +101,7 @@ fun Document.toCaseAttr(): CaseAttr =
         eligibility = opt<Document>("attr", "eligibility", "status")?.toIssueEligibilityStatus(),
         address = opt<Document>("attr", "address", "status")?.toIssueAddressStatus(),
         expert = opt<Document>("attr", "expert", "status")?.toIssueExpertStatus(),
-        comment = opt("comment"),
+        comment = opt("comment") ?: opt("case", "Case", "caseComments"),
         status = opt<Document>("status")?.toCaseStatus()
     )
 
@@ -206,16 +207,16 @@ fun CaseAttr.comment(
         .find(_id._id())
         .firstOrNull()
         ?.toCaseHist()
-        ?.apply {
-            update(
+        ?.also { caseHist ->
+            caseHist.comment = comment
+            caseHist.update(
                 context = UpdateContext(
                     source = ".user",
                     action = "case.comment",
                     cases = cases,
                     message = comment,
                     user = user?.email
-                ),
-                comment = comment
+                )
             )
         }
 }

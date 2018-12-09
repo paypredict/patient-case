@@ -129,6 +129,7 @@ class CaseIssuesForm : Composite<Div>() {
         }
 
         field.addKeyPressListener(Key.ENTER, ComponentEventListener { save() })
+        field.addBlurListener { if (it.isFromClient) save() }
         field.addFocusListener { field.suffixComponent = saveComment }
     }
 
@@ -210,7 +211,14 @@ class CaseIssuesForm : Composite<Div>() {
                 height = "0.5em"
                 style["border-top"] = "1pt solid #dbdfe4"
             }
-            this += VerticalLayout(issueActions, separator, issuesNPI, issuesEligibility, issuesAddress, issuesExpert).apply {
+            this += VerticalLayout(
+                issueActions,
+                separator,
+                issuesNPI,
+                issuesEligibility,
+                issuesAddress,
+                issuesExpert
+            ).apply {
                 isPadding = false
                 height = null
                 setHorizontalComponentAlignment(FlexComponent.Alignment.STRETCH, issueActions)

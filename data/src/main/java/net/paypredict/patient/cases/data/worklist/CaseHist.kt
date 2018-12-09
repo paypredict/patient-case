@@ -56,6 +56,9 @@ data class CaseHist(
     @DataView("AI", order = 60)
     var expert: List<IssueExpert> = emptyList(),
 
+    @DataView("Comment", order = 70, isVisible = false)
+    var comment: String? = null,
+
     @DataView("Status", isVisible = false)
     var status: CaseStatus? = null
 )
@@ -87,7 +90,6 @@ class UpdateContext(
 
 fun CaseHist.update(
     context: UpdateContext,
-    comment: String? = null,
     status: CaseStatus? = null
 ) {
     val filter = _id._id()
@@ -668,6 +670,7 @@ fun Document.toCaseHist(): CaseHist =
             ?.map { it.toIssueExpert() }
             ?.toList()
             ?: emptyList(),
+        comment = opt("comment"),
         status = opt<Document>("status")?.toCaseStatus()
     )
 
