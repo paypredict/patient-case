@@ -212,6 +212,7 @@ fun CaseAttr.comment(
                     source = ".user",
                     action = "case.comment",
                     cases = cases,
+                    message = comment,
                     user = user?.email
                 ),
                 comment = comment
