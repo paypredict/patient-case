@@ -18,6 +18,7 @@ import net.paypredict.patient.cases.*
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.DBS.Collections.cases
 import net.paypredict.patient.cases.mongo._id
+import net.paypredict.patient.cases.mongo.`$in`
 import net.paypredict.patient.cases.mongo.doc
 import org.bson.Document
 import java.time.ZoneId
@@ -148,7 +149,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
                 newFilter
             viewOnlyUnsent ->
                 doc {
-                    self["status.value"] = "CHECKED"
+                    self["status.value"] = doc { self[`$in`] = listOf("CHECKED", "HOLD") }
                 }
             else ->
                 doc {
