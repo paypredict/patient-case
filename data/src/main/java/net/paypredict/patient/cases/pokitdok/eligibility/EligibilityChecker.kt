@@ -267,10 +267,14 @@ class PayersData {
         findAndMap(
             collection = DBS.Collections.PPPayers.zirmedPayers()
         ) { doc ->
+            val _id = doc["_id"] as String
+            val payerName = doc.opt<String>("Payer_Name") ?: "???"
+
             ZirMedPayer(
-                _id = doc["_id"] as String,
-                displayName = doc.opt<String>("displayName") ?: "???",
-                payerName = doc.opt<String>("Payer_Name") ?: "???"
+                _id = _id,
+                displayName = listOfNotNull(payerName, "[ $_id ]", doc.opt<String>("Address"))
+                    .joinToString(separator = " "),
+                payerName = payerName
             )
         }
     }
