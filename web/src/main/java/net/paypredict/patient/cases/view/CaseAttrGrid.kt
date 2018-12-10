@@ -66,7 +66,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
                                         CaseStatus.Sum.SENT -> "GREEN"
                                         CaseStatus.Sum.HOLD -> "RED"
                                         CaseStatus.Sum.TIMEOUT -> "WHITE"
-                                        CaseStatus.Sum.RESOLVED -> "WHITE"
+                                        CaseStatus.Sum.RESOLVED -> "GREEN"
                                         CaseStatus.Sum.PASSED -> "WHITE"
                                         CaseStatus.Sum.CHECKED -> "WHITE"
                                         null -> "WHITE"
