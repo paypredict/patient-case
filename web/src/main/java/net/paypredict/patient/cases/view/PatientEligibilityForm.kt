@@ -73,7 +73,7 @@ class PatientEligibilityForm(
         }
     private val subscriberForm = SubscriberForm(readOnly)
     private val subscriberInputTab = Tab("Information")
-    private val eligibilityCheckResTab = Tab("Eligibility")
+    private val eligibilityCheckResTab = Tab("Eligibility Raw Response Data")
     private val eligibilityCheckResView = EligibilityCheckResView().apply {
         isPadding = false
         width = "100%"
