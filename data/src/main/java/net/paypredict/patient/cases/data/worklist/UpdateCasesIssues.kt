@@ -153,7 +153,7 @@ private fun DocumentMongoCollection.sendCases(
 ) {
     val statusToSend: List<String> =
         listOf(
-            // CaseStatus.Sum.PASSED,
+            // CaseStatus.Sum.PASSED, TODO: add for auto-send mode
             CaseStatus.Sum.RESOLVED,
             CaseStatus.Sum.TIMEOUT
         ).map { it.name }

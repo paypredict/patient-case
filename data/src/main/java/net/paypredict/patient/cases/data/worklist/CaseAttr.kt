@@ -158,7 +158,12 @@ fun CaseStatus.toDocument(): Document =
     }
 
 val CaseStatus.isEditable: Boolean
-    get() = value == "CHECKED" || value == "HOLD"
+    get() = when (sum) {
+        CaseStatus.Sum.HOLD,
+        CaseStatus.Sum.PASSED, // TODO: remove for auto-send mode
+        CaseStatus.Sum.CHECKED -> true
+        else -> false
+    }
 
 val CaseAttr.isEditable: Boolean
     get() = status?.isEditable ?: false
