@@ -5,7 +5,7 @@ import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.icon.Icon
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
-import com.vaadin.flow.data.provider.DataProvider
+import com.vaadin.flow.data.provider.CallbackDataProvider
 import com.vaadin.flow.data.provider.Query
 import com.vaadin.flow.data.provider.QuerySortOrder
 import com.vaadin.flow.data.provider.SortDirection
@@ -66,7 +66,7 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
                                         CaseStatus.Sum.SENT -> "GREEN"
                                         CaseStatus.Sum.HOLD -> "RED"
                                         CaseStatus.Sum.TIMEOUT -> "WHITE"
-                                        CaseStatus.Sum.RESOLVED -> "WHITE"
+                                        CaseStatus.Sum.RESOLVED -> "GREEN"
                                         CaseStatus.Sum.PASSED -> "WHITE"
                                         CaseStatus.Sum.CHECKED -> "WHITE"
                                         null -> "WHITE"
@@ -199,20 +199,22 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
     }
 
     fun refresh() {
-        content.dataProvider = DataProvider.fromFilteringCallbacks(
-            { query: Query<CaseAttr, Unit> ->
-                collection()
-                    .find(filter)
-                    .projection(projection)
-                    .sort(query.toMongoSort())
-                    .skip(query.offset)
-                    .limit(query.limit)
-                    .map { it.toCaseAttr() }
-                    .toList()
-                    .stream()
-            },
-            { collection().count(filter).toInt() }
-        )
+        content.dataProvider =
+                CallbackDataProvider(
+                    { query: Query<CaseAttr, Unit> ->
+                        collection()
+                            .find(filter)
+                            .projection(projection)
+                            .sort(query.toMongoSort())
+                            .skip(query.offset)
+                            .limit(query.limit)
+                            .map { it.toCaseAttr() }
+                            .toList()
+                            .stream()
+                    },
+                    { collection().count(filter).toInt() },
+                    { source: CaseAttr? -> source?._id }
+                )
     }
 
 
