@@ -4,13 +4,11 @@ import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.data.provider.DataProvider
-import net.paypredict.patient.cases.mongo.*
+import net.paypredict.patient.cases.mongo.opt
 import org.bson.Document
 import java.time.LocalDate
 import java.time.Period
-import java.time.ZoneId
 import java.util.*
-import kotlin.collections.set
 
 /**
  * <p>
@@ -18,9 +16,20 @@ import kotlin.collections.set
  */
 class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
     override fun initContent(): Grid<LogSumItem> =
-        Grid(LogSumItem::class.java)
+        Grid(LogSumItem::class.java).apply {
+            setColumns(
+                LogSumItem::date.name,
+                LogSumItem::received.name,
+                LogSumItem::sent.name,
+                LogSumItem::resolved.name,
+                LogSumItem::timeout.name
+            )
+            addSelectionListener {
+                onSelect(it.firstSelectedItem.orElseGet { null })
+            }
+        }
 
-    var dateRange: ClosedRange<LocalDate> =
+    private var dateRange: ClosedRange<LocalDate> =
         (LocalDate.now() - Period.ofDays(30))..LocalDate.now()
 
     init {
@@ -30,7 +39,6 @@ class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
     private fun refresh() {
         content.dataProvider = DataProvider.ofCollection(build(dateRange))
     }
-
 
     var width: String?
         get() = content.width
@@ -44,57 +52,37 @@ class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
             content.height = value
         }
 
+    var onSelect: (LogSumItem?) -> Unit = {}
+
     companion object {
-        private var isFirstTime = true
-        private val SYSTEM_ZONE_ID: ZoneId = ZoneId.systemDefault()
-        private val ONE_DAY: Period = Period.ofDays(1)
-        private fun LocalDate.toDate(): Date = Date.from(atStartOfDay(SYSTEM_ZONE_ID).toInstant())
-        private fun Date.toLocalDate(): LocalDate = toInstant().atZone(SYSTEM_ZONE_ID).toLocalDate()
-
-        private fun ClosedRange<LocalDate>.toFilter() =
-            doc {
-                val min: Date = start.toDate()
-                val max: Date = (endInclusive + ONE_DAY).toDate()
-                self["time"] = doc {
-                    self[`$gte`] = min
-                    self[`$lt`] = max
-                }
-            }
-
         private fun build(dateRange: ClosedRange<LocalDate>): List<LogSumItem> =
             casesLog()
-                .find(dateRange.toFilter())
+                .find(dateRange.toLogSumFilter())
                 .asSequence()
-                .groupBy { it.opt<Date>("time")?.toLocalDate() ?: LocalDate.MIN }
+                .groupBy { it.opt<Date>("time")?.toSystemLocalDate() ?: LocalDate.MIN }
                 .map { (date: LocalDate, docs: List<Document>) ->
                     val received =
                         docs.asSequence()
                             .filter { it["action"] == "case.check" }
-                            .distinctBy { it["accession"] }
+                            .distinctBy { it["id"] }
                             .count()
+                    val sentItems = docs.asSequence()
+                        .filter { it["action"] == "case.send" }
+                        .distinctBy { it["id"] }
+
                     val sent =
-                        docs.asSequence()
-                            .filter { it["action"] == "case.send" }
-                            .distinctBy { it["accession"] }
+                        sentItems.count()
+                    val resolved =
+                        sentItems
+                            .filter { it.opt<Boolean>("status", "resolved") == true }
+                            .count()
+                    val timeout =
+                        sentItems
+                            .filter { it.opt<Boolean>("status", "timeout") == true }
                             .count()
 
-                    LogSumItem(date, received, sent)
-                }
-
-        private fun casesLog(): DocumentMongoCollection =
-            DBS.Collections
-                .casesLog()
-                .also {
-                    if (isFirstTime) {
-                        isFirstTime = false
-                        it.createIndex(doc { self["time"] = 1 })
-                    }
+                    LogSumItem(date, received, sent, resolved, timeout)
                 }
     }
 }
 
-data class LogSumItem(
-    val date: LocalDate,
-    val received: Int,
-    val sent: Int
-)

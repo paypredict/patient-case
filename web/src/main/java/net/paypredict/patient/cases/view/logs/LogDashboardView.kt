@@ -6,11 +6,18 @@ import com.vaadin.flow.component.splitlayout.SplitLayout
 import net.paypredict.patient.cases.view.plusAssign
 
 class LogDashboardView : Composite<SplitLayout>() {
-    private val grid = LogSumGrid().apply {
-        height = "100%"
-        element.style["border-left"] = "none"
-        element.style["border-right"] = "none"
-    }
+    private val grid: LogSumGrid =
+        LogSumGrid().apply {
+            height = "100%"
+            element.style["border-left"] = "none"
+            element.style["border-right"] = "none"
+            onSelect = {
+                details.showDetails(it)
+            }
+        }
+
+    private val details: LogDetailsView =
+        LogDetailsView()
 
     init {
         val layoutLeft: VerticalLayout =
@@ -25,6 +32,7 @@ class LogDashboardView : Composite<SplitLayout>() {
             setSizeFull()
             orientation = SplitLayout.Orientation.HORIZONTAL
             addToPrimary(layoutLeft)
+            addToSecondary(details)
         }
     }
 }

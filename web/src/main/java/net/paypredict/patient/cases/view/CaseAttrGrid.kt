@@ -24,6 +24,7 @@ import org.bson.Document
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
+import java.util.stream.Stream
 import kotlin.collections.set
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.jvm.javaType
@@ -32,9 +33,17 @@ import kotlin.reflect.jvm.javaType
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 8/15/2018.
  */
-class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
+class CaseAttrGrid(isEnabled: Boolean = true) : Composite<Grid<CaseAttr>>(), ThemableLayout {
     override fun initContent(): Grid<CaseAttr> =
-        Grid(CaseAttr::class.java)
+        Grid(CaseAttr::class.java).apply {
+            isEnabled = this@CaseAttrGrid.isEnabled
+        }
+
+    var isEnabled: Boolean = isEnabled
+        set(new) {
+            field = new
+            content.isEnabled = new
+        }
 
     private var filter: Document = doc { }
 
@@ -200,21 +209,28 @@ class CaseAttrGrid : Composite<Grid<CaseAttr>>(), ThemableLayout {
 
     fun refresh() {
         content.dataProvider =
-                CallbackDataProvider(
-                    { query: Query<CaseAttr, Unit> ->
-                        collection()
-                            .find(filter)
-                            .projection(projection)
-                            .sort(query.toMongoSort())
-                            .skip(query.offset)
-                            .limit(query.limit)
-                            .map { it.toCaseAttr() }
-                            .toList()
-                            .stream()
-                    },
-                    { collection().count(filter).toInt() },
-                    { source: CaseAttr? -> source?._id }
-                )
+                if (isEnabled)
+                    CallbackDataProvider<CaseAttr, Unit>(
+                        { query: Query<CaseAttr, Unit> ->
+                            collection()
+                                .find(filter)
+                                .projection(projection)
+                                .sort(query.toMongoSort())
+                                .skip(query.offset)
+                                .limit(query.limit)
+                                .map { it.toCaseAttr() }
+                                .toList()
+                                .stream()
+                        },
+                        { collection().count(filter).toInt() },
+                        { source: CaseAttr? -> source?._id }
+                    ) else
+                    CallbackDataProvider<CaseAttr, Unit>(
+                        { Stream.empty() },
+                        { 0 },
+                        { null }
+                    )
+
     }
 
 
