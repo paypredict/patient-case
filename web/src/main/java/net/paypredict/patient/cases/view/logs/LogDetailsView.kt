@@ -6,48 +6,43 @@ import com.vaadin.flow.component.tabs.Tab
 import com.vaadin.flow.component.tabs.Tabs
 import net.paypredict.patient.cases.mongo.`$in`
 import net.paypredict.patient.cases.mongo.doc
-import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.view.CaseAttrGrid
+import net.paypredict.patient.cases.view.logs.LogSumAction.*
 import net.paypredict.patient.cases.view.plusAssign
-import kotlin.reflect.KProperty1
-
-typealias LogSumItemProperty = KProperty1<LogSumItem, Int>
 
 /**
  * <p>
  * Created by alexei.vylegzhanin@gmail.com on 12/12/2018.
  */
 class LogDetailsView : Composite<VerticalLayout>() {
-    private val receivedTab = LogSumItem::received.toTab()
-    private val sentTab = LogSumItem::sent.toTab()
-    private val resolvedTab = LogSumItem::resolved.toTab()
-    private val timeoutTab = LogSumItem::timeout.toTab()
+    private val actionTabs: List<Pair<LogSumAction, Tab>> =
+        values().map { it to Tab(it.label) }
 
     private val tabs: Tabs =
-        Tabs(receivedTab, sentTab, resolvedTab, timeoutTab)
-            .apply {
-                addSelectedChangeListener {
-                    showDetails()
-                }
-            }
+        Tabs().apply {
+            actionTabs.forEach { add(it.second) }
+            addSelectedChangeListener { showDetails() }
+        }
 
-    private val casesGrid = CaseAttrGrid(isEnabled = false).apply {
-        width = "100%"
-        height = "100%"
-        element.style["border"] = "none"
-    }
+    private val casesGrid =
+        CaseAttrGrid(isEnabled = false).apply {
+            width = "100%"
+            height = "100%"
+            element.style["border"] = "none"
+        }
 
     private var item: LogSumItem? = null
 
     private val action: LogSumAction
-        get() =
-            when (tabs.selectedTab) {
-                receivedTab -> LogSumAction.RECEIVED
-                sentTab -> LogSumAction.SENT
-                resolvedTab -> LogSumAction.RESOLVED
-                timeoutTab -> LogSumAction.TIMEOUT
-                else -> LogSumAction.RECEIVED
+        get() = tabs
+            .selectedTab
+            ?.let { selectedTab ->
+                actionTabs
+                    .firstOrNull { it.second == selectedTab }
+                    ?.first
             }
+            ?: RECEIVED
+
 
     fun showDetails(item: LogSumItem? = this.item) {
         this.item = item
@@ -70,13 +65,16 @@ class LogDetailsView : Composite<VerticalLayout>() {
 
         val actionLogItems =
             when (action) {
-                LogSumAction.RECEIVED -> dayLogItems.filter { it["action"] == "case.check" }
-                LogSumAction.SENT -> dayLogItems.filter { it["action"] == "case.send" }
-                LogSumAction.RESOLVED -> dayLogItems.filter {
-                    it["action"] == "case.send" && it.opt<Boolean>("status", "resolved") == true
+                RECEIVED -> dayLogItems.filter { it["action"] == "case.check" }
+                SENT -> dayLogItems.filter { it["action"] == "case.send" }
+                SENT_PASSED -> dayLogItems.filter {
+                    it["action"] == "case.send" && it.statusIs(SENT_PASSED, SENT_RESOLVED, SENT_TIMEOUT)
                 }
-                LogSumAction.TIMEOUT -> dayLogItems.filter {
-                    it["action"] == "case.send" && it.opt<Boolean>("status", "timeout") == true
+                SENT_RESOLVED -> dayLogItems.filter {
+                    it["action"] == "case.send" && it.statusIs(SENT_RESOLVED)
+                }
+                SENT_TIMEOUT -> dayLogItems.filter {
+                    it["action"] == "case.send" && it.statusIs(SENT_TIMEOUT)
                 }
             }
 
@@ -93,11 +91,6 @@ class LogDetailsView : Composite<VerticalLayout>() {
         content += tabs
         content += casesGrid
         content.setFlexGrow(1.0, casesGrid)
-    }
-
-    companion object {
-        private fun LogSumItemProperty.toTab(): Tab =
-            Tab(name.capitalize())
     }
 }
 

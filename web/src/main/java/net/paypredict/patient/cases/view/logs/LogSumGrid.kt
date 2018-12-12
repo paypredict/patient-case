@@ -5,10 +5,12 @@ import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.data.provider.DataProvider
 import net.paypredict.patient.cases.mongo.opt
+import net.paypredict.patient.cases.view.logs.LogSumAction.*
 import org.bson.Document
 import java.time.LocalDate
 import java.time.Period
 import java.util.*
+import kotlin.reflect.KProperty1
 
 /**
  * <p>
@@ -17,15 +19,12 @@ import java.util.*
 class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
     override fun initContent(): Grid<LogSumItem> =
         Grid(LogSumItem::class.java).apply {
-            setColumns(
-                LogSumItem::date.name,
-                LogSumItem::received.name,
-                LogSumItem::sent.name,
-                LogSumItem::resolved.name,
-                LogSumItem::timeout.name
-            )
-            addSelectionListener {
-                onSelect(it.firstSelectedItem.orElseGet { null })
+            val columnsOrder =
+                listOf(LogSumItem::date.name) + propertyActions.map { it.first.name }
+            setColumns(*columnsOrder.toTypedArray())
+            propertyActions.forEach { getColumnByKey(it.first.name).setHeader(it.second.label) }
+            addSelectionListener { event ->
+                onSelect(event.firstSelectedItem.orElse(null))
             }
         }
 
@@ -55,6 +54,15 @@ class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
     var onSelect: (LogSumItem?) -> Unit = {}
 
     companion object {
+        private val propertyActions: List<Pair<KProperty1<LogSumItem, Int>, LogSumAction>> =
+            listOf(
+                LogSumItem::received to RECEIVED,
+                LogSumItem::sent to SENT,
+                LogSumItem::passed to SENT_PASSED,
+                LogSumItem::resolved to SENT_RESOLVED,
+                LogSumItem::timeout to SENT_TIMEOUT
+            )
+
         private fun build(dateRange: ClosedRange<LocalDate>): List<LogSumItem> =
             casesLog()
                 .find(dateRange.toLogSumFilter())
@@ -72,17 +80,29 @@ class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
 
                     val sent =
                         sentItems.count()
+                    val passed =
+                        sentItems
+                            .filter { it.statusIs(SENT_PASSED, SENT_RESOLVED, SENT_TIMEOUT) }
+                            .count()
                     val resolved =
                         sentItems
-                            .filter { it.opt<Boolean>("status", "resolved") == true }
+                            .filter { it.statusIs(SENT_RESOLVED) }
                             .count()
                     val timeout =
                         sentItems
-                            .filter { it.opt<Boolean>("status", "timeout") == true }
+                            .filter { it.statusIs(SENT_TIMEOUT) }
                             .count()
 
-                    LogSumItem(date, received, sent, resolved, timeout)
+                    LogSumItem(
+                        date = date,
+                        received = received,
+                        sent = sent,
+                        passed = passed,
+                        resolved = resolved,
+                        timeout = timeout
+                    )
                 }
+                .sortedByDescending { it.date }
     }
 }
 

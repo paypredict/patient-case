@@ -1,6 +1,7 @@
 package net.paypredict.patient.cases.view.logs
 
 import net.paypredict.patient.cases.mongo.*
+import org.bson.Document
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
@@ -10,15 +11,17 @@ data class LogSumItem(
     val date: LocalDate,
     val received: Int,
     val sent: Int,
+    val passed: Int,
     val resolved: Int,
     val timeout: Int
 )
 
-sealed class LogSumAction {
-    object RECEIVED : LogSumAction()
-    object SENT : LogSumAction()
-    object RESOLVED : LogSumAction()
-    object TIMEOUT : LogSumAction()
+enum class LogSumAction(val label: String, val sentStatusField: String? = null) {
+    RECEIVED("Total Received"),
+    SENT("Sent Total", "sent"),
+    SENT_PASSED("Sent Auto", "passed"),
+    SENT_RESOLVED("Sent Manual", "resolved"),
+    SENT_TIMEOUT("Sent Timeout", "timeout")
 }
 
 private val SYSTEM_ZONE_ID: ZoneId = ZoneId.systemDefault()
@@ -48,3 +51,19 @@ fun casesLog(): DocumentMongoCollection =
                 it.createIndex(doc { self["time"] = 1 })
             }
         }
+
+fun Document.statusIs(field: LogSumAction, vararg andNot: LogSumAction): Boolean {
+    val status = opt<Document>("status") ?: return false
+    fun isStatusFieldTrue(field: LogSumAction): Boolean {
+        val key = field.sentStatusField ?: throw AssertionError("invalid field: $field")
+        return status.opt(key) ?: false
+    }
+    return when (isStatusFieldTrue(field)) {
+        true ->
+            when {
+                andNot.isEmpty() -> true
+                else -> !andNot.any { isStatusFieldTrue(it) }
+            }
+        else -> false
+    }
+}
