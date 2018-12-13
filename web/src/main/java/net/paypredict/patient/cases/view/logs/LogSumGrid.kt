@@ -4,10 +4,10 @@ import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.orderedlayout.ThemableLayout
 import com.vaadin.flow.data.provider.DataProvider
+import net.paypredict.patient.cases.data.workbook.WorkbookContext
 import net.paypredict.patient.cases.mongo.opt
 import net.paypredict.patient.cases.view.logs.LogSumAction.*
-import org.apache.poi.ss.usermodel.BuiltinFormats
-import org.apache.poi.ss.usermodel.Workbook
+import org.apache.poi.ss.usermodel.Sheet
 import org.bson.Document
 import java.time.LocalDate
 import java.time.Period
@@ -44,18 +44,19 @@ class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
         content.dataProvider = DataProvider.ofCollection(items)
     }
 
-    fun export(workbook: Workbook) {
+    fun export(context: WorkbookContext, sheet: Sheet) {
         val items: List<LogSumItem> = items
-        val sheet = workbook.createSheet()
-
-        val dateStyle = workbook.createCellStyle().apply {
-            dataFormat = BuiltinFormats.getBuiltinFormat("d-mmm-yy").toShort()
-        }
 
         sheet.createRow(0).also { row ->
-            row.createCell(0).apply { setCellValue("Date") }
+            row.createCell(0).apply {
+                cellStyle = context.headerStyle
+                setCellValue("Date")
+            }
             propertyActions.forEach { (_, action) ->
-                row.createCell(action.ordinal + 1).setCellValue(action.label)
+                row.createCell(action.ordinal + 1).apply {
+                    cellStyle = context.headerStyle
+                    setCellValue(action.label)
+                }
             }
         }
 
@@ -63,7 +64,7 @@ class LogSumGrid : Composite<Grid<LogSumItem>>(), ThemableLayout {
             sheet.createRow(index + 1).also { row ->
                 row.createCell(0).apply {
                     setCellValue(item.date.toSystemDate())
-                    cellStyle = dateStyle
+                    cellStyle = context.dateStyle
                 }
                 propertyActions.forEach { (property, action) ->
                     row.createCell(action.ordinal + 1).apply {

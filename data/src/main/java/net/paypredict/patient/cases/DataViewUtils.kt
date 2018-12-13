@@ -30,16 +30,25 @@ inline fun <reified T : Any> metaDataMap(): Map<String, MetaData<T>> =
 fun <T : Any> KClass<T>.metaDataMap(): Map<String, MetaData<T>> =
     memberProperties
         .mapNotNull { property ->
-            property.annotations
-                .asSequence()
-                .filterIsInstance<DataView>()
-                .firstOrNull()
+            property
+                .toDataView()
                 ?.let { property.name to MetaData(it, property) }
         }
         .toMap()
 
+fun <T : Any> KProperty1<T, *>.toDataView(): DataView? =
+    annotations
+        .asSequence()
+        .filterIsInstance<DataView>()
+        .firstOrNull()
+
+fun <T : Any> KProperty1<T, *>.toMetaData(): MetaData<T>? =
+    toDataView()
+        ?.let { MetaData(it, this) }
+
+
 fun String.toTitleCase(replaceToSpace: Char? = '_'): String =
-        toLowerCase()
-            .let { if (replaceToSpace == null) it else replace(replaceToSpace, ' ') }
-            .split(' ')
-            .joinToString(separator = " ") { it.trim().capitalize() }
+    toLowerCase()
+        .let { if (replaceToSpace == null) it else replace(replaceToSpace, ' ') }
+        .split(' ')
+        .joinToString(separator = " ") { it.trim().capitalize() }

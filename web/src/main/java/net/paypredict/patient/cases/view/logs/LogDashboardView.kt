@@ -10,6 +10,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.splitlayout.SplitLayout
 import com.vaadin.flow.server.InputStreamFactory
 import com.vaadin.flow.server.StreamResource
+import net.paypredict.patient.cases.data.workbook.WorkbookContext
 import net.paypredict.patient.cases.view.plusAssign
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.ByteArrayOutputStream
@@ -60,7 +61,7 @@ class LogDashboardView : Composite<SplitLayout>() {
     private fun buildLogExcelFile(): InputStream {
         val out = ByteArrayOutputStream()
         XSSFWorkbook().use { workbook ->
-            logSumGrid.export(workbook)
+            logSumGrid.export(WorkbookContext(workbook), workbook.createSheet())
             workbook.write(out)
         }
         return out.toByteArray().inputStream()

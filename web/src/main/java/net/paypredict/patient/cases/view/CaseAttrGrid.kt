@@ -1,5 +1,6 @@
 package net.paypredict.patient.cases.view
 
+import com.mongodb.client.FindIterable
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.grid.Grid
 import com.vaadin.flow.component.icon.Icon
@@ -15,11 +16,13 @@ import com.vaadin.flow.data.selection.SelectionEvent
 import com.vaadin.flow.data.selection.SingleSelectionEvent
 import com.vaadin.flow.shared.Registration
 import net.paypredict.patient.cases.*
+import net.paypredict.patient.cases.data.workbook.WorkbookContext
 import net.paypredict.patient.cases.data.worklist.*
 import net.paypredict.patient.cases.mongo.DBS.Collections.cases
 import net.paypredict.patient.cases.mongo._id
 import net.paypredict.patient.cases.mongo.`$in`
 import net.paypredict.patient.cases.mongo.doc
+import org.apache.poi.ss.usermodel.Sheet
 import org.bson.Document
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -212,15 +215,12 @@ class CaseAttrGrid(isEnabled: Boolean = true) : Composite<Grid<CaseAttr>>(), The
                 if (isEnabled)
                     CallbackDataProvider<CaseAttr, Unit>(
                         { query: Query<CaseAttr, Unit> ->
-                            collection()
-                                .find(filter)
-                                .projection(projection)
-                                .sort(query.toMongoSort())
-                                .skip(query.offset)
-                                .limit(query.limit)
-                                .map { it.toCaseAttr() }
-                                .toList()
-                                .stream()
+                            find(filter) {
+                                it.sort(query.toMongoSort())
+                                    .skip(query.offset)
+                                    .limit(query.limit)
+
+                            }.stream()
                         },
                         { collection().count(filter).toInt() },
                         { source: CaseAttr? -> source?._id }
@@ -230,6 +230,66 @@ class CaseAttrGrid(isEnabled: Boolean = true) : Composite<Grid<CaseAttr>>(), The
                         { 0 },
                         { null }
                     )
+
+    }
+
+    private fun find(
+        filter: Document,
+        setup: (FindIterable<Document>) -> FindIterable<Document> = { it }
+    ): List<CaseAttr> =
+        collection()
+            .find(filter)
+            .projection(projection)
+            .let(setup)
+            .map { it.toCaseAttr() }
+            .toList()
+
+    private enum class ExportCol(val meta: MetaData<CaseAttr>) {
+        STATUS(CaseAttr::status.toMetaData()!!),
+        DATE(CaseAttr::date.toMetaData()!!),
+        ACCESSION(CaseAttr::accession.toMetaData()!!);
+
+        val label: String get() = meta.view.label
+    }
+
+    fun export(
+        context: WorkbookContext,
+        sheet: Sheet,
+        filter: Document
+    ) {
+        val items: List<CaseAttr> = find(filter)
+
+        sheet.createRow(0).also { row ->
+            for (export in ExportCol.values()) {
+                row.createCell(export.ordinal).apply {
+                    cellStyle = context.headerStyle
+                    setCellValue(export.label)
+                }
+            }
+        }
+
+        items.forEachIndexed { index, item ->
+            sheet.createRow(index + 1).also { row ->
+                for (export in ExportCol.values()) {
+                    row.createCell(export.ordinal).apply {
+                        export.meta.prop.get(item)?.also { value ->
+                            when (value) {
+                                is Number -> setCellValue(value.toDouble())
+                                is String -> setCellValue(value)
+                                is Date -> setCellValue(value).also { cellStyle = context.dateTimeStyle }
+                                is CaseStatus -> setCellValue(value.value)
+                                else -> setCellValue(value.toString())
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+
+        for (export in ExportCol.values()) {
+            sheet.setColumnWidth(export.ordinal, 16 * 256)
+        }
 
     }
 
