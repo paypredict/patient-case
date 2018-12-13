@@ -107,9 +107,10 @@ class LogDetailsView : Composite<VerticalLayout>() {
         val item = item!!
         val out = ByteArrayOutputStream()
         XSSFWorkbook().use { workbook ->
+            val context = WorkbookContext(workbook)
             actionTabs.forEach { (action, _) ->
                 casesGrid.export(
-                    WorkbookContext(workbook),
+                    context,
                     workbook.createSheet(action.label),
                     action.toCasesGridFilter(item)
                 )
