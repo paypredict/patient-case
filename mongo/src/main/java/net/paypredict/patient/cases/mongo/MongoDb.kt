@@ -137,7 +137,11 @@ const val `$ne`: String = "$" + "ne"
 @Suppress("ObjectPropertyName", "unused")
 const val `$gt`: String = "$" + "gt"
 @Suppress("ObjectPropertyName", "unused")
+const val `$gte`: String = "$" + "gte"
+@Suppress("ObjectPropertyName", "unused")
 const val `$lt`: String = "$" + "lt"
+@Suppress("ObjectPropertyName", "unused")
+const val `$lte`: String = "$" + "lte"
 @Suppress("ObjectPropertyName", "unused")
 const val `$exists`: String = "$" + "exists"
 @Suppress("ObjectPropertyName", "unused")
