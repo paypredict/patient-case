@@ -166,8 +166,12 @@ class PatientEligibilityForm(
         subscriberForm.value = value?.subscriber
         applyEligibilityCheckRes(value?.eligibility?.findEligibilityCheckRes())
 
-        addResponsibility.isEnabled = items?.none { it.origin == "casesRaw" } ?: true
-        deleteResponsibility.isEnabled = value?.origin == null && items?.size ?: 0 > 1
+        val respTabs = responsibilityTabs.respTabs
+        addResponsibility.isEnabled = !readOnly &&
+                respTabs.size < ResponsibilityOrder.values().size
+        deleteResponsibility.isEnabled = !readOnly &&
+                responsibilityTabs.selectedIndex > 0 &&
+                respTabs.lastOrNull() == tab
         subscriberTabs.selectedIndex = 0
     }
 
@@ -197,7 +201,6 @@ class PatientEligibilityForm(
 
 
     private val addResponsibility = Button(VaadinIcon.PLUS.create()).apply {
-        isEnabled = !readOnly
         element.setAttribute("theme", "icon tertiary")
         addClickListener { _ ->
             val onInsert = onInsert
@@ -218,19 +221,17 @@ class PatientEligibilityForm(
     }
 
     private val deleteResponsibility = Button(VaadinIcon.MINUS.create()).apply {
-        isEnabled = !readOnly
         element.setAttribute("theme", "icon tertiary")
         addClickListener { _ ->
-            val toDelete = responsibilityTabs.selectedRespTab.value
+            val toDelete = responsibilityTabs.selectedRespTab.value.responsibility
             Dialog().also { dialog ->
                 dialog += VerticalLayout().apply {
                     defaultHorizontalComponentAlignment = FlexComponent.Alignment.CENTER
-                    this += H3("Do you wish to delete ${responsibilityTabs.selectedTab.label} Information?")
+                    this += H3("Do you wish to delete $toDelete Information?")
                     this += HorizontalLayout().apply {
                         this += Button("Delete").apply {
-                            isEnabled = !readOnly
                             addClickListener { _ ->
-                                onRemove?.invoke { it == toDelete }
+                                onRemove?.invoke { it.responsibility == toDelete }
                                 dialog.close()
                             }
                         }

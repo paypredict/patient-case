@@ -424,7 +424,7 @@ class CaseIssuesForm : Composite<Div>() {
                 user = ui.orElse(null)?.casesUser?.email
             )
         )
-        issuesEligibility.value = caseHist.eligibility
+        issuesEligibility.value = cases.find(byId).first().toCaseHist().eligibility
     }
 
     private fun CaseAttr.openAddressDialog(address: IssueAddress) {
