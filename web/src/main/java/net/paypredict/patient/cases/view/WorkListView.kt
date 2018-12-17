@@ -1,16 +1,19 @@
 package net.paypredict.patient.cases.view
 
+import com.vaadin.flow.component.AttachEvent
 import com.vaadin.flow.component.Component
 import com.vaadin.flow.component.Composite
 import com.vaadin.flow.component.button.Button
 import com.vaadin.flow.component.checkbox.Checkbox
 import com.vaadin.flow.component.dialog.Dialog
+import com.vaadin.flow.component.html.Anchor
 import com.vaadin.flow.component.html.Span
 import com.vaadin.flow.component.icon.VaadinIcon
 import com.vaadin.flow.component.orderedlayout.FlexComponent
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout
 import com.vaadin.flow.component.orderedlayout.VerticalLayout
 import com.vaadin.flow.component.splitlayout.SplitLayout
+import net.paypredict.patient.cases.view.logs.LogDashboardPage
 
 class WorkListView : Composite<SplitLayout>() {
     private val grid = CaseAttrGrid().apply {
@@ -34,6 +37,12 @@ class WorkListView : Composite<SplitLayout>() {
                 }
             }
 
+    private val logDashboardLink =
+        Anchor("#", "").apply {
+            setTarget("_blank")
+            this += Button("Log").apply { style["cursor"] = "pointer" }
+        }
+
     private val defaultHeader: HorizontalLayout =
         HorizontalLayout()
             .apply {
@@ -44,6 +53,8 @@ class WorkListView : Composite<SplitLayout>() {
                     showSearchDialog()
                 }
                 this += viewOnlyUnsent
+                this += logDashboardLink
+                setFlexGrow(1.0, viewOnlyUnsent)
             }
 
 
@@ -92,6 +103,11 @@ class WorkListView : Composite<SplitLayout>() {
             addToPrimary(layoutLeft)
             addToSecondary(form)
         }
+    }
+
+    override fun onAttach(attachEvent: AttachEvent) {
+        super.onAttach(attachEvent)
+        logDashboardLink.href = attachEvent.ui.router.getUrl(LogDashboardPage::class.java)
     }
 
     private fun HorizontalLayout.replaceContent(newContent: Component) {

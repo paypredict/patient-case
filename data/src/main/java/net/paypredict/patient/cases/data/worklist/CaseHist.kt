@@ -325,8 +325,8 @@ data class IssueEligibility(
         object Missing : Status("Missing", false, IssuesStatus.Type.QUESTION, false)
         object Original : Status("Original", false, IssuesStatus.Type.INFO, false)
         object Unchecked : Status("Unchecked", false, IssuesStatus.Type.WARN)
-        object NotAvailable : Status("NotAvailable", true, IssuesStatus.Type.INFO)
-        object Confirmed : Status("Confirmed", true, IssuesStatus.Type.OK)
+        object NotAvailable : Status("NotAvailable", false, IssuesStatus.Type.INFO)
+        object Confirmed : Status("Confirmed", false, IssuesStatus.Type.OK)
         class Problem(
             val error: String? = null,
             val message: String? = null
