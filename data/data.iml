@@ -73,7 +73,7 @@
     <orderEntry type="library" name="Maven: javax.json:javax.json-api:1.0" level="project" />
     <orderEntry type="library" name="Maven: org.glassfish:javax.json:1.0.4" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: de.sven-jacobs:loremipsum:1.0" level="project" />
-    <orderEntry type="library" name="Maven: com.vaadin:vaadin-core:12.0.1" level="project" />
+    <orderEntry type="library" name="Maven: com.vaadin:vaadin-core:12.0.3" level="project" />
     <orderEntry type="library" name="Maven: com.vaadin:flow-server:1.2.3" level="project" />
     <orderEntry type="library" name="Maven: com.vaadin.external.gwt:gwt-elemental:2.8.2.vaadin2" level="project" />
     <orderEntry type="library" name="Maven: commons-fileupload:commons-fileupload:1.3.3" level="project" />
@@ -111,7 +111,7 @@
     <orderEntry type="library" name="Maven: com.vaadin:vaadin-checkbox-flow:1.2.0" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-checkbox:2.2.4" level="project" />
     <orderEntry type="library" name="Maven: com.vaadin:vaadin-combo-box-flow:2.0.1" level="project" />
-    <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-combo-box:4.2.0" level="project" />
+    <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-combo-box:4.2.1" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-text-field:2.1.5" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.polymerelements:iron-resizable-behavior:2.1.1" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.polymerelements:iron-a11y-announcer:2.1.0" level="project" />
@@ -119,7 +119,7 @@
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.polymerelements:iron-scroll-target-behavior:2.1.1" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.polymerelements:iron-a11y-keys-behavior:2.1.1" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-item:2.1.0" level="project" />
-    <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-overlay:3.2.3" level="project" />
+    <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-overlay:3.2.4" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.polymerelements:iron-overlay-behavior:2.3.4" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.polymerelements:iron-fit-behavior:2.2.1" level="project" />
     <orderEntry type="library" name="Maven: com.vaadin:vaadin-date-picker-flow:1.2.1" level="project" />
@@ -155,7 +155,7 @@
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-notification:1.2.1" level="project" />
     <orderEntry type="library" name="Maven: com.vaadin:vaadin-app-layout-flow:1.0.3" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-app-layout:1.0.2" level="project" />
-    <orderEntry type="library" name="Maven: com.vaadin:vaadin-context-menu-flow:1.2.1" level="project" />
+    <orderEntry type="library" name="Maven: com.vaadin:vaadin-context-menu-flow:1.2.2" level="project" />
     <orderEntry type="library" name="Maven: org.webjars.bowergithub.vaadin:vaadin-context-menu:4.2.1" level="project" />
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-simple:1.7.25" level="project" />
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.7.25" level="project" />
