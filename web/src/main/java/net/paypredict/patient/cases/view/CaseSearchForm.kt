@@ -32,12 +32,16 @@ class CaseSearchForm(
     private val serviceDate: DatePicker =
         DatePicker("Date of Service", searchParameters?.serviceDate).apply { width = "100%" }
     private val payerOriginal: TextField = textField("Original Payer Contains", searchParameters?.payerOriginal)
-    private val payerFinal: TextField = textField("Final Payer Contains", searchParameters?.payerFinal)
+    private val payerFinal: TextField =
+        textField("Final Payer Contains", searchParameters?.payerFinal) { isVisible = false }
     private val accession: TextField = textField("Accession Contains", searchParameters?.accession)
 
-    private fun textField(label: String, initialValue: String?): TextField =
+    private fun textField(label: String, initialValue: String?, block: TextField.() -> Unit = {}): TextField =
         TextField(label, initialValue ?: "", "")
-            .apply { width = "100%" }
+            .apply {
+                width = "100%"
+                block()
+            }
 
     init {
         content.isPadding = false
