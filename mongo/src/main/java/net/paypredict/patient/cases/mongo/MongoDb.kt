@@ -5,6 +5,7 @@ import com.mongodb.ServerAddress
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.UpdateOptions
+import net.paypredict.patient.cases.PatientCases
 import org.bson.Document
 import org.bson.conversions.Bson
 import java.io.File
@@ -183,13 +184,18 @@ inline fun doc(builder: DocBuilder.() -> Unit = {}): Document =
 
 
 private object Conf {
-    val dir = File("/PayPredict/ptn")
-    private val confDir = dir.resolve("conf")
-    private val confFile = confDir.resolve("ptn.json")
+    private val confDir: File by lazy {
+        PatientCases.clientDir.resolve("conf")
+    }
+
     private val conf: Document by lazy {
-        if (confFile.isFile)
-            Document.parse(confFile.readText()) else
-            Document()
+        val file1 = confDir.resolve("mongo.json")
+        val file2 = confDir.resolve("claims-db.json")
+        when {
+            file1.isFile -> Document.parse(file1.readText())
+            file2.isFile -> Document.parse(file2.readText())
+            else -> Document()
+        }
     }
 
     object mongo {
