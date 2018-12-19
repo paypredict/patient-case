@@ -56,17 +56,13 @@ class RequisitionFormsPdfProcessing(
 
     private fun process(
         barcodeReader: () -> BarcodeReader = { initBarcodeReader() }
-    ): Boolean {
+    ) {
         val pdfFileId = pdfFile.toDigest().toHexString()
 
         val requisitionPDFs = DBS.Collections.requisitionPDFs()
 
-        val isProcessed =
-            requisitionPDFs
-                .findById(pdfFileId)
-                ?.getBoolean("isProcessed", false)
-                ?: false
-        if (isProcessed) return true
+        if (requisitionPDFs.findById(pdfFileId)?.getBoolean("isProcessed") == true)
+            return
 
         requisitionPDFs
             .upsertOne(pdfFileId._id(), "name" to pdfFile.name, "time" to pdfFile.lastModified())
@@ -174,13 +170,17 @@ class RequisitionFormsPdfProcessing(
             }
         }
 
-        return try {
-            PDDocument.load(pdfFile).use { pdDocument ->
-                pdDocument.pages.forEachIndexed { index: Int, page: PDPage ->
-                    pageIndex = index
-                    requisitionFormImageProcessor.processPage(page)
+        var isLoaded = false
+        try {
+            PDDocument
+                .load(pdfFile)
+                .use { pdDocument ->
+                    isLoaded = true
+                    pdDocument.pages.forEachIndexed { index: Int, page: PDPage ->
+                        pageIndex = index
+                        requisitionFormImageProcessor.processPage(page)
+                    }
                 }
-            }
             if (barcodeFoundSet.isNotEmpty()) {
                 val barcodeRange = doc {
                     self["min"] = barcodeFoundSet.min()
@@ -195,12 +195,16 @@ class RequisitionFormsPdfProcessing(
                         val used = it.totalMemory() - it.freeMemory()
                         used > 5L * 1024 * 1024 * 1024
                     }
-            true
         } catch (e: Throwable) {
             requisitionPDFs.upsertOne(pdfFileId._id(), "error" to e.toDocument())
             log.log(Level.WARNING, "error on processing $pdfFile", e)
-            isRestartRequired = true
-            false
+            isRestartRequired =
+                    if (isLoaded) true
+                    else {
+                        log.info("scheduling deferred restart (waiting for upload)")
+                        isDeferredRestartRequired = true
+                        false
+                    }
         } finally {
             requisitionPDFs.upsertOne(pdfFileId._id(), "isProcessed" to true)
             requisitionFormImageProcessor.close()
@@ -299,6 +303,7 @@ class RequisitionFormsPdfProcessing(
     }
 
     private var isRestartRequired: Boolean = false
+    private var isDeferredRestartRequired: Boolean = false
 
     object Auto {
         private val LOG: Logger = Logger.getLogger(Auto::class.qualifiedName)
@@ -308,6 +313,7 @@ class RequisitionFormsPdfProcessing(
             LOG.info("Starting " + args.toList())
             val options = args.toOptions(daysDefault = "7")
             val barcodeReader = initBarcodeReader()
+            var deferredRestartRequired = false
             for (file in options.requisitionPDFsDir.walk().sortedByDescending { it.lastModified() }) {
                 if (!file.isFile) continue
                 if (!file.name.endsWith(".pdf", ignoreCase = true)) continue
@@ -317,17 +323,25 @@ class RequisitionFormsPdfProcessing(
                     with(RequisitionFormsPdfProcessing(options, file)) {
                         process { barcodeReader }
                         if (isRestartRequired) {
-                            LOG.info("Restarting")
+                            LOG.info("Restarting (processing error)")
                             exitProcess(302)
+                        }
+                        if (isDeferredRestartRequired) {
+                            deferredRestartRequired = true
                         }
                     }
                 } catch (e: Throwable) {
                     LOG.log(Level.SEVERE, "unhandled error", e)
-                    LOG.info("Restarting")
+                    LOG.info("Restarting (unhandled error)")
                     exitProcess(302)
                 }
             }
-            LOG.info("DONE")
+            if (deferredRestartRequired) {
+                LOG.info("Restarting (deferred)")
+                exitProcess(302)
+            } else {
+                LOG.info("DONE")
+            }
         }
     }
 
