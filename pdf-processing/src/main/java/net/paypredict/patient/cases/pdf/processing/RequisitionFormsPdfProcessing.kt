@@ -25,8 +25,11 @@ import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.logging.Level
+import java.util.logging.Logger
 import javax.imageio.ImageIO
 import kotlin.math.min
+import kotlin.system.exitProcess
 
 /**
  * <p>
@@ -36,15 +39,35 @@ class RequisitionFormsPdfProcessing(
     private val options: Options,
     private val pdfFile: File
 ) {
+    private val log: Logger by lazy {
+        Logger.getLogger(RequisitionFormsPdfProcessing::class.qualifiedName)
+    }
+
     data class Options(
         val requisitionFormsDir: File,
-        val requisitionPDFsDir: File
+        val requisitionPDFsDir: File,
+        val minFileTime: Long?,
+        val nThreads: Int?
     )
 
     private var pageIndex: Int = 0
 
-    private fun process() {
+    private fun process(
+        barcodeReader: () -> BarcodeReader = { initBarcodeReader() }
+    ): Boolean {
         val pdfFileId = pdfFile.toDigest().toHexString()
+
+        val requisitionPDFs = DBS.Collections.requisitionPDFs()
+
+        val isProcessed =
+            requisitionPDFs
+                .findById(pdfFileId)
+                ?.getBoolean("isProcessed", false)
+                ?: false
+        if (isProcessed) return true
+
+        requisitionPDFs
+            .upsertOne(pdfFileId._id(), "name" to pdfFile.name, "time" to pdfFile.lastModified())
 
         val barcodeFoundSet = mutableSetOf<String>()
 
@@ -53,6 +76,8 @@ class RequisitionFormsPdfProcessing(
             val reader = barcodeReader()
 
             override fun onImage(image: BufferedImage) {
+                if (image.width < 200 || image.height < 200)
+                    return
                 val grayBytes: ByteArray = image.toGrayBytes()
                 val formId = grayBytes.toDigest().toHexString()
                 if (requisitionForms.findById(formId)?.opt<Boolean>("isProcessed") == true)
@@ -80,6 +105,7 @@ class RequisitionFormsPdfProcessing(
                     if (barcode != null) {
                         requisitionForms.upsertOne(formId._id(), "barcode" to barcode)
                         barcodeFoundSet += barcode
+                        log.info("barcode $barcode found in $pdfFile")
                     } else {
                         requisitionForms.upsertOne(formId._id(), "barcodeNotFound" to true)
                     }
@@ -136,7 +162,7 @@ class RequisitionFormsPdfProcessing(
                             format = "JPG"
                         )
                     } catch (e: Throwable) {
-                        e.printStackTrace()
+                        log.log(Level.WARNING, "PDF $pdfFile: image processing error on $formId", e)
                     }
                 }
 
@@ -146,15 +172,7 @@ class RequisitionFormsPdfProcessing(
             }
         }
 
-        val requisitionPDFs = DBS.Collections.requisitionPDFs()
-        if (requisitionPDFs.findById(pdfFileId)?.opt<Boolean>("isProcessed") == true) return
-        requisitionPDFs.upsertOne(
-            pdfFileId._id(),
-            "name" to pdfFile.name,
-            "time" to pdfFile.lastModified()
-        )
-
-        try {
+        return try {
             PDDocument.load(pdfFile).use { pdDocument ->
                 pdDocument.pages.forEachIndexed { index: Int, page: PDPage ->
                     pageIndex = index
@@ -167,14 +185,24 @@ class RequisitionFormsPdfProcessing(
                     self["max"] = barcodeFoundSet.max()
                 }
                 requisitionPDFs.upsertOne(pdfFileId._id(), "barcodeRange" to barcodeRange)
+            } else {
+                log.info("no barcode found in $pdfFile")
             }
+            isRestartRequired =
+                    Runtime.getRuntime().let {
+                        val used = it.totalMemory() - it.freeMemory()
+                        used > 5L * 1024 * 1024 * 1024
+                    }
+            true
         } catch (e: Throwable) {
             requisitionPDFs.upsertOne(pdfFileId._id(), "error" to e.toDocument())
+            log.log(Level.WARNING, "error on processing $pdfFile", e)
+            isRestartRequired = true
+            false
         } finally {
             requisitionPDFs.upsertOne(pdfFileId._id(), "isProcessed" to true)
             requisitionFormImageProcessor.close()
         }
-
     }
 
     private fun BufferedImage.toGrayBytes(): ByteArray {
@@ -211,18 +239,25 @@ class RequisitionFormsPdfProcessing(
             return firstOrNull { it.startsWith(prefix) }?.removePrefix(prefix) ?: default
         }
 
-        private fun Array<String>.toOptions(): Options {
-            val client = option("client", "test")
+        private fun Array<String>.toOptions(
+            clientDefault: String = "test",
+            daysDefault: String = "",
+            threadsDefault: String = ""
+        ): Options {
+            val client = option("client", clientDefault)
             val clientDir = File("/PayPredict/clients").resolve(client)
-            val requisitionFormsDir: File = clientDir.resolve("requisitionForms")
-            val requisitionPDFsDir: File = clientDir.resolve("requisitionPDFs")
+            val days = option("days", daysDefault).toIntOrNull()
+            val threads = option("threads", threadsDefault).toIntOrNull()
+
             return Options(
-                requisitionFormsDir = requisitionFormsDir,
-                requisitionPDFsDir = requisitionPDFsDir
+                requisitionFormsDir = clientDir.resolve("requisitionForms"),
+                requisitionPDFsDir = clientDir.resolve("requisitionPDFs"),
+                minFileTime = days?.let { System.currentTimeMillis() - it * 24 * 60 * 60 * 1000 },
+                nThreads = threads
             )
         }
 
-        private fun barcodeReader(): BarcodeReader =
+        private fun initBarcodeReader(): BarcodeReader =
             BarcodeReader(Conf.license)
                 .apply { Conf.templates.forEach { appendParameterTemplate(it) } }
 
@@ -235,15 +270,21 @@ class RequisitionFormsPdfProcessing(
     object Dir {
         @JvmStatic
         fun main(args: Array<String>) {
-            val service: ExecutorService = Executors.newFixedThreadPool(8)
-            val options = args.toOptions()
+            val options = args.toOptions(threadsDefault = "8")
+            val service: ExecutorService = Executors.newFixedThreadPool(options.nThreads!!)
             val count = AtomicInteger()
             for (file in options.requisitionPDFsDir.walk().sortedByDescending { it.lastModified() }) {
-                if (file.isFile && file.name.endsWith(".pdf", ignoreCase = true)) {
-                    count.incrementAndGet()
-                    service.submit {
+                if (!file.isFile) continue
+                if (!file.name.endsWith(".pdf", ignoreCase = true)) continue
+                if (options.minFileTime != null && file.lastModified() < options.minFileTime) continue
+                count.incrementAndGet()
+                service.submit {
+                    try {
                         println("processing $file")
                         RequisitionFormsPdfProcessing(options, file).process()
+                    } catch (e: Throwable) {
+                        e.printStackTrace()
+                    } finally {
                         count.decrementAndGet()
                     }
                 }
@@ -253,6 +294,37 @@ class RequisitionFormsPdfProcessing(
                 println("$count files left")
                 service.awaitTermination(10, TimeUnit.SECONDS)
             }
+        }
+    }
+
+    private var isRestartRequired: Boolean = false
+
+    object Auto {
+        private val LOG: Logger = Logger.getLogger(Auto::class.qualifiedName)
+
+        @JvmStatic
+        fun main(args: Array<String>) {
+            LOG.info("Starting " + args.toList())
+            val options = args.toOptions(daysDefault = "7")
+            val barcodeReader = initBarcodeReader()
+            for (file in options.requisitionPDFsDir.walk().sortedByDescending { it.lastModified() }) {
+                if (!file.isFile) continue
+                if (!file.name.endsWith(".pdf", ignoreCase = true)) continue
+                if (options.minFileTime != null && file.lastModified() < options.minFileTime) continue
+                try {
+                    LOG.info("processing $file")
+                    with(RequisitionFormsPdfProcessing(options, file)) {
+                        process { barcodeReader }
+                        if (isRestartRequired) {
+                            LOG.info("Restarting")
+                            exitProcess(302)
+                        }
+                    }
+                } catch (e: Throwable) {
+                    LOG.log(Level.SEVERE, "unhandled error", e)
+                }
+            }
+            LOG.info("DONE")
         }
     }
 
