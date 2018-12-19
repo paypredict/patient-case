@@ -2,6 +2,8 @@ package net.paypredict.patient.cases.pdf.processing
 
 import com.dynamsoft.barcode.jni.BarcodeReader
 import com.dynamsoft.barcode.jni.EnumImagePixelFormat
+import net.paypredict.patient.cases.PatientCases.client
+import net.paypredict.patient.cases.PatientCases.clientDir
 import net.paypredict.patient.cases.mongo.*
 import net.paypredict.patient.cases.toDigest
 import net.paypredict.patient.cases.toHexString
@@ -244,8 +246,7 @@ class RequisitionFormsPdfProcessing(
             daysDefault: String = "",
             threadsDefault: String = ""
         ): Options {
-            val client = option("client", clientDefault)
-            val clientDir = File("/PayPredict/clients").resolve(client)
+            client = option("client", clientDefault)
             val days = option("days", daysDefault).toIntOrNull()
             val threads = option("threads", threadsDefault).toIntOrNull()
 
@@ -322,6 +323,8 @@ class RequisitionFormsPdfProcessing(
                     }
                 } catch (e: Throwable) {
                     LOG.log(Level.SEVERE, "unhandled error", e)
+                    LOG.info("Restarting")
+                    exitProcess(302)
                 }
             }
             LOG.info("DONE")
