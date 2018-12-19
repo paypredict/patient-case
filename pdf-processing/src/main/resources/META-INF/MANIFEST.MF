@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Class-Path: javax.json-1.0.4.jar javax.json-api-1.0.jar commons-loggin
+ g-1.2.jar kotlin-reflect-1.3.10.jar bson-3.4.2.jar annotations-13.0.j
+ ar kotlin-stdlib-common-1.3.10.jar kotlin-stdlib-jdk8-1.3.10.jar pdfb
+ ox-2.0.11.jar dbr-6.2.jar kotlin-stdlib-jdk7-1.3.10.jar fontbox-2.0.1
+ 1.jar mongodb-driver-3.4.2.jar mongodb-driver-core-3.4.2.jar kotlin-s
+ tdlib-1.3.10.jar
+Main-Class: 
+
