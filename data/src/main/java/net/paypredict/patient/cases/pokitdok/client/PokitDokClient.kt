@@ -59,6 +59,20 @@ fun <T> queryTradingPartners(result: (InputStreamReader) -> T): T =
         result = result
     )
 
+data class ClaimsConvertQuery(
+    val isa837: String
+)
+
+fun <T> ClaimsConvertQuery.query(result: (InputStreamReader) -> T): T =
+    authQuery(
+        path = "api/v4/claims/convert",
+        setup = { outputStream.write(isa837.toByteArray()) },
+        result = result
+    )
+
+fun ClaimsConvertQuery.digest(): String =
+    isa837.toByteArray().toDigest().toHexString()
+
 class PokitDokApiException(
     val responseCode: Int,
     val responseMessage: String?,

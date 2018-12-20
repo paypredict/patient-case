@@ -50,6 +50,9 @@ object DBS {
         fun eligibility(): DocumentMongoCollection =
             pokitDok().getCollection("eligibility")
 
+        fun claimsConvert(): DocumentMongoCollection =
+            pokitDok().getCollection("claimsConvert")
+
         fun npiRegistry(): DocumentMongoCollection =
             nppes().getCollection("npiRegistry")
 
