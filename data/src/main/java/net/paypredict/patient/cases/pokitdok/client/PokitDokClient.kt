@@ -2,6 +2,9 @@ package net.paypredict.patient.cases.pokitdok.client
 
 import net.paypredict.patient.cases.toDigest
 import net.paypredict.patient.cases.toHexString
+import org.apache.http.entity.ContentType
+import org.apache.http.entity.mime.MultipartEntityBuilder
+import org.apache.http.message.BasicNameValuePair
 import java.io.File
 import java.io.IOException
 import java.io.InputStreamReader
@@ -10,7 +13,8 @@ import java.net.URL
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
-import javax.json.*
+import javax.json.Json
+import javax.json.JsonObject
 import kotlin.concurrent.withLock
 
 /**
@@ -63,12 +67,24 @@ data class ClaimsConvertQuery(
     val isa837: String
 )
 
-fun <T> ClaimsConvertQuery.query(result: (InputStreamReader) -> T): T =
-    authQuery(
+fun <T> ClaimsConvertQuery.query(result: (InputStreamReader) -> T): T {
+    val boundary = UUID.randomUUID().toString()
+    val contentType =
+        ContentType.MULTIPART_FORM_DATA
+            .withParameters(BasicNameValuePair("boundary", boundary))
+    val entity =
+        MultipartEntityBuilder
+            .create()
+            .setContentType(contentType)
+            .addBinaryBody("file", isa837.byteInputStream())
+            .build()
+    return authQuery(
         path = "api/v4/claims/convert",
-        setup = { outputStream.write(isa837.toByteArray()) },
+        contentType = "multipart/form-data; boundary=$boundary",
+        setup = { entity.writeTo(outputStream) },
         result = result
     )
+}
 
 fun ClaimsConvertQuery.digest(): String =
     isa837.toByteArray().toDigest().toHexString()
