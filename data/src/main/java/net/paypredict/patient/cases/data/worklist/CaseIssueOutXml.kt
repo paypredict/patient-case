@@ -76,6 +76,8 @@ fun CaseHist.createOutXml(
 
     updateProvider(domDocument)
 
+    domDocument.cleanDiagnosisICDCodes()
+
     outFile.writer().use { writer ->
         writer.write(XML_PREFIX)
 
@@ -561,3 +563,27 @@ private const val XML_PREFIX = """<?xml version="1.0" encoding="utf-16" standalo
 
 private fun File.toInputSource(): InputSource =
     InputSource(readText().removePrefix(XML_PREFIX).reader())
+
+private val invalidICDs = setOf("", ".", "n/a")
+
+private fun DomDocument.cleanDiagnosisICDCodes() {
+    val element: Element =
+        getElementsByTagName("SuperBillDetails")
+            .toSequence()
+            .filterIsInstance<Element>()
+            .firstOrNull()
+            ?: return
+
+    val attrName = "DiagnosisICDCodes"
+
+    val codes =
+        element.getAttribute(attrName) ?: return
+
+    element.setAttribute(
+        attrName,
+        codes
+            .split(',')
+            .filter { it.trim() !in invalidICDs }
+            .joinToString(separator = ",")
+    )
+}
