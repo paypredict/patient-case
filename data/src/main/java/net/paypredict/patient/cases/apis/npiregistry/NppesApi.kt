@@ -26,8 +26,24 @@ object NpiRegistry {
 
         if (!Conf.enabled)
             throw NpiRegistryException("NpiRegistry API isn't enabled")
-        val connection: HttpURLConnection =
-            URL("${Conf.npiRegistryUrl}?number=$npi").openConnection() as HttpURLConnection
+        val connection: HttpURLConnection = URL(
+            Conf.npiRegistryUrl +
+                    "?number=$npi" +
+                    "&enumeration_type=" +
+                    "&taxonomy_description=" +
+                    "&first_name=" +
+                    "&use_first_name_alias=" +
+                    "&last_name=" +
+                    "&organization_name=" +
+                    "&address_purpose=" +
+                    "&city=" +
+                    "&state=" +
+                    "&postal_code=" +
+                    "&country_code=" +
+                    "&limit=" +
+                    "&skip=" +
+                    "&version=2.0"
+        ).openConnection() as HttpURLConnection
         connection.connect()
         if (connection.responseCode != 200)
             throw NpiRegistryException("invalid connection.responseCode: " + connection.responseCode)
@@ -97,6 +113,6 @@ private object Conf {
 
     val npiRegistryUrl: String by lazy {
         conf.opt<String>("npiRegistryUrl")
-            ?: "https://npiregistry.cms.hhs.gov/api/resultsDemo2/"
+            ?: "https://npiregistry.cms.hhs.gov/api/"
     }
 }
